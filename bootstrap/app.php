@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'sso' => \App\Http\Middleware\EnsureSsoAuthenticated::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

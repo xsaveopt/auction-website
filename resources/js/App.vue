@@ -51,7 +51,11 @@ onUnmounted(() => clearInterval(scheduleInterval));
 async function logout() {
     await api('/logout', { method: 'POST' });
     user.value = null;
-    router.push('/');
+    if (ssoEnabled.value) {
+        window.location.href = '/';
+    } else {
+        router.push('/');
+    }
 }
 
 function onLogin(u) {
