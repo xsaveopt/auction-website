@@ -21,6 +21,11 @@ class StatsController extends Controller
         $totalBids = Bid::count();
         $totalUsers = User::count();
         $totalBidValue = (float) Bid::sum(DB::raw('amount * quantity'));
+        $avgBidAmount = (float) Bid::avg('amount');
+        $highestBid = (float) Bid::max('amount');
+        $totalStartingValue = (float) Auction::where('status', 'active')
+            ->where('ends_at', '>', $now)
+            ->sum(DB::raw('starting_price * quantity'));
 
         // Bids per day for the last 7 days
         $bidsPerDay = [];
@@ -82,6 +87,9 @@ class StatsController extends Controller
                 'total_bids' => $totalBids,
                 'total_users' => $totalUsers,
                 'total_bid_value' => round($totalBidValue, 2),
+                'avg_bid_amount' => round($avgBidAmount, 2),
+                'highest_bid' => round($highestBid, 2),
+                'total_starting_value' => round($totalStartingValue, 2),
                 'bids_per_day' => $bidsPerDay,
                 'hot_auctions' => $hotAuctions,
                 'top_bidders' => $topBidders,

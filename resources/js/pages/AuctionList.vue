@@ -57,6 +57,26 @@ function timeLeft(endsAt) {
                     </div>
                 </div>
 
+                <!-- Money stats -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-white rounded shadow p-4 text-center">
+                        <div class="text-2xl font-bold text-green-700">${{ stats.total_bid_value.toFixed(2) }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Total Bid Value</div>
+                    </div>
+                    <div class="bg-white rounded shadow p-4 text-center">
+                        <div class="text-2xl font-bold text-blue-700">${{ stats.avg_bid_amount.toFixed(2) }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Avg Bid Amount</div>
+                    </div>
+                    <div class="bg-white rounded shadow p-4 text-center">
+                        <div class="text-2xl font-bold text-red-600">${{ stats.highest_bid.toFixed(2) }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Highest Bid</div>
+                    </div>
+                    <div class="bg-white rounded shadow p-4 text-center">
+                        <div class="text-2xl font-bold text-purple-700">${{ stats.total_starting_value.toFixed(2) }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Min Active Value</div>
+                    </div>
+                </div>
+
                 <div class="grid gap-4 sm:grid-cols-3">
                     <!-- Bidding activity chart -->
                     <div class="bg-white rounded shadow p-4">
