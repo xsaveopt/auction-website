@@ -64,6 +64,27 @@ class AuctionController extends Controller
         return response()->json(['auction' => $this->auctionResponse($auction)], 201);
     }
 
+    public function update(Request $request, Auction $auction): JsonResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string', 'max:2000'],
+            'starting_price' => ['required', 'numeric', 'min:0.01'],
+            'quantity' => ['required', 'integer', 'min:1'],
+            'max_per_bidder' => ['required', 'integer', 'min:1'],
+            'ends_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        if ($validated['max_per_bidder'] > $validated['quantity']) {
+            $validated['max_per_bidder'] = $validated['quantity'];
+        }
+
+        $auction->update($validated);
+        $auction->load(['seller:id,username', 'bids.user:id,username', 'images']);
+
+        return response()->json(['auction' => $this->auctionResponse($auction, withBids: true)]);
+    }
+
     public function destroy(Auction $auction): JsonResponse
     {
         foreach ($auction->images as $image) {

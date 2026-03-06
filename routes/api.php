@@ -29,6 +29,7 @@ Route::middleware('sso')->group(function () {
     Route::get('/auctions/ended', [AuctionController::class, 'ended'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}', [AuctionController::class, 'show']);
     Route::post('/auctions', [AuctionController::class, 'store'])->middleware(['auth', 'admin']);
+    Route::put('/auctions/{auction}', [AuctionController::class, 'update'])->middleware(['auth', 'admin']);
     Route::delete('/auctions/{auction}', [AuctionController::class, 'destroy'])->middleware(['auth', 'admin']);
 
     // Auction images

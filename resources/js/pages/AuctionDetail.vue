@@ -83,10 +83,16 @@ onMounted(load);
                     <h1 class="text-2xl font-bold">{{ auction.title }}</h1>
                     <p class="text-gray-500 text-sm mt-1">Listed by {{ auction.seller.username }}</p>
                 </div>
-                <button v-if="user?.is_admin" @click="deleteAuction"
-                    class="text-sm text-red-600 hover:text-red-800 border border-red-200 rounded px-3 py-1">
-                    Delete
-                </button>
+                <div v-if="user?.is_admin" class="flex gap-2">
+                    <router-link :to="`/auctions/${auction.id}/edit`"
+                        class="text-sm text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-3 py-1">
+                        Edit
+                    </router-link>
+                    <button @click="deleteAuction"
+                        class="text-sm text-red-600 hover:text-red-800 border border-red-200 rounded px-3 py-1">
+                        Delete
+                    </button>
+                </div>
             </div>
 
             <div v-if="auction.images.length" class="mt-4">
