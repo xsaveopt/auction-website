@@ -20,9 +20,10 @@ docker exec -it <container> php artisan app:make-admin user@example.com
 | `BIDDING_CLOSED_END`      | `18:00`                                  | End of the office hours window (24h format). Bidding reopens at this time.                                                           |
 | `APP_ENV`                 | `production`                             | Laravel environment.                                                                                                                 |
 | `APP_DEBUG`               | `false`                                  | Enable debug mode. Do not enable in production.                                                                                      |
-| `MICROSOFT_CLIENT_ID`     | _(empty)_                                | Microsoft Entra application (client) ID. Set together with `MICROSOFT_CLIENT_SECRET` to enable SSO.                                  |
-| `MICROSOFT_CLIENT_SECRET` | _(empty)_                                | Microsoft Entra client secret. Leave empty to disable SSO.                                                                           |
+| `MICROSOFT_CLIENT_ID`     | _(empty)_                                | Microsoft Entra application (client) ID. When set with `MICROSOFT_CLIENT_SECRET`, SSO is enabled and the entire app requires Microsoft authentication — unauthenticated users are redirected to Microsoft login. |
+| `MICROSOFT_CLIENT_SECRET` | _(empty)_                                | Microsoft Entra client secret. Leave both SSO vars empty to use standard username/password auth.                                     |
 | `MICROSOFT_REDIRECT_URI`  | `${APP_URL}/api/auth/microsoft/callback` | OAuth callback URL configured in Microsoft Entra app registration.                                                                   |
+| `MICROSOFT_TENANT_ID`     | _(empty — allows any Microsoft account)_ | Azure AD tenant ID. Set to restrict login to your organization's users only.                                                         |
 
 ### Persistent data
 
