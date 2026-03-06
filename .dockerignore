@@ -1,0 +1,17 @@
+.claude
+.editorconfig
+.env
+.git
+.gitattributes
+.gitignore
+CLAUDE.md
+database/database.sqlite
+Dockerfile
+node_modules
+public/build
+README.md
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+vendor
