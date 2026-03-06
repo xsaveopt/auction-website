@@ -7,6 +7,7 @@ const router = useRouter();
 const user = ref(null);
 const loading = ref(true);
 const schedule = ref(null);
+const ssoEnabled = ref(false);
 
 async function fetchUser() {
     try {
@@ -28,11 +29,21 @@ async function fetchSchedule() {
     }
 }
 
+async function fetchSsoEnabled() {
+    try {
+        const data = await api('/auth/sso/enabled');
+        ssoEnabled.value = !!data.enabled;
+    } catch {
+        ssoEnabled.value = false;
+    }
+}
+
 // Poll schedule every 60s to keep is_open in sync
 let scheduleInterval;
 onMounted(() => {
     fetchUser();
     fetchSchedule();
+    fetchSsoEnabled();
     scheduleInterval = setInterval(fetchSchedule, 60000);
 });
 onUnmounted(() => clearInterval(scheduleInterval));
@@ -74,8 +85,11 @@ provide('schedule', schedule);
                         <button @click="logout" class="text-red-600 hover:underline">Logout</button>
                     </template>
                     <template v-else>
-                        <router-link to="/login" class="text-blue-600 hover:underline">Login</router-link>
-                        <router-link to="/register" class="text-blue-600 hover:underline">Register</router-link>
+                        <a v-if="ssoEnabled" href="/auth/microsoft/redirect" class="text-blue-600 hover:underline">Login with Microsoft</a>
+                        <template v-else>
+                            <router-link to="/login" class="text-blue-600 hover:underline">Login</router-link>
+                            <router-link to="/register" class="text-blue-600 hover:underline">Register</router-link>
+                        </template>
                     </template>
                 </div>
             </div>

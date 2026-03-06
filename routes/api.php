@@ -5,6 +5,7 @@ use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\AuctionImageController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BidController;
+use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,7 @@ Route::get('/stats', [StatsController::class, 'index']);
 Route::get('/schedule', fn () => response()->json(['schedule' => BiddingSchedule::toArray()]));
 
 // Auth
+Route::get('/auth/sso/enabled', [SocialiteController::class, 'enabled']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');

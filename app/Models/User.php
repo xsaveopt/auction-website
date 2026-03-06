@@ -15,6 +15,7 @@ class User extends Authenticatable
     protected $fillable = [
         'username',
         'password',
+        'microsoft_id',
     ];
 
     /** @var list<string> */

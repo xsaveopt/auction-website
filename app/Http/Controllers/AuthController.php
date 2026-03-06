@@ -7,13 +7,18 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
+use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
+        if ($this->ssoEnabled()) {
+            return response()->json(['message' => 'SSO is enabled. Please sign in with Microsoft.'], Response::HTTP_FORBIDDEN);
+        }
+
         $validated = $request->validate([
-            'username' => ['required', 'string', 'min:3', 'max:30', 'unique:users', 'regex:/^[a-zA-Z0-9_]+$/'],
+            'username' => ['required', 'string', 'min:3', 'max:100', 'unique:users'],
             'password' => ['required', Password::min(6)],
         ]);
 
@@ -26,6 +31,10 @@ class AuthController extends Controller
 
     public function login(Request $request): JsonResponse
     {
+        if ($this->ssoEnabled()) {
+            return response()->json(['message' => 'SSO is enabled. Please sign in with Microsoft.'], Response::HTTP_FORBIDDEN);
+        }
+
         $credentials = $request->validate([
             'username' => ['required', 'string'],
             'password' => ['required', 'string'],
@@ -71,5 +80,10 @@ class AuthController extends Controller
             'username' => $user->username,
             'is_admin' => (bool) $user->is_admin,
         ];
+    }
+
+    private function ssoEnabled(): bool
+    {
+        return filled(config('services.microsoft.client_id')) && filled(config('services.microsoft.client_secret'));
     }
 }
