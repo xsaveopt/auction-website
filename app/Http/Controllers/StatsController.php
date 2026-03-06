@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Auction;
 use App\Models\Bid;
 use App\Models\User;
+use App\Support\Presence;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +91,7 @@ class StatsController extends Controller
                 'avg_bid_amount' => round($avgBidAmount, 2),
                 'highest_bid' => round($highestBid, 2),
                 'total_starting_value' => round($totalStartingValue, 2),
+                'online_users' => Presence::onlineUsers(),
                 'bids_per_day' => $bidsPerDay,
                 'hot_auctions' => $hotAuctions,
                 'top_bidders' => $topBidders,

@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted, onUnmounted, provide } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, onUnmounted, provide, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { api } from './api.js';
+import { HEARTBEAT_INTERVAL_MS, presencePayload } from './presence.js';
 
+const route = useRoute();
 const router = useRouter();
 const user = ref(null);
 const loading = ref(true);
@@ -38,15 +40,35 @@ async function fetchSsoEnabled() {
     }
 }
 
+async function sendPresenceHeartbeat() {
+    try {
+        await api('/presence/heartbeat', {
+            method: 'POST',
+            body: JSON.stringify(presencePayload(route)),
+        });
+    } catch {
+        // ignore presence failures so navigation stays responsive
+    }
+}
+
 // Poll schedule every 60s to keep is_open in sync
 let scheduleInterval;
+let presenceInterval;
 onMounted(() => {
     fetchUser();
     fetchSchedule();
     fetchSsoEnabled();
+    sendPresenceHeartbeat();
     scheduleInterval = setInterval(fetchSchedule, 60000);
+    presenceInterval = setInterval(sendPresenceHeartbeat, HEARTBEAT_INTERVAL_MS);
 });
-onUnmounted(() => clearInterval(scheduleInterval));
+watch(() => route.fullPath, () => {
+    sendPresenceHeartbeat();
+});
+onUnmounted(() => {
+    clearInterval(scheduleInterval);
+    clearInterval(presenceInterval);
+});
 
 async function logout() {
     await api('/logout', { method: 'POST' });

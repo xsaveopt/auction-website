@@ -5,6 +5,7 @@ use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\AuctionImageController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BidController;
+use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,7 @@ Route::get('/user', [AuthController::class, 'user']);
 Route::middleware('sso')->group(function () {
     // Stats
     Route::get('/stats', [StatsController::class, 'index']);
+    Route::post('/presence/heartbeat', [PresenceController::class, 'heartbeat']);
 
     // Bidding schedule
     Route::get('/schedule', fn () => response()->json(['schedule' => BiddingSchedule::toArray()]));

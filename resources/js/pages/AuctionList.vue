@@ -1,20 +1,33 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { api } from '../api.js';
+import { HEARTBEAT_INTERVAL_MS } from '../presence.js';
 
 const auctions = ref([]);
 const stats = ref(null);
 const loading = ref(true);
 
-onMounted(async () => {
+async function load() {
     const [auctionData, statsData] = await Promise.all([
         api('/auctions'),
         api('/stats').catch(() => null),
     ]);
+
     auctions.value = auctionData.auctions;
     if (statsData) stats.value = statsData.stats;
     loading.value = false;
+}
+
+function watchingText(count) {
+    return `${count} currently watching`;
+}
+
+let refreshInterval;
+onMounted(async () => {
+    await load();
+    refreshInterval = setInterval(load, HEARTBEAT_INTERVAL_MS);
 });
+onUnmounted(() => clearInterval(refreshInterval));
 
 const bidsMax = computed(() => {
     if (!stats.value) return 1;
@@ -38,7 +51,7 @@ function timeLeft(endsAt) {
             <!-- Stats Dashboard -->
             <div v-if="stats" class="mb-8 space-y-4">
                 <!-- Number cards -->
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <div class="bg-white rounded shadow p-4 text-center">
                         <div class="text-3xl font-bold text-blue-600">{{ stats.active_auctions }}</div>
                         <div class="text-xs text-gray-500 mt-1">Active Auctions</div>
@@ -50,6 +63,10 @@ function timeLeft(endsAt) {
                     <div class="bg-white rounded shadow p-4 text-center">
                         <div class="text-3xl font-bold text-green-600">{{ stats.total_bids }}</div>
                         <div class="text-xs text-gray-500 mt-1">Bids Placed</div>
+                    </div>
+                    <div class="bg-white rounded shadow p-4 text-center">
+                        <div class="text-3xl font-bold text-emerald-600">{{ stats.online_users }}</div>
+                        <div class="text-xs text-gray-500 mt-1">Online Right Now</div>
                     </div>
                     <div class="bg-white rounded shadow p-4 text-center">
                         <div class="text-3xl font-bold text-amber-600">{{ stats.total_users }}</div>
@@ -152,6 +169,9 @@ function timeLeft(endsAt) {
                     <div class="p-4">
                     <h2 class="text-lg font-semibold">{{ auction.title }}</h2>
                     <p class="text-gray-600 text-sm mt-1 line-clamp-2">{{ auction.description }}</p>
+                    <div class="mt-2 text-sm font-medium text-amber-600">
+                        {{ watchingText(auction.watcher_count) }}
+                    </div>
                     <div class="mt-3 flex items-center justify-between text-sm">
                         <span class="font-bold text-green-700">${{ Number(auction.current_price).toFixed(2) }}</span>
                         <span :class="auction.is_active ? 'text-blue-600' : 'text-gray-400'">

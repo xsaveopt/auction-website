@@ -1,7 +1,8 @@
 <script setup>
-import { ref, inject, computed, onMounted } from 'vue';
+import { ref, inject, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api.js';
+import { HEARTBEAT_INTERVAL_MS } from '../presence.js';
 
 const router = useRouter();
 
@@ -20,9 +21,12 @@ const myBid = computed(() => {
     return auction.value.bids.find(b => b.user.id === user.value.id);
 });
 
-async function load() {
+async function load(showLoading = false) {
+    if (showLoading) loading.value = true;
+
     const data = await api(`/auctions/${props.id}`);
     auction.value = data.auction;
+    activeImage.value = Math.min(activeImage.value, Math.max(data.auction.images.length - 1, 0));
     const my = data.auction.bids.find(b => b.user.id === user.value?.id);
     bidAmount.value = my
         ? (Number(my.amount) + 1).toFixed(2)
@@ -71,7 +75,20 @@ function formatDate(d) {
     return new Date(d).toLocaleString();
 }
 
-onMounted(load);
+function watchingText(count) {
+    return `${count} currently watching`;
+}
+
+let refreshInterval;
+onMounted(async () => {
+    await load(true);
+    refreshInterval = setInterval(load, HEARTBEAT_INTERVAL_MS);
+});
+watch(() => props.id, async () => {
+    activeImage.value = 0;
+    await load(true);
+});
+onUnmounted(() => clearInterval(refreshInterval));
 </script>
 
 <template>
@@ -82,6 +99,9 @@ onMounted(load);
                 <div>
                     <h1 class="text-2xl font-bold">{{ auction.title }}</h1>
                     <p class="text-gray-500 text-sm mt-1">Listed by {{ auction.seller.username }}</p>
+                    <p class="mt-2 inline-flex rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+                        {{ watchingText(auction.watcher_count) }}
+                    </p>
                 </div>
                 <div v-if="user?.is_admin" class="flex gap-2">
                     <router-link :to="`/auctions/${auction.id}/edit`"

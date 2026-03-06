@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Support\Presence;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -11,33 +13,44 @@ class AuctionController extends Controller
 {
     public function index(): JsonResponse
     {
-        $auctions = Auction::with(['seller:id,username', 'bids', 'images'])
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
+        $auctions = $this->auctionQuery()
+            ->with(['seller:id,username', 'bids', 'images'])
+            ->orderByDesc('watcher_count')
+            ->orderByRaw("CASE WHEN status = 'active' AND ends_at > ? THEN 1 ELSE 0 END DESC", [now()])
             ->orderByDesc('created_at')
-            ->get()
-            ->map(fn (Auction $auction) => $this->auctionResponse($auction));
+            ->get();
 
-        return response()->json(['auctions' => $auctions]);
+        return response()->json([
+            'auctions' => $auctions->map(fn (Auction $auction) => $this->auctionResponse($auction)),
+        ]);
     }
 
     public function show(Auction $auction): JsonResponse
     {
-        $auction->load(['seller:id,username', 'bids.user:id,username', 'images']);
+        $auction = $this->auctionQuery()
+            ->with(['seller:id,username', 'bids.user:id,username', 'images'])
+            ->findOrFail($auction->id);
 
         return response()->json(['auction' => $this->auctionResponse($auction, withBids: true)]);
     }
 
     public function ended(): JsonResponse
     {
-        $auctions = Auction::with(['seller:id,username', 'bids.user:id,username', 'images'])
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
+        $auctions = $this->auctionQuery()
+            ->with(['seller:id,username', 'bids.user:id,username', 'images'])
             ->where(function ($q) {
                 $q->where('ends_at', '<=', now())
                     ->orWhere('status', '!=', 'active');
             })
+            ->orderByDesc('watcher_count')
             ->orderByDesc('ends_at')
-            ->get()
-            ->map(fn (Auction $auction) => $this->auctionResponse($auction, withBids: true));
+            ->get();
 
-        return response()->json(['auctions' => $auctions]);
+        return response()->json([
+            'auctions' => $auctions->map(fn (Auction $auction) => $this->auctionResponse($auction, withBids: true)),
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -152,6 +165,7 @@ class AuctionController extends Controller
                 'username' => $auction->seller->username,
             ] : null,
             'bid_count' => $auction->bids->count(),
+            'watcher_count' => (int) ($auction->watcher_count ?? 0),
             'items_allocated' => array_sum($allocations),
             'images' => $auction->images->map(fn ($img) => [
                 'id' => $img->id,
@@ -177,5 +191,15 @@ class AuctionController extends Controller
         }
 
         return $data;
+    }
+
+    /** @return Builder<Auction> */
+    private function auctionQuery(): Builder
+    {
+        return Auction::query()
+            ->select('auctions.*')
+            ->addSelect([
+                'watcher_count' => Presence::watcherCountSubquery(),
+            ]);
     }
 }
