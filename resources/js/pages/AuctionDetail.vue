@@ -21,6 +21,8 @@ const myBid = computed(() => {
     return auction.value.bids.find(b => b.user.id === user.value.id);
 });
 
+const selectedBidTotal = computed(() => Number(bidAmount.value || 0) * Number(bidQuantity.value || 0));
+
 async function load(showLoading = false) {
     if (showLoading) loading.value = true;
 
@@ -73,6 +75,10 @@ async function placeBid() {
 
 function formatDate(d) {
     return new Date(d).toLocaleString();
+}
+
+function formatMoney(value) {
+    return Number(value).toFixed(2);
 }
 
 function watchingText(count) {
@@ -146,9 +152,10 @@ onUnmounted(() => clearInterval(refreshInterval));
             </div>
             <div v-if="auction.quantity > 1" class="mt-3 text-sm text-gray-500">
                 <p>Items allocated top-down by bid price. All winners pay the same clearing price (the lowest winning bid).</p>
+                <p class="mt-1">Your bid amount is per item. Entering $10.00 for 4 items means a total commitment of $40.00.</p>
                 <p v-if="auction.max_per_bidder > 1" class="mt-1">You can bid for up to {{ auction.max_per_bidder }} items. Bids may be partially filled if stock runs out.</p>
                 <p v-if="auction.bid_count > 0" class="mt-2 font-medium text-green-700">
-                    Clearing price: ${{ Number(auction.current_price).toFixed(2) }} / item
+                    Clearing price: ${{ formatMoney(auction.current_price) }} / item
                     · {{ auction.items_allocated }} / {{ auction.quantity }} allocated
                 </p>
             </div>
@@ -166,8 +173,9 @@ onUnmounted(() => clearInterval(refreshInterval));
             <template v-else>
                 <div v-if="myBid" class="flex items-center justify-between mb-3">
                     <p class="text-sm text-gray-500">
-                        Your current bid: <span class="font-bold text-green-700">${{ Number(myBid.amount).toFixed(2) }}</span>
+                        Your current bid: <span class="font-bold text-green-700">${{ formatMoney(myBid.amount) }}</span>
                         <span v-if="auction.max_per_bidder > 1"> for {{ myBid.quantity }} item{{ myBid.quantity !== 1 ? 's' : '' }}</span>
+                        <span v-if="auction.max_per_bidder > 1" class="ml-1">(up to ${{ formatMoney(myBid.amount * myBid.quantity) }} total)</span>
                         <span v-if="myBid.won_quantity > 0" class="text-green-600 ml-1">(winning {{ myBid.won_quantity }})</span>
                     </p>
                     <button @click="withdrawBid" class="text-sm text-red-600 hover:underline">
@@ -188,6 +196,10 @@ onUnmounted(() => clearInterval(refreshInterval));
                         <label class="block text-xs text-gray-500 mb-1">Quantity</label>
                         <input v-model="bidQuantity" type="number" min="1" :max="auction.max_per_bidder" required
                             class="border rounded px-3 py-2 w-20" />
+                    </div>
+                    <div v-if="auction.max_per_bidder > 1" class="basis-full text-sm text-gray-500">
+                        Your price is per item, so bidding ${{ formatMoney(bidAmount) }} for {{ bidQuantity }} item{{ Number(bidQuantity) !== 1 ? 's' : '' }}
+                        means a maximum total of ${{ formatMoney(selectedBidTotal) }}.
                     </div>
                     <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                         {{ myBid ? 'Update Bid' : 'Bid' }}
