@@ -24,7 +24,6 @@ COPY . .
 COPY --from=frontend /app/public/build public/build
 
 RUN composer dump-autoload --optimize \
-    && php artisan config:cache \
     && php artisan route:cache \
     && php artisan view:cache
 

@@ -20,6 +20,10 @@ if [ -z "$APP_KEY" ]; then
     export APP_KEY=$(php artisan key:generate --show)
 fi
 
+# Ensure config cache reflects runtime env (APP_KEY, secrets, etc.)
+php artisan config:clear
+php artisan config:cache
+
 # Run migrations
 php artisan migrate --force
 
