@@ -77,31 +77,4 @@ class BidController extends Controller
         ], 201);
     }
 
-    public function destroy(Request $request, Auction $auction): JsonResponse
-    {
-        if (! BiddingSchedule::isBiddingOpen()) {
-            return response()->json([
-                'message' => 'Bidding is closed during office hours (' . BiddingSchedule::closedStart() . ' – ' . BiddingSchedule::closedEnd() . ').',
-            ], 422);
-        }
-
-        if (! $auction->isActive()) {
-            return response()->json(['message' => 'This auction is no longer active.'], 422);
-        }
-
-        /** @var \App\Models\User $user */
-        $user = $request->user();
-
-        $bid = Bid::where('auction_id', $auction->id)
-            ->where('user_id', $user->id)
-            ->first();
-
-        if (! $bid) {
-            return response()->json(['message' => 'You have no bid on this auction.'], 404);
-        }
-
-        $bid->delete();
-
-        return response()->json(['message' => 'Bid withdrawn.']);
-    }
 }

@@ -89,16 +89,6 @@ async function deleteAuction() {
     }
 }
 
-async function withdrawBid() {
-    error.value = '';
-    try {
-        await api(`/auctions/${props.id}/bids`, { method: 'DELETE' });
-        await load();
-    } catch (e) {
-        error.value = e.data?.message || 'Failed to withdraw bid.';
-    }
-}
-
 async function placeBid() {
     error.value = '';
     try {
@@ -301,16 +291,13 @@ onUnmounted(() => clearInterval(refreshInterval));
                     You can bid again after {{ schedule.closed_end }}.
                 </div>
                 <template v-else>
-                    <div v-if="myBid" class="flex items-center justify-between mb-3">
+                    <div v-if="myBid" class="mb-3">
                         <p class="text-sm text-gray-500">
                             Your current bid: <span class="font-bold text-green-700">${{ formatMoney(myBid.amount) }}</span>
                             <span v-if="auction.max_per_bidder > 1"> for {{ myBid.quantity }} item{{ myBid.quantity !== 1 ? 's' : '' }}</span>
                             <span v-if="auction.max_per_bidder > 1" class="ml-1">(up to ${{ formatMoney(myBid.amount * myBid.quantity) }} total)</span>
                             <span v-if="myBid.won_quantity > 0" class="text-green-600 ml-1">(winning {{ myBid.won_quantity }})</span>
                         </p>
-                        <button @click="withdrawBid" class="text-sm text-red-600 hover:underline">
-                            Withdraw bid
-                        </button>
                     </div>
                     <div v-if="error" class="bg-red-100 text-red-700 p-3 rounded mb-3">{{ error }}</div>
                     <form @submit.prevent="placeBid" class="flex flex-wrap gap-3 items-end">
