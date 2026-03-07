@@ -22,7 +22,7 @@ class MakeAdminCommand extends Command
             ->orWhere('microsoft_id', $identifier)
             ->first();
 
-        if (! $user) {
+        if (!$user) {
             $this->error("User '{$identifier}' not found.");
 
             return self::FAILURE;

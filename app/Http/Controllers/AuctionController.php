@@ -14,7 +14,8 @@ class AuctionController extends Controller
     public function index(): JsonResponse
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = $this->auctionQuery()
+        $auctions = $this
+            ->auctionQuery()
             ->with(['seller:id,username', 'bids', 'images'])
             ->orderByDesc('watcher_count')
             ->orderByRaw("CASE WHEN status = 'active' AND ends_at > ? THEN 1 ELSE 0 END DESC", [now()])
@@ -22,13 +23,15 @@ class AuctionController extends Controller
             ->get();
 
         return response()->json([
-            'auctions' => $auctions->map(fn (Auction $auction) => $this->auctionResponse($auction)),
+            'auctions' => $auctions->map(fn(Auction $auction) => $this->auctionResponse($auction)),
         ]);
     }
 
     public function show(Auction $auction): JsonResponse
     {
-        $auction = $this->auctionQuery()
+        /** @var Auction $auction */
+        $auction = $this
+            ->auctionQuery()
             ->with(['seller:id,username', 'bids.user:id,username', 'images', 'questions.user:id,username'])
             ->findOrFail($auction->id);
 
@@ -38,23 +41,24 @@ class AuctionController extends Controller
     public function ended(): JsonResponse
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = $this->auctionQuery()
+        $auctions = $this
+            ->auctionQuery()
             ->with(['seller:id,username', 'bids.user:id,username', 'images'])
             ->where(function ($q) {
-                $q->where('ends_at', '<=', now())
-                    ->orWhere('status', '!=', 'active');
+                $q->where('ends_at', '<=', now())->orWhere('status', '!=', 'active');
             })
             ->orderByDesc('watcher_count')
             ->orderByDesc('ends_at')
             ->get();
 
         return response()->json([
-            'auctions' => $auctions->map(fn (Auction $auction) => $this->auctionResponse($auction, withBids: true)),
+            'auctions' => $auctions->map(fn(Auction $auction) => $this->auctionResponse($auction, withBids: true)),
         ]);
     }
 
     public function store(Request $request): JsonResponse
     {
+        /** @var array{title: string, description: string, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string} $validated */
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:2000'],
@@ -79,6 +83,7 @@ class AuctionController extends Controller
 
     public function update(Request $request, Auction $auction): JsonResponse
     {
+        /** @var array{title: string, description: string, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string} $validated */
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:2000'],
@@ -160,46 +165,50 @@ class AuctionController extends Controller
             'ends_at' => $auction->ends_at->toISOString(),
             'status' => $auction->status,
             'is_active' => $auction->isActive(),
-            'seller' => $auction->seller ? [
-                'id' => $auction->seller->id,
-                'username' => $auction->seller->username,
-            ] : null,
+            'seller' => $auction->seller
+                ? [
+                    'id' => $auction->seller->id,
+                    'username' => $auction->seller->username,
+                ] : null,
             'bid_count' => $auction->bids->count(),
-            'watcher_count' => (int) ($auction->watcher_count ?? 0),
+            'watcher_count' => $auction->watcher_count,
             'items_allocated' => array_sum($allocations),
-            'images' => $auction->images->map(fn ($img) => [
-                'id' => $img->id,
-                'url' => "/api/images/{$img->id}",
-            ])->values(),
+            'images' => $auction
+                ->images
+                ->map(fn($img) => [
+                    'id' => $img->id,
+                    'url' => "/api/images/{$img->id}",
+                ])
+                ->values(),
             'created_at' => $auction->created_at?->toISOString(),
         ];
 
         if ($withBids) {
             $sortedBids = $auction->bids->sortByDesc('amount')->values();
-            $data['bids'] = $sortedBids
-                ->map(fn ($bid) => [
-                    'id' => $bid->id,
-                    'amount' => $bid->amount,
-                    'quantity' => $bid->quantity,
-                    'won_quantity' => $allocations[$bid->id] ?? 0,
-                    'user' => [
-                        'id' => $bid->user->id,
-                        'username' => $bid->user->username,
-                    ],
-                    'created_at' => $bid->created_at?->toISOString(),
-                ]);
+            $data['bids'] = $sortedBids->map(fn(\App\Models\Bid $bid) => [
+                'id' => $bid->id,
+                'amount' => $bid->amount,
+                'quantity' => $bid->quantity,
+                'won_quantity' => $allocations[$bid->id] ?? 0,
+                'user' => [
+                    'id' => $bid->user?->id,
+                    'username' => $bid->user?->username,
+                ],
+                'created_at' => $bid->created_at?->toISOString(),
+            ]);
         }
 
         if ($auction->relationLoaded('questions')) {
-            $data['questions'] = $auction->questions
-                ->map(fn (\App\Models\AuctionQuestion $question) => [
+            $data['questions'] = $auction
+                ->questions
+                ->map(fn(\App\Models\AuctionQuestion $question) => [
                     'id' => $question->id,
                     'question' => $question->question,
                     'answer' => $question->answer,
                     'answered_at' => $question->answered_at?->toISOString(),
                     'user' => [
-                        'id' => $question->user->id,
-                        'username' => $question->user->username,
+                        'id' => $question->user?->id,
+                        'username' => $question->user?->username,
                     ],
                     'created_at' => $question->created_at?->toISOString(),
                 ])

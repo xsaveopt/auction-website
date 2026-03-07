@@ -19,7 +19,7 @@ class SocialiteController extends Controller
 
     public function redirect(): Response
     {
-        if (! $this->ssoEnabled()) {
+        if (!$this->ssoEnabled()) {
             return response()->json(['message' => 'SSO is disabled.'], 403);
         }
 
@@ -28,7 +28,7 @@ class SocialiteController extends Controller
 
     public function callback(): RedirectResponse|JsonResponse
     {
-        if (! $this->ssoEnabled()) {
+        if (!$this->ssoEnabled()) {
             return response()->json(['message' => 'SSO is disabled.'], 403);
         }
 
@@ -38,10 +38,10 @@ class SocialiteController extends Controller
             return redirect('/login?error=sso_failed');
         }
 
-        $microsoftId = $microsoftUser->getId();
+        $microsoftId = strval($microsoftUser->getId());
         $username = $microsoftUser->getEmail() ?: $microsoftId;
 
-        if (! $microsoftId || ! $username) {
+        if ($microsoftId === '' || !$username) {
             return redirect('/login?error=sso_profile_invalid');
         }
 

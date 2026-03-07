@@ -1,25 +1,25 @@
 <script setup>
-import { ref, inject, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { api } from '../api.js';
+import { ref, inject, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { api } from "../api.js";
 
 const router = useRouter();
-const user = inject('user');
+const user = inject("user");
 const props = defineProps({ id: String });
 
-const title = ref('');
-const description = ref('');
-const startingPrice = ref('');
+const title = ref("");
+const description = ref("");
+const startingPrice = ref("");
 const quantity = ref(1);
 const maxPerBidder = ref(1);
-const endsAt = ref('');
+const endsAt = ref("");
 const errors = ref({});
 const submitting = ref(false);
 const loading = ref(true);
 
 onMounted(async () => {
     if (!user.value?.is_admin) {
-        router.push('/');
+        router.push("/");
         return;
     }
     try {
@@ -32,7 +32,7 @@ onMounted(async () => {
         maxPerBidder.value = a.max_per_bidder;
         endsAt.value = new Date(a.ends_at).toISOString().slice(0, 16);
     } catch {
-        errors.value = { general: ['Failed to load auction.'] };
+        errors.value = { general: ["Failed to load auction."] };
     } finally {
         loading.value = false;
     }
@@ -43,7 +43,7 @@ async function submit() {
     submitting.value = true;
     try {
         await api(`/auctions/${props.id}`, {
-            method: 'PUT',
+            method: "PUT",
             body: JSON.stringify({
                 title: title.value,
                 description: description.value,
@@ -58,7 +58,9 @@ async function submit() {
         if (e.data?.errors) {
             errors.value = e.data.errors;
         } else {
-            errors.value = { general: [e.data?.message || 'Failed to update auction.'] };
+            errors.value = {
+                general: [e.data?.message || "Failed to update auction."],
+            };
         }
     } finally {
         submitting.value = false;
@@ -71,55 +73,134 @@ async function submit() {
         <h1 class="text-2xl font-bold mb-4">Edit Auction</h1>
         <div v-if="loading" class="text-gray-500">Loading...</div>
         <template v-else>
-            <div v-if="errors.general" class="bg-red-100 text-red-700 p-3 rounded mb-4">{{ errors.general[0] }}</div>
+            <div
+                v-if="errors.general"
+                class="bg-red-100 text-red-700 p-3 rounded mb-4"
+            >
+                {{ errors.general[0] }}
+            </div>
             <form @submit.prevent="submit" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Title</label>
-                    <input v-model="title" type="text" required class="w-full border rounded px-3 py-2" />
-                    <p v-if="errors.title" class="text-red-600 text-sm mt-1">{{ errors.title[0] }}</p>
+                    <input
+                        v-model="title"
+                        type="text"
+                        required
+                        class="w-full border rounded px-3 py-2"
+                    />
+                    <p v-if="errors.title" class="text-red-600 text-sm mt-1">
+                        {{ errors.title[0] }}
+                    </p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">Description</label>
-                    <textarea v-model="description" required rows="4"
-                        class="w-full border rounded px-3 py-2"></textarea>
-                    <p v-if="errors.description" class="text-red-600 text-sm mt-1">{{ errors.description[0] }}</p>
+                    <label class="block text-sm font-medium mb-1"
+                        >Description</label
+                    >
+                    <textarea
+                        v-model="description"
+                        required
+                        rows="4"
+                        class="w-full border rounded px-3 py-2"
+                    ></textarea>
+                    <p
+                        v-if="errors.description"
+                        class="text-red-600 text-sm mt-1"
+                    >
+                        {{ errors.description[0] }}
+                    </p>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Starting Price ($)</label>
-                        <input v-model="startingPrice" type="number" step="0.01" min="0.01" required
-                            class="w-full border rounded px-3 py-2" />
-                        <p v-if="errors.starting_price" class="text-red-600 text-sm mt-1">{{ errors.starting_price[0] }}</p>
+                        <label class="block text-sm font-medium mb-1"
+                            >Starting Price ($)</label
+                        >
+                        <input
+                            v-model="startingPrice"
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            required
+                            class="w-full border rounded px-3 py-2"
+                        />
+                        <p
+                            v-if="errors.starting_price"
+                            class="text-red-600 text-sm mt-1"
+                        >
+                            {{ errors.starting_price[0] }}
+                        </p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Ends At</label>
-                        <input v-model="endsAt" type="datetime-local" required
-                            class="w-full border rounded px-3 py-2" />
-                        <p v-if="errors.ends_at" class="text-red-600 text-sm mt-1">{{ errors.ends_at[0] }}</p>
+                        <label class="block text-sm font-medium mb-1"
+                            >Ends At</label
+                        >
+                        <input
+                            v-model="endsAt"
+                            type="datetime-local"
+                            required
+                            class="w-full border rounded px-3 py-2"
+                        />
+                        <p
+                            v-if="errors.ends_at"
+                            class="text-red-600 text-sm mt-1"
+                        >
+                            {{ errors.ends_at[0] }}
+                        </p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Total Quantity</label>
-                        <input v-model="quantity" type="number" min="1" required
-                            class="w-full border rounded px-3 py-2" />
-                        <p v-if="errors.quantity" class="text-red-600 text-sm mt-1">{{ errors.quantity[0] }}</p>
+                        <label class="block text-sm font-medium mb-1"
+                            >Total Quantity</label
+                        >
+                        <input
+                            v-model="quantity"
+                            type="number"
+                            min="1"
+                            required
+                            class="w-full border rounded px-3 py-2"
+                        />
+                        <p
+                            v-if="errors.quantity"
+                            class="text-red-600 text-sm mt-1"
+                        >
+                            {{ errors.quantity[0] }}
+                        </p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Max per Bidder</label>
-                        <input v-model="maxPerBidder" type="number" min="1" :max="quantity" required
-                            class="w-full border rounded px-3 py-2" />
-                        <p class="text-gray-400 text-xs mt-1">How many one person can win</p>
-                        <p v-if="errors.max_per_bidder" class="text-red-600 text-sm mt-1">{{ errors.max_per_bidder[0] }}</p>
+                        <label class="block text-sm font-medium mb-1"
+                            >Max per Bidder</label
+                        >
+                        <input
+                            v-model="maxPerBidder"
+                            type="number"
+                            min="1"
+                            :max="quantity"
+                            required
+                            class="w-full border rounded px-3 py-2"
+                        />
+                        <p class="text-gray-400 text-xs mt-1">
+                            How many one person can win
+                        </p>
+                        <p
+                            v-if="errors.max_per_bidder"
+                            class="text-red-600 text-sm mt-1"
+                        >
+                            {{ errors.max_per_bidder[0] }}
+                        </p>
                     </div>
                 </div>
                 <div class="flex gap-3">
-                    <button type="submit" :disabled="submitting"
-                        class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50">
-                        {{ submitting ? 'Saving...' : 'Save Changes' }}
+                    <button
+                        type="submit"
+                        :disabled="submitting"
+                        class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        {{ submitting ? "Saving..." : "Save Changes" }}
                     </button>
-                    <router-link :to="`/auctions/${id}`"
-                        class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 text-center">
+                    <router-link
+                        :to="`/auctions/${id}`"
+                        class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 text-center"
+                    >
                         Cancel
                     </router-link>
                 </div>

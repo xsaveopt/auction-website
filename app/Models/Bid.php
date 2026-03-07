@@ -5,6 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $auction_id
+ * @property int $user_id
+ * @property string $amount
+ * @property int $quantity
+ * @property \Illuminate\Support\Carbon|null $created_at
+ */
 class Bid extends Model
 {
     /** @var list<string> */

@@ -12,13 +12,18 @@ class BidController extends Controller
 {
     public function store(Request $request, Auction $auction): JsonResponse
     {
-        if (! BiddingSchedule::isBiddingOpen()) {
+        if (!BiddingSchedule::isBiddingOpen()) {
             return response()->json([
-                'message' => 'Bidding is closed during office hours (' . BiddingSchedule::closedStart() . ' – ' . BiddingSchedule::closedEnd() . ').',
+                'message' =>
+                    'Bidding is closed during office hours ('
+                        . BiddingSchedule::closedStart()
+                        . ' – '
+                        . BiddingSchedule::closedEnd()
+                        . ').',
             ], 422);
         }
 
-        if (! $auction->isActive()) {
+        if (!$auction->isActive()) {
             return response()->json(['message' => 'This auction is no longer active.'], 422);
         }
 
@@ -36,32 +41,39 @@ class BidController extends Controller
             'quantity' => ['required', 'integer', 'min:1', 'max:' . $maxQty],
         ]);
 
-        $bid = Bid::where('auction_id', $auction->id)
-            ->where('user_id', $user->id)
-            ->first();
+        $bid = Bid::where('auction_id', $auction->id)->where('user_id', $user->id)->first();
 
-        $amount = (float) $request->input('amount');
-        $quantity = (int) $request->input('quantity');
+        /** @var string $amountInput */
+        $amountInput = $request->input('amount');
+        /** @var string $quantityInput */
+        $quantityInput = $request->input('quantity');
+        $amount = floatval($amountInput);
+        $quantity = intval($quantityInput);
 
         if ($bid) {
-            if ($amount <= (float) $bid->amount && $quantity === (int) $bid->quantity) {
-                return response()->json(['message' => 'New bid must be higher than your current bid ($' . $bid->amount . ').'], 422);
+            if ($amount <= floatval($bid->amount) && $quantity === $bid->quantity) {
+                return response()->json([
+                    'message' => 'New bid must be higher than your current bid ($' . $bid->amount . ').',
+                ], 422);
             }
-            if ($amount < (float) $bid->amount) {
+            if ($amount < floatval($bid->amount)) {
                 return response()->json(['message' => 'You cannot lower your bid amount.'], 422);
             }
-            $bid->amount = $amount;
+            $bid->amount = number_format($amount, 2, '.', '');
             $bid->quantity = $quantity;
             $bid->save();
         } else {
             $bid = new Bid();
             $bid->user_id = $user->id;
-            $bid->amount = $amount;
+            $bid->amount = number_format($amount, 2, '.', '');
             $bid->quantity = $quantity;
             $auction->bids()->save($bid);
         }
 
         $bid->load('user:id,username');
+
+        /** @var \App\Models\User $bidUser */
+        $bidUser = $bid->user;
 
         return response()->json([
             'bid' => [
@@ -69,12 +81,11 @@ class BidController extends Controller
                 'amount' => $bid->amount,
                 'quantity' => $bid->quantity,
                 'user' => [
-                    'id' => $bid->user->id,
-                    'username' => $bid->user->username,
+                    'id' => $bidUser->id,
+                    'username' => $bidUser->username,
                 ],
                 'created_at' => $bid->created_at?->toISOString(),
             ],
         ], 201);
     }
-
 }

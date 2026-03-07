@@ -14,9 +14,12 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         if ($this->ssoEnabled()) {
-            return response()->json(['message' => 'SSO is enabled. Please sign in with Microsoft.'], Response::HTTP_FORBIDDEN);
+            return response()->json([
+                'message' => 'SSO is enabled. Please sign in with Microsoft.',
+            ], Response::HTTP_FORBIDDEN);
         }
 
+        /** @var array{username: string, password: string} $validated */
         $validated = $request->validate([
             'username' => ['required', 'string', 'min:3', 'max:100', 'unique:users'],
             'password' => ['required', Password::min(6)],
@@ -32,15 +35,18 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         if ($this->ssoEnabled()) {
-            return response()->json(['message' => 'SSO is enabled. Please sign in with Microsoft.'], Response::HTTP_FORBIDDEN);
+            return response()->json([
+                'message' => 'SSO is enabled. Please sign in with Microsoft.',
+            ], Response::HTTP_FORBIDDEN);
         }
 
+        /** @var array{username: string, password: string} $credentials */
         $credentials = $request->validate([
             'username' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
             return response()->json(['message' => 'Invalid credentials.'], 401);
         }
 
@@ -65,7 +71,7 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        if (! $user) {
+        if (!$user) {
             return response()->json(['user' => null]);
         }
 

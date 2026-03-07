@@ -25,7 +25,9 @@ class AuctionImageController extends Controller
             'images.*' => ['required', 'image', 'max:5120'],
         ]);
 
-        $nextOrder = (int) $auction->images()->max('sort_order') + 1;
+        /** @var int|null $maxOrder */
+        $maxOrder = $auction->images()->max('sort_order');
+        $nextOrder = ($maxOrder ?? 0) + 1;
         $uploaded = [];
 
         /** @var array<int, \Illuminate\Http\UploadedFile> $files */
@@ -34,10 +36,12 @@ class AuctionImageController extends Controller
         foreach ($files as $file) {
             $path = $file->store("auctions/{$auction->id}", 'public');
 
-            $image = $auction->images()->create([
-                'path' => $path,
-                'sort_order' => $nextOrder++,
-            ]);
+            $image = $auction
+                ->images()
+                ->create([
+                    'path' => $path,
+                    'sort_order' => $nextOrder++,
+                ]);
 
             $uploaded[] = [
                 'id' => $image->id,
@@ -52,22 +56,26 @@ class AuctionImageController extends Controller
     {
         $disk = Storage::disk('public');
 
-        if (! $disk->exists($image->path)) {
+        if (!$disk->exists($image->path)) {
             abort(404);
         }
 
         $mime = $disk->mimeType($image->path) ?: 'application/octet-stream';
 
-        return response()->stream(function () use ($disk, $image): void {
-            $stream = $disk->readStream($image->path);
-            if ($stream !== null) {
-                fpassthru($stream);
-                fclose($stream);
-            }
-        }, 200, [
-            'Content-Type' => $mime,
-            'Cache-Control' => 'public, max-age=31536000',
-        ]);
+        return response()->stream(
+            function () use ($disk, $image): void {
+                $stream = $disk->readStream($image->path);
+                if ($stream !== null) {
+                    fpassthru($stream);
+                    fclose($stream);
+                }
+            },
+            200,
+            [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'public, max-age=31536000',
+            ],
+        );
     }
 
     public function destroy(Request $request, AuctionImage $image): JsonResponse
@@ -75,7 +83,10 @@ class AuctionImageController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        if ($image->auction->seller_id !== $user->id) {
+        /** @var \App\Models\Auction $auction */
+        $auction = $image->auction;
+
+        if ($auction->seller_id !== $user->id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 

@@ -7,7 +7,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
+ * @property int $id
+ * @property int $seller_id
+ * @property string $title
+ * @property string $description
+ * @property string $starting_price
+ * @property int $quantity
+ * @property int $max_per_bidder
+ * @property string $status
  * @property \Illuminate\Support\Carbon $ends_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property-read int $watcher_count
  */
 class Auction extends Model
 {
@@ -43,7 +53,8 @@ class Auction extends Model
     /** @return HasMany<\App\Models\AuctionQuestion, $this> */
     public function questions(): HasMany
     {
-        return $this->hasMany(AuctionQuestion::class)
+        return $this
+            ->hasMany(AuctionQuestion::class)
             ->orderByRaw('CASE WHEN answer IS NULL THEN 1 ELSE 0 END')
             ->orderByDesc('answered_at')
             ->orderBy('created_at');
@@ -51,7 +62,10 @@ class Auction extends Model
 
     public function currentPrice(): float
     {
-        return (float) ($this->bids()->max('amount') ?? $this->starting_price);
+        /** @var string|null $maxBid */
+        $maxBid = $this->bids()->max('amount');
+
+        return floatval($maxBid ?? $this->starting_price);
     }
 
     public function isActive(): bool

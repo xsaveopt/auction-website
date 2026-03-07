@@ -18,13 +18,16 @@ class AuctionQuestionController extends Controller
             return response()->json(['message' => 'You cannot ask a question on your own auction.'], 422);
         }
 
+        /** @var array{question: string} $validated */
         $validated = $request->validate([
             'question' => ['required', 'string', 'max:2000'],
         ]);
 
-        $question = $auction->questions()->make([
-            'question' => $validated['question'],
-        ]);
+        $question = $auction
+            ->questions()
+            ->make([
+                'question' => $validated['question'],
+            ]);
         $question->user()->associate($user);
         $question->save();
 
@@ -42,10 +45,14 @@ class AuctionQuestionController extends Controller
 
         $question->loadMissing(['auction', 'user:id,username']);
 
-        if ($question->auction->seller_id !== $user->id && ! $user->is_admin) {
+        /** @var \App\Models\Auction $auction */
+        $auction = $question->auction;
+
+        if ($auction->seller_id !== $user->id && !$user->is_admin) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
+        /** @var array{answer: string} $validated */
         $validated = $request->validate([
             'answer' => ['required', 'string', 'max:4000'],
         ]);
@@ -55,8 +62,11 @@ class AuctionQuestionController extends Controller
             'answered_at' => now(),
         ]);
 
+        /** @var AuctionQuestion $fresh */
+        $fresh = $question->fresh(['user:id,username']);
+
         return response()->json([
-            'question' => $this->questionResponse($question->fresh(['user:id,username'])),
+            'question' => $this->questionResponse($fresh),
         ]);
     }
 
@@ -67,7 +77,10 @@ class AuctionQuestionController extends Controller
 
         $question->loadMissing('auction');
 
-        if ($question->auction->seller_id !== $user->id && ! $user->is_admin) {
+        /** @var \App\Models\Auction $auction */
+        $auction = $question->auction;
+
+        if ($auction->seller_id !== $user->id && !$user->is_admin) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -87,8 +100,8 @@ class AuctionQuestionController extends Controller
             'answer' => $question->answer,
             'answered_at' => $question->answered_at?->toISOString(),
             'user' => [
-                'id' => $question->user->id,
-                'username' => $question->user->username,
+                'id' => $question->user?->id,
+                'username' => $question->user?->username,
             ],
             'created_at' => $question->created_at?->toISOString(),
         ];

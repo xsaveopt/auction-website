@@ -46,22 +46,26 @@ class StatsController extends Controller
             ->orderByDesc('bids_count')
             ->limit(5)
             ->get()
-            ->map(fn (Auction $a) => [
+            ->map(fn(Auction $a) => [
                 'id' => $a->id,
                 'title' => $a->title,
                 'bid_count' => $a->bids_count,
             ]);
 
         // Top 5 bidders by number of auctions they've bid on
-        $topBidders = Bid::select('user_id', DB::raw('COUNT(DISTINCT auction_id) as auction_count'), DB::raw('COUNT(*) as bid_count'))
+        $topBidders = Bid::select(
+            'user_id',
+            DB::raw('COUNT(DISTINCT auction_id) as auction_count'),
+            DB::raw('COUNT(*) as bid_count'),
+        )
             ->groupBy('user_id')
             ->orderByDesc('auction_count')
             ->limit(5)
             ->with('user:id,username')
             ->get()
-            ->map(fn (Bid $b) => [
-                'username' => $b->user->username,
-                'auction_count' => (int) $b->auction_count,
+            ->map(fn(Bid $b) => [
+                'username' => $b->user->username ?? '',
+                'auction_count' => intval($b->auction_count),
             ]);
 
         // Auctions ending soon (next 24h)
@@ -72,7 +76,7 @@ class StatsController extends Controller
             ->orderBy('ends_at')
             ->limit(3)
             ->get()
-            ->map(fn (Auction $a) => [
+            ->map(fn(Auction $a) => [
                 'id' => $a->id,
                 'title' => $a->title,
                 'ends_at' => $a->ends_at->toISOString(),

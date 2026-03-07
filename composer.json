@@ -14,6 +14,7 @@
         "socialiteproviders/microsoft": "^4.8"
     },
     "require-dev": {
+        "carthage-software/mago": "^1.13",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.9",
         "laravel/pail": "^1.2.2",
@@ -47,6 +48,14 @@
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+        ],
+        "format": [
+            "composer exec mago -- format app/",
+            "npx prettier --write resources/js/"
+        ],
+        "format:check": [
+            "composer exec mago -- format --check app/",
+            "npx prettier --check resources/js/"
         ],
         "lint": [
             "@php vendor/bin/phpstan analyse --no-progress",

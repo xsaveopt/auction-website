@@ -8,17 +8,19 @@ class BiddingSchedule
 {
     public static function closedStart(): string
     {
-        return (string) config('auction.bidding_closed_start', '09:00');
+        /** @var string */
+        return config('auction.bidding_closed_start', '09:00');
     }
 
     public static function closedEnd(): string
     {
-        return (string) config('auction.bidding_closed_end', '18:00');
+        /** @var string */
+        return config('auction.bidding_closed_end', '18:00');
     }
 
     public static function weekendsOpen(): bool
     {
-        return (bool) config('auction.weekends_open', true);
+        return boolval(config('auction.weekends_open', true));
     }
 
     public static function isBiddingOpen(?Carbon $at = null): bool
@@ -29,20 +31,20 @@ class BiddingSchedule
             return true;
         }
 
-        $current = (int) $now->format('H') * 60 + (int) $now->format('i');
+        $current = ((int) $now->format('H') * 60) + (int) $now->format('i');
 
         [$startH, $startM] = array_map('intval', explode(':', self::closedStart()));
         [$endH, $endM] = array_map('intval', explode(':', self::closedEnd()));
 
-        $start = $startH * 60 + $startM;
-        $end = $endH * 60 + $endM;
+        $start = ($startH * 60) + $startM;
+        $end = ($endH * 60) + $endM;
 
         // Bidding is closed between start and end on weekdays
         return $current < $start || $current >= $end;
     }
 
     /**
-     * @return array{closed_start: string, closed_end: string, is_open: bool, server_time: string}
+     * @return array{closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string}
      */
     public static function toArray(): array
     {
@@ -51,7 +53,7 @@ class BiddingSchedule
             'closed_end' => self::closedEnd(),
             'weekends_open' => self::weekendsOpen(),
             'is_open' => self::isBiddingOpen(),
-            'server_time' => now()->toISOString(),
+            'server_time' => now()->toISOString() ?? '',
         ];
     }
 }

@@ -8,9 +8,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AdminMiddleware
 {
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->user()?->is_admin) {
+        if (!$request->user()?->is_admin) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 

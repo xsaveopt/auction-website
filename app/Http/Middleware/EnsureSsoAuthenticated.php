@@ -8,9 +8,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureSsoAuthenticated
 {
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $this->ssoEnabled() || $request->user()) {
+        if (!$this->ssoEnabled() || $request->user()) {
             return $next($request);
         }
 

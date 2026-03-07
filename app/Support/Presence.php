@@ -21,21 +21,23 @@ class Presence
     {
         $now = now();
 
-        PresenceHeartbeat::query()
-            ->where('last_seen_at', '<', self::cutoff())
-            ->delete();
+        PresenceHeartbeat::query()->where('last_seen_at', '<', self::cutoff())->delete();
 
-        PresenceHeartbeat::query()->upsert([
+        PresenceHeartbeat::query()->upsert(
             [
-                'page_id' => $pageId,
-                'client_id' => $clientId,
-                'page_type' => $pageType,
-                'auction_id' => $auctionId,
-                'last_seen_at' => $now,
-                'created_at' => $now,
-                'updated_at' => $now,
+                [
+                    'page_id' => $pageId,
+                    'client_id' => $clientId,
+                    'page_type' => $pageType,
+                    'auction_id' => $auctionId,
+                    'last_seen_at' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
             ],
-        ], ['page_id'], ['client_id', 'page_type', 'auction_id', 'last_seen_at', 'updated_at']);
+            ['page_id'],
+            ['client_id', 'page_type', 'auction_id', 'last_seen_at', 'updated_at'],
+        );
     }
 
     public static function onlineUsers(): int
