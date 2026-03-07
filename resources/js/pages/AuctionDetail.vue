@@ -22,6 +22,7 @@ const editingQuestionId = ref(null);
 const askingQuestion = ref(false);
 const savingAnswerId = ref(null);
 const deletingQuestionId = ref(null);
+const highlightedBids = ref(new Set());
 
 const isSeller = computed(() => {
     if (!user.value || !auction.value) return false;
@@ -47,10 +48,27 @@ const selectedBidTotal = computed(() => Number(bidAmount.value || 0) * Number(bi
 const answeredQuestions = computed(() => auction.value?.questions?.filter(question => question.answer) ?? []);
 const openQuestions = computed(() => auction.value?.questions?.filter(question => !question.answer) ?? []);
 
+function bidKey(bid) {
+    return `${bid.id}:${bid.amount}:${bid.quantity}`;
+}
+
 async function load(showLoading = false) {
     if (showLoading) loading.value = true;
 
     const data = await api(`/auctions/${props.id}`);
+
+    // Detect new or changed bids for highlight animation
+    if (auction.value?.bids) {
+        const oldKeys = new Set(auction.value.bids.map(bidKey));
+        const newHighlights = data.auction.bids
+            .filter(b => !oldKeys.has(bidKey(b)))
+            .map(b => b.id);
+        if (newHighlights.length) {
+            highlightedBids.value = new Set(newHighlights);
+            setTimeout(() => { highlightedBids.value = new Set(); }, 1500);
+        }
+    }
+
     auction.value = data.auction;
     activeImage.value = Math.min(activeImage.value, Math.max(data.auction.images.length - 1, 0));
     const my = data.auction.bids.find(b => b.user.id === user.value?.id);
@@ -331,10 +349,13 @@ onUnmounted(() => clearInterval(refreshInterval));
                     </span>
                 </h2>
                 <p v-if="auction.bids.length === 0" class="text-gray-500">No bids yet.</p>
-                <ul v-else class="divide-y">
+                <TransitionGroup v-else name="bid-list" tag="ul" class="divide-y relative">
                     <li v-for="bid in auction.bids" :key="bid.id"
-                        class="py-2 flex items-center justify-between"
-                        :class="bid.won_quantity > 0 ? 'bg-green-50 -mx-2 px-2 rounded' : ''">
+                        class="py-2 flex items-center justify-between transition-all duration-500"
+                        :class="[
+                            bid.won_quantity > 0 ? 'bg-green-50 -mx-2 px-2 rounded' : '',
+                            highlightedBids.has(bid.id) ? 'bid-flash' : '',
+                        ]">
                         <div class="flex items-center gap-2">
                             <span class="font-medium">{{ bid.user.username }}</span>
                             <span v-if="bid.user.id === user?.id" class="text-xs text-blue-600">(you)</span>
@@ -351,7 +372,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                             </span>
                         </div>
                     </li>
-                </ul>
+                </TransitionGroup>
             </div>
         </div>
 
@@ -495,3 +516,36 @@ onUnmounted(() => clearInterval(refreshInterval));
         </div>
     </div>
 </template>
+
+<style scoped>
+/* New bids slide in and fade */
+.bid-list-enter-from {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+.bid-list-enter-active {
+    transition: all 0.4s ease-out;
+}
+/* Removed bids fade out */
+.bid-list-leave-active {
+    transition: all 0.3s ease-in;
+    position: absolute;
+    width: 100%;
+}
+.bid-list-leave-to {
+    opacity: 0;
+    transform: translateX(30px);
+}
+/* Reorder animation */
+.bid-list-move {
+    transition: transform 0.4s ease;
+}
+/* Flash highlight for new or updated bids */
+@keyframes bid-highlight {
+    0% { background-color: rgb(254 243 199); }
+    100% { background-color: transparent; }
+}
+.bid-flash {
+    animation: bid-highlight 1.5s ease-out;
+}
+</style>
