@@ -127,12 +127,7 @@ const scheduleBar = computed(() => {
     };
 });
 
-const isAuctionDetailPage = computed(() =>
-    /^\/auctions\/[^/]+$/.test(route.path),
-);
-const shellWidthClass = computed(() =>
-    isAuctionDetailPage.value ? "max-w-7xl" : "max-w-4xl",
-);
+const shellWidthClass = "max-w-7xl";
 
 async function fetchUser() {
     try {
