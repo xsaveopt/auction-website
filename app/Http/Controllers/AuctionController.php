@@ -29,7 +29,7 @@ class AuctionController extends Controller
     public function show(Auction $auction): JsonResponse
     {
         $auction = $this->auctionQuery()
-            ->with(['seller:id,username', 'bids.user:id,username', 'images'])
+            ->with(['seller:id,username', 'bids.user:id,username', 'images', 'questions.user:id,username'])
             ->findOrFail($auction->id);
 
         return response()->json(['auction' => $this->auctionResponse($auction, withBids: true)]);
@@ -188,6 +188,22 @@ class AuctionController extends Controller
                     ],
                     'created_at' => $bid->created_at?->toISOString(),
                 ]);
+        }
+
+        if ($auction->relationLoaded('questions')) {
+            $data['questions'] = $auction->questions
+                ->map(fn (\App\Models\AuctionQuestion $question) => [
+                    'id' => $question->id,
+                    'question' => $question->question,
+                    'answer' => $question->answer,
+                    'answered_at' => $question->answered_at?->toISOString(),
+                    'user' => [
+                        'id' => $question->user->id,
+                        'username' => $question->user->username,
+                    ],
+                    'created_at' => $question->created_at?->toISOString(),
+                ])
+                ->values();
         }
 
         return $data;

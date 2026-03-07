@@ -40,6 +40,15 @@ class Auction extends Model
         return $this->hasMany(Bid::class);
     }
 
+    /** @return HasMany<\App\Models\AuctionQuestion, $this> */
+    public function questions(): HasMany
+    {
+        return $this->hasMany(AuctionQuestion::class)
+            ->orderByRaw('CASE WHEN answer IS NULL THEN 1 ELSE 0 END')
+            ->orderByDesc('answered_at')
+            ->orderBy('created_at');
+    }
+
     public function currentPrice(): float
     {
         return (float) ($this->bids()->max('amount') ?? $this->starting_price);

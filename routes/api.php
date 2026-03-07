@@ -3,6 +3,7 @@
 use App\Support\BiddingSchedule;
 use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\AuctionImageController;
+use App\Http\Controllers\AuctionQuestionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BidController;
 use App\Http\Controllers\PresenceController;
@@ -42,4 +43,9 @@ Route::middleware('sso')->group(function () {
     // Bids
     Route::post('/auctions/{auction}/bids', [BidController::class, 'store'])->middleware('auth');
     Route::delete('/auctions/{auction}/bids', [BidController::class, 'destroy'])->middleware('auth');
+
+    // Auction questions
+    Route::post('/auctions/{auction}/questions', [AuctionQuestionController::class, 'store'])->middleware('auth');
+    Route::put('/questions/{question}', [AuctionQuestionController::class, 'update'])->middleware('auth');
+    Route::delete('/questions/{question}', [AuctionQuestionController::class, 'destroy'])->middleware('auth');
 });

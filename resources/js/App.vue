@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, provide, watch } from 'vue';
+import { computed, ref, onMounted, onUnmounted, provide, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from './api.js';
 import { HEARTBEAT_INTERVAL_MS, presencePayload } from './presence.js';
@@ -10,6 +10,9 @@ const user = ref(null);
 const loading = ref(true);
 const schedule = ref(null);
 const ssoEnabled = ref(false);
+
+const isAuctionDetailPage = computed(() => /^\/auctions\/[^/]+$/.test(route.path));
+const shellWidthClass = computed(() => isAuctionDetailPage.value ? 'max-w-7xl' : 'max-w-4xl');
 
 async function fetchUser() {
     try {
@@ -93,7 +96,7 @@ provide('schedule', schedule);
 <template>
     <div v-if="!loading">
         <nav class="bg-white shadow mb-6">
-            <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div :class="[shellWidthClass, 'mx-auto px-4 py-3 flex items-center justify-between']">
                 <router-link to="/" class="text-xl font-bold text-gray-800">Auction House</router-link>
                 <div class="flex items-center gap-4">
                     <span v-if="schedule && !schedule.is_open"
@@ -120,7 +123,7 @@ provide('schedule', schedule);
                 </div>
             </div>
         </nav>
-        <main class="max-w-4xl mx-auto px-4">
+        <main :class="[shellWidthClass, 'mx-auto px-4']">
             <router-view />
         </main>
     </div>
