@@ -16,12 +16,20 @@ class BiddingSchedule
         return (string) config('auction.bidding_closed_end', '18:00');
     }
 
+    public static function weekendsOpen(): bool
+    {
+        return (bool) config('auction.weekends_open', true);
+    }
+
     public static function isBiddingOpen(?Carbon $at = null): bool
     {
         $now = $at ?? now();
-        $hour = (int) $now->format('H');
-        $minute = (int) $now->format('i');
-        $current = $hour * 60 + $minute;
+
+        if (self::weekendsOpen() && $now->isWeekend()) {
+            return true;
+        }
+
+        $current = (int) $now->format('H') * 60 + (int) $now->format('i');
 
         [$startH, $startM] = array_map('intval', explode(':', self::closedStart()));
         [$endH, $endM] = array_map('intval', explode(':', self::closedEnd()));
@@ -29,7 +37,7 @@ class BiddingSchedule
         $start = $startH * 60 + $startM;
         $end = $endH * 60 + $endM;
 
-        // Bidding is closed between start and end, open otherwise
+        // Bidding is closed between start and end on weekdays
         return $current < $start || $current >= $end;
     }
 
@@ -41,6 +49,7 @@ class BiddingSchedule
         return [
             'closed_start' => self::closedStart(),
             'closed_end' => self::closedEnd(),
+            'weekends_open' => self::weekendsOpen(),
             'is_open' => self::isBiddingOpen(),
             'server_time' => now()->toISOString(),
         ];
