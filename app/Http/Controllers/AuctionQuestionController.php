@@ -9,6 +9,24 @@ use Illuminate\Http\Request;
 
 class AuctionQuestionController extends Controller
 {
+    public function index(): JsonResponse
+    {
+        $questions = AuctionQuestion::with(['auction:id,title', 'user:id,username'])
+            ->orderByRaw('CASE WHEN answer IS NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'questions' => $questions->map(fn(AuctionQuestion $question) => [
+                ...$this->questionResponse($question),
+                'auction' => [
+                    'id' => $question->auction?->id,
+                    'title' => $question->auction?->title,
+                ],
+            ])->values(),
+        ]);
+    }
+
     public function store(Request $request, Auction $auction): JsonResponse
     {
         /** @var \App\Models\User $user */

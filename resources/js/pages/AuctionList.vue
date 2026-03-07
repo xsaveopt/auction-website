@@ -298,7 +298,6 @@ function timeLeft(endsAt) {
                             {{ auction.bid_count }} bid{{
                                 auction.bid_count !== 1 ? "s" : ""
                             }}
-                            · by {{ auction.seller.username }}
                         </div>
                     </div>
                 </router-link>

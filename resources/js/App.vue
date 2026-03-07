@@ -277,6 +277,12 @@ provide("schedule", schedule);
                         >
                         <router-link
                             v-if="user.is_admin"
+                            to="/admin/questions"
+                            class="text-blue-600 hover:underline"
+                            >Questions</router-link
+                        >
+                        <router-link
+                            v-if="user.is_admin"
                             to="/auctions/new"
                             class="text-blue-600 hover:underline"
                             >Sell Item</router-link

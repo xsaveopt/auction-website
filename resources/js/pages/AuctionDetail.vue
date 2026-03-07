@@ -252,9 +252,6 @@ onUnmounted(() => clearInterval(refreshInterval));
                 <div class="flex items-start justify-between">
                     <div>
                         <h1 class="text-2xl font-bold">{{ auction.title }}</h1>
-                        <p class="text-gray-500 text-sm mt-1">
-                            Listed by {{ auction.seller.username }}
-                        </p>
                         <p
                             class="mt-2 inline-flex rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700"
                         >
@@ -560,8 +557,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                             Frequently Asked Questions
                         </h2>
                         <p class="text-sm text-gray-500 mt-1">
-                            Answered seller responses stay here for future
-                            buyers.
+                            Answered responses stay here for future buyers.
                         </p>
                     </div>
                     <span class="text-sm text-gray-500"
@@ -602,7 +598,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                             class="mt-4"
                         >
                             <label class="block text-xs text-gray-500 mb-1"
-                                >Seller answer</label
+                                >Answer</label
                             >
                             <textarea
                                 v-model="answerDrafts[question.id]"
@@ -716,7 +712,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                                 class="mt-4"
                             >
                                 <label class="block text-xs text-gray-500 mb-1"
-                                    >Seller answer</label
+                                    >Answer</label
                                 >
                                 <textarea
                                     v-model="answerDrafts[question.id]"
@@ -777,9 +773,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                 </div>
 
                 <div class="mt-6 border-t pt-6">
-                    <h3 class="font-semibold text-gray-900">
-                        Ask the seller a question
-                    </h3>
+                    <h3 class="font-semibold text-gray-900">Ask a question</h3>
 
                     <form
                         v-if="canAskQuestion"
@@ -824,7 +818,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                             class="text-blue-600 hover:text-blue-800"
                             >Log in</router-link
                         >
-                        to ask the seller a question.
+                        to ask a question.
                     </p>
                 </div>
             </div>

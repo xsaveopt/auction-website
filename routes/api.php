@@ -44,6 +44,7 @@ Route::middleware('sso')->group(function () {
     Route::post('/auctions/{auction}/bids', [BidController::class, 'store'])->middleware('auth');
 
     // Auction questions
+    Route::get('/questions', [AuctionQuestionController::class, 'index'])->middleware(['auth', 'admin']);
     Route::post('/auctions/{auction}/questions', [AuctionQuestionController::class, 'store'])->middleware('auth');
     Route::put('/questions/{question}', [AuctionQuestionController::class, 'update'])->middleware('auth');
     Route::delete('/questions/{question}', [AuctionQuestionController::class, 'destroy'])->middleware('auth');
