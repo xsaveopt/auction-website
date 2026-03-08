@@ -64,20 +64,8 @@ const scheduleBar = computed(() => {
     const isOpen = schedule.value?.is_open;
     const weekendsOpen = rawSchedule.value.weekends_open;
 
-    // Weekend with weekends_open enabled
-    if (weekendsOpen && isWeekend(date)) {
-        const daysUntilMonday = day === 6 ? 2 : 1;
-        const remaining =
-            (daysUntilMonday - 1) * 1440 + (1440 - current) + start;
-        return {
-            open: true,
-            percent: 0,
-            label: `Open all weekend · closes in ${formatRemaining(remaining)}`,
-        };
-    }
-
     if (!isOpen) {
-        // Closed: progress through closed_start → closed_end
+        // Closed: progress from closed_start → closed_end
         const total = end - start;
         const elapsed = current - start;
         const remaining = end - current;
@@ -88,14 +76,40 @@ const scheduleBar = computed(() => {
         };
     }
 
+    // --- Market is open ---
+
+    // Weekend with weekends_open: window is Friday closed_end → Monday closed_start
+    if (weekendsOpen && isWeekend(date)) {
+        const total = (1440 - end) + 2 * 1440 + start;
+        const daysSinceFriday = day === 6 ? 1 : 2;
+        const elapsed =
+            (1440 - end) + (daysSinceFriday - 1) * 1440 + current;
+        const remaining = total - elapsed;
+        return {
+            open: true,
+            percent: (elapsed / total) * 100,
+            label: `Open for the weekend · closes in ${formatRemaining(remaining)}`,
+        };
+    }
+
     // Open before work hours
     if (current < start) {
         const remaining = start - current;
-        // Open window: previous closed_end (or midnight Mon) → closed_start
-        // For Monday morning, window started at midnight; other days at previous closed_end
-        const windowStart = day === 1 ? 0 : 0; // simplify: midnight to closed_start
-        const total = start - windowStart;
-        const elapsed = current - windowStart;
+
+        if (day === 1 && weekendsOpen) {
+            // Monday morning, weekends were open: window started at Friday's closed_end
+            const total = (1440 - end) + 2 * 1440 + start;
+            const elapsed = (1440 - end) + 2 * 1440 + current;
+            return {
+                open: true,
+                percent: (elapsed / total) * 100,
+                label: `Closes in ${formatRemaining(remaining)}`,
+            };
+        }
+
+        // Regular weekday morning: window started at previous day's closed_end
+        const total = (1440 - end) + start;
+        const elapsed = (1440 - end) + current;
         return {
             open: true,
             percent: (elapsed / total) * 100,
@@ -106,20 +120,21 @@ const scheduleBar = computed(() => {
     // Open after work hours — next close depends on weekends_open
     const isFriday = day === 5;
     if (isFriday && weekendsOpen) {
-        // Open until Monday's closed_start
-        const remaining = 1440 - current + 2 * 1440 + start;
-        const total = 1440 - end + 2 * 1440 + start;
+        // Friday evening: open until Monday's closed_start
+        const total = (1440 - end) + 2 * 1440 + start;
         const elapsed = current - end;
+        const remaining = total - elapsed;
         return {
             open: true,
             percent: (elapsed / total) * 100,
             label: `Open for the weekend · closes in ${formatRemaining(remaining)}`,
         };
     }
-    // Regular weekday evening (or Friday with weekends not open): open until tomorrow's closed_start
-    const remaining = 1440 - current + start;
-    const total = 1440 - end + start;
+
+    // Regular weekday evening: open until tomorrow's closed_start
+    const total = (1440 - end) + start;
     const elapsed = current - end;
+    const remaining = total - elapsed;
     return {
         open: true,
         percent: (elapsed / total) * 100,
