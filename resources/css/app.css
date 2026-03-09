@@ -1,5 +1,26 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @source '../**/*.blade.php';
 @source '../**/*.js';
 @source '../**/*.vue';
+
+/* Global dark mode styles for form elements */
+@layer base {
+    .dark input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+    .dark textarea,
+    .dark select {
+        background-color: var(--color-gray-700);
+        border-color: var(--color-gray-600);
+        color: var(--color-gray-100);
+    }
+    .dark input::placeholder,
+    .dark textarea::placeholder {
+        color: var(--color-gray-400);
+    }
+    /* datetime-local color scheme */
+    .dark input[type="datetime-local"] {
+        color-scheme: dark;
+    }
+}

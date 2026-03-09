@@ -106,48 +106,48 @@ function formatDate(d) {
     <div>
         <h1 class="text-2xl font-bold mb-4">All Questions</h1>
 
-        <p v-if="loading" class="text-gray-500">Loading...</p>
+        <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
 
         <template v-else>
-            <div v-if="error" class="bg-red-100 text-red-700 p-3 rounded mb-4">
+            <div v-if="error" class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4">
                 {{ error }}
             </div>
 
-            <p v-if="questions.length === 0" class="text-gray-500">
+            <p v-if="questions.length === 0" class="text-gray-500 dark:text-gray-400">
                 No questions yet.
             </p>
 
             <template v-else>
                 <div v-if="unansweredQuestions.length" class="mb-8">
-                    <h2 class="text-lg font-semibold text-amber-700 mb-3">
+                    <h2 class="text-lg font-semibold text-amber-700 dark:text-amber-400 mb-3">
                         Awaiting Answer ({{ unansweredQuestions.length }})
                     </h2>
                     <div class="space-y-3">
                         <div
                             v-for="question in unansweredQuestions"
                             :key="question.id"
-                            class="bg-white rounded shadow p-4"
+                            class="bg-white dark:bg-gray-800 rounded shadow p-4"
                         >
                             <div class="flex items-start justify-between gap-4">
                                 <div class="min-w-0">
                                     <router-link
                                         :to="`/auctions/${question.auction.id}`"
-                                        class="text-sm font-medium text-blue-600 hover:underline"
+                                        class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
                                     >
                                         {{ question.auction.title }}
                                     </router-link>
                                     <p
-                                        class="mt-2 text-gray-900 whitespace-pre-line"
+                                        class="mt-2 whitespace-pre-line"
                                     >
                                         {{ question.question }}
                                     </p>
-                                    <p class="mt-1 text-xs text-gray-500">
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         Asked by {{ question.user.username }} ·
                                         {{ formatDate(question.created_at) }}
                                     </p>
                                 </div>
                                 <span
-                                    class="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 shrink-0"
+                                    class="rounded-full bg-amber-50 dark:bg-amber-900/30 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 shrink-0"
                                 >
                                     Awaiting answer
                                 </span>
@@ -157,7 +157,7 @@ function formatDate(d) {
                                 v-if="editingQuestionId === question.id"
                                 class="mt-4"
                             >
-                                <label class="block text-xs text-gray-500 mb-1"
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                     >Answer</label
                                 >
                                 <textarea
@@ -181,7 +181,7 @@ function formatDate(d) {
                                     </button>
                                     <button
                                         @click="cancelAnswer(question.id)"
-                                        class="text-sm text-gray-600 hover:text-gray-800"
+                                        class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                                     >
                                         Cancel
                                     </button>
@@ -190,13 +190,13 @@ function formatDate(d) {
                             <div v-else class="mt-3 flex gap-3">
                                 <button
                                     @click="startAnswer(question)"
-                                    class="text-sm text-blue-600 hover:text-blue-800"
+                                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                                 >
                                     Answer question
                                 </button>
                                 <button
                                     @click="deleteQuestion(question)"
-                                    class="text-sm text-red-600 hover:text-red-800 disabled:opacity-60"
+                                    class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-60"
                                     :disabled="
                                         deletingQuestionId === question.id
                                     "
@@ -213,28 +213,28 @@ function formatDate(d) {
                 </div>
 
                 <div v-if="answeredQuestions.length">
-                    <h2 class="text-lg font-semibold text-gray-700 mb-3">
+                    <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
                         Answered ({{ answeredQuestions.length }})
                     </h2>
                     <div class="space-y-3">
                         <div
                             v-for="question in answeredQuestions"
                             :key="question.id"
-                            class="bg-white rounded shadow p-4"
+                            class="bg-white dark:bg-gray-800 rounded shadow p-4"
                         >
                             <div class="min-w-0">
                                 <router-link
                                     :to="`/auctions/${question.auction.id}`"
-                                    class="text-sm font-medium text-blue-600 hover:underline"
+                                    class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
                                 >
                                     {{ question.auction.title }}
                                 </router-link>
                                 <p
-                                    class="mt-2 font-medium text-gray-900 whitespace-pre-line"
+                                    class="mt-2 font-medium whitespace-pre-line"
                                 >
                                     {{ question.question }}
                                 </p>
-                                <p class="mt-1 text-xs text-gray-500">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                     Asked by {{ question.user.username }} ·
                                     {{ formatDate(question.created_at) }}
                                 </p>
@@ -244,7 +244,7 @@ function formatDate(d) {
                                 v-if="editingQuestionId === question.id"
                                 class="mt-4"
                             >
-                                <label class="block text-xs text-gray-500 mb-1"
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                     >Answer</label
                                 >
                                 <textarea
@@ -268,22 +268,22 @@ function formatDate(d) {
                                     </button>
                                     <button
                                         @click="cancelAnswer(question.id)"
-                                        class="text-sm text-gray-600 hover:text-gray-800"
+                                        class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                                     >
                                         Cancel
                                     </button>
                                 </div>
                             </div>
                             <template v-else>
-                                <div class="mt-3 rounded-lg bg-gray-50 p-3">
+                                <div class="mt-3 rounded-lg bg-gray-50 dark:bg-gray-700 p-3">
                                     <p
-                                        class="text-gray-700 whitespace-pre-line"
+                                        class="text-gray-700 dark:text-gray-300 whitespace-pre-line"
                                     >
                                         {{ question.answer }}
                                     </p>
                                     <p
                                         v-if="question.answered_at"
-                                        class="mt-1 text-xs text-gray-500"
+                                        class="mt-1 text-xs text-gray-500 dark:text-gray-400"
                                     >
                                         Answered
                                         {{ formatDate(question.answered_at) }}
@@ -292,13 +292,13 @@ function formatDate(d) {
                                 <div class="mt-3 flex gap-3">
                                     <button
                                         @click="startAnswer(question)"
-                                        class="text-sm text-blue-600 hover:text-blue-800"
+                                        class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                                     >
                                         Update answer
                                     </button>
                                     <button
                                         @click="deleteQuestion(question)"
-                                        class="text-sm text-red-600 hover:text-red-800 disabled:opacity-60"
+                                        class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-60"
                                         :disabled="
                                             deletingQuestionId === question.id
                                         "

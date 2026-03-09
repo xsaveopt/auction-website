@@ -5,6 +5,7 @@ import { api } from "../api.js";
 
 const router = useRouter();
 const user = inject("user");
+const currencySymbol = inject("currencySymbol");
 const auctions = ref([]);
 const loading = ref(true);
 const expanded = ref({});
@@ -38,19 +39,19 @@ function formatDate(d) {
 <template>
     <div>
         <h1 class="text-2xl font-bold mb-4">Ended Auctions — Results</h1>
-        <p v-if="loading" class="text-gray-500">Loading...</p>
-        <p v-else-if="auctions.length === 0" class="text-gray-500">
+        <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
+        <p v-else-if="auctions.length === 0" class="text-gray-500 dark:text-gray-400">
             No ended auctions yet.
         </p>
         <div v-else class="space-y-3">
             <div
                 v-for="auction in auctions"
                 :key="auction.id"
-                class="bg-white rounded shadow overflow-hidden"
+                class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden"
             >
                 <button
                     @click="toggle(auction.id)"
-                    class="w-full text-left px-5 py-4 flex items-center justify-between hover:bg-gray-50"
+                    class="w-full text-left px-5 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                     <div class="flex items-center gap-3 min-w-0">
                         <img
@@ -62,7 +63,7 @@ function formatDate(d) {
                             <h2 class="font-semibold truncate">
                                 {{ auction.title }}
                             </h2>
-                            <p class="text-xs text-gray-400">
+                            <p class="text-xs text-gray-400 dark:text-gray-500">
                                 Ended {{ formatDate(auction.ends_at) }} ·
                                 {{ auction.quantity }} item{{
                                     auction.quantity !== 1 ? "s" : ""
@@ -76,7 +77,7 @@ function formatDate(d) {
                     <div class="flex items-center gap-3 shrink-0 ml-4">
                         <span
                             v-if="winners(auction).length > 0"
-                            class="text-sm font-medium text-green-700"
+                            class="text-sm font-medium text-green-700 dark:text-green-400"
                         >
                             {{
                                 winners(auction).reduce(
@@ -84,15 +85,15 @@ function formatDate(d) {
                                     0,
                                 )
                             }}
-                            sold @ ${{
+                            sold @ {{ currencySymbol }}{{
                                 Number(auction.current_price).toFixed(2)
                             }}
                         </span>
-                        <span v-else class="text-sm text-gray-400"
+                        <span v-else class="text-sm text-gray-400 dark:text-gray-500"
                             >No bids</span
                         >
                         <svg
-                            class="w-4 h-4 text-gray-400 transition-transform"
+                            class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
                             :class="expanded[auction.id] ? 'rotate-180' : ''"
                             fill="none"
                             stroke="currentColor"
@@ -108,23 +109,23 @@ function formatDate(d) {
                     </div>
                 </button>
 
-                <div v-if="expanded[auction.id]" class="border-t px-5 py-4">
+                <div v-if="expanded[auction.id]" class="border-t dark:border-gray-700 px-5 py-4">
                     <div
                         v-if="winners(auction).length === 0"
-                        class="text-gray-400 text-sm"
+                        class="text-gray-400 dark:text-gray-500 text-sm"
                     >
                         No winners — auction ended without bids.
                     </div>
                     <div v-else>
-                        <h3 class="text-sm font-semibold text-gray-600 mb-2">
-                            Winners — clearing price: ${{
+                        <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                            Winners — clearing price: {{ currencySymbol }}{{
                                 Number(auction.current_price).toFixed(2)
                             }}
                             / item
                         </h3>
                         <table class="w-full text-sm">
                             <thead>
-                                <tr class="text-left text-gray-500 border-b">
+                                <tr class="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
                                     <th class="pb-1 font-medium">User</th>
                                     <th class="pb-1 font-medium">Bid</th>
                                     <th class="pb-1 font-medium">Won</th>
@@ -137,13 +138,13 @@ function formatDate(d) {
                                 <tr
                                     v-for="bid in winners(auction)"
                                     :key="bid.id"
-                                    class="border-b last:border-0"
+                                    class="border-b dark:border-gray-700 last:border-0"
                                 >
                                     <td class="py-2 font-medium">
                                         {{ bid.user.username }}
                                     </td>
                                     <td class="py-2">
-                                        ${{ Number(bid.amount).toFixed(2) }}
+                                        {{ currencySymbol }}{{ Number(bid.amount).toFixed(2) }}
                                     </td>
                                     <td class="py-2">
                                         {{ bid.won_quantity }} item{{
@@ -151,9 +152,9 @@ function formatDate(d) {
                                         }}
                                     </td>
                                     <td
-                                        class="py-2 text-right font-bold text-green-700"
+                                        class="py-2 text-right font-bold text-green-700 dark:text-green-400"
                                     >
-                                        ${{
+                                        {{ currencySymbol }}{{
                                             (
                                                 bid.won_quantity *
                                                 auction.current_price
@@ -163,7 +164,7 @@ function formatDate(d) {
                                 </tr>
                             </tbody>
                             <tfoot>
-                                <tr class="text-gray-500">
+                                <tr class="text-gray-500 dark:text-gray-400">
                                     <td class="pt-2" colspan="2">Total</td>
                                     <td class="pt-2">
                                         {{
@@ -175,7 +176,7 @@ function formatDate(d) {
                                         items
                                     </td>
                                     <td class="pt-2 text-right font-bold">
-                                        ${{
+                                        {{ currencySymbol }}{{
                                             (
                                                 winners(auction).reduce(
                                                     (s, b) =>
@@ -197,17 +198,17 @@ function formatDate(d) {
                         "
                         class="mt-4"
                     >
-                        <h3 class="text-xs font-semibold text-gray-400 mb-1">
+                        <h3 class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-1">
                             Unsuccessful bids
                         </h3>
-                        <div class="text-xs text-gray-400 space-y-0.5">
+                        <div class="text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
                             <div
                                 v-for="bid in auction.bids.filter(
                                     (b) => b.won_quantity === 0,
                                 )"
                                 :key="bid.id"
                             >
-                                {{ bid.user.username }} — ${{
+                                {{ bid.user.username }} — {{ currencySymbol }}{{
                                     Number(bid.amount).toFixed(2)
                                 }}
                                 <span v-if="bid.quantity > 1"
@@ -220,7 +221,7 @@ function formatDate(d) {
                     <div class="mt-4 flex gap-2">
                         <router-link
                             :to="`/auctions/${auction.id}`"
-                            class="text-xs text-blue-600 hover:underline"
+                            class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                             >View auction</router-link
                         >
                     </div>

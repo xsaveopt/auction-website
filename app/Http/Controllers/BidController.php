@@ -70,6 +70,12 @@ class BidController extends Controller
             $auction->bids()->save($bid);
         }
 
+        // Soft Close: extend by 2 minutes if bid is within 2 minutes of end
+        if (now()->diffInSeconds($auction->ends_at, false) < 120) {
+            $auction->ends_at = $auction->ends_at->addMinutes(2);
+            $auction->save();
+        }
+
         $bid->load('user:id,username');
 
         /** @var \App\Models\User $bidUser */

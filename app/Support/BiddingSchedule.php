@@ -43,8 +43,14 @@ class BiddingSchedule
         return $current < $start || $current >= $end;
     }
 
+    public static function currencySymbol(): string
+    {
+        /** @var string */
+        return config('auction.currency_symbol', '$');
+    }
+
     /**
-     * @return array{closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string}
+     * @return array{closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, currency_symbol: string}
      */
     public static function toArray(): array
     {
@@ -54,6 +60,7 @@ class BiddingSchedule
             'weekends_open' => self::weekendsOpen(),
             'is_open' => self::isBiddingOpen(),
             'server_time' => now()->toISOString() ?? '',
+            'currency_symbol' => self::currencySymbol(),
         ];
     }
 }

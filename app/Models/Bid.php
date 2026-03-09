@@ -18,6 +18,8 @@ class Bid extends Model
     /** @var list<string> */
     protected $fillable = [
         'amount',
+        'user_id',
+        'quantity',
     ];
 
     /** @return BelongsTo<\App\Models\Auction, $this> */

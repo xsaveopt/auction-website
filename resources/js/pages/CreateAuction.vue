@@ -1,10 +1,12 @@
 <script setup>
-import { ref, inject } from "vue";
+import { ref, inject, computed } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../api.js";
 
 const router = useRouter();
 const user = inject("user");
+const currencySymbol = inject("currencySymbol");
+const priceLabel = computed(() => `Starting Price (${currencySymbol.value})`);
 const title = ref("");
 const description = ref("");
 const startingPrice = ref("1.00");
@@ -85,7 +87,7 @@ async function submit() {
         <h1 class="text-2xl font-bold mb-4">Sell an Item</h1>
         <div
             v-if="errors.general"
-            class="bg-red-100 text-red-700 p-3 rounded mb-4"
+            class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4"
         >
             {{ errors.general[0] }}
         </div>
@@ -98,7 +100,7 @@ async function submit() {
                     required
                     class="w-full border rounded px-3 py-2"
                 />
-                <p v-if="errors.title" class="text-red-600 text-sm mt-1">
+                <p v-if="errors.title" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.title[0] }}
                 </p>
             </div>
@@ -112,7 +114,7 @@ async function submit() {
                     rows="4"
                     class="w-full border rounded px-3 py-2"
                 ></textarea>
-                <p v-if="errors.description" class="text-red-600 text-sm mt-1">
+                <p v-if="errors.description" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.description[0] }}
                 </p>
             </div>
@@ -123,11 +125,11 @@ async function submit() {
                     accept="image/*"
                     multiple
                     @change="onFilesSelected"
-                    class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    class="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900/30 file:text-blue-700 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/50"
                 />
                 <p
                     v-if="errors['images'] || errors['images.0']"
-                    class="text-red-600 text-sm mt-1"
+                    class="text-red-600 dark:text-red-400 text-sm mt-1"
                 >
                     {{ (errors["images"] || errors["images.0"])[0] }}
                 </p>
@@ -157,7 +159,7 @@ async function submit() {
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1"
-                        >Starting Price ($)</label
+                        >{{ priceLabel }}</label
                     >
                     <input
                         v-model="startingPrice"
@@ -169,7 +171,7 @@ async function submit() {
                     />
                     <p
                         v-if="errors.starting_price"
-                        class="text-red-600 text-sm mt-1"
+                        class="text-red-600 dark:text-red-400 text-sm mt-1"
                     >
                         {{ errors.starting_price[0] }}
                     </p>
@@ -184,7 +186,7 @@ async function submit() {
                         required
                         class="w-full border rounded px-3 py-2"
                     />
-                    <p v-if="errors.ends_at" class="text-red-600 text-sm mt-1">
+                    <p v-if="errors.ends_at" class="text-red-600 dark:text-red-400 text-sm mt-1">
                         {{ errors.ends_at[0] }}
                     </p>
                 </div>
@@ -201,7 +203,7 @@ async function submit() {
                         required
                         class="w-full border rounded px-3 py-2"
                     />
-                    <p v-if="errors.quantity" class="text-red-600 text-sm mt-1">
+                    <p v-if="errors.quantity" class="text-red-600 dark:text-red-400 text-sm mt-1">
                         {{ errors.quantity[0] }}
                     </p>
                 </div>
@@ -217,12 +219,12 @@ async function submit() {
                         required
                         class="w-full border rounded px-3 py-2"
                     />
-                    <p class="text-gray-400 text-xs mt-1">
+                    <p class="text-gray-400 dark:text-gray-500 text-xs mt-1">
                         How many one person can win
                     </p>
                     <p
                         v-if="errors.max_per_bidder"
-                        class="text-red-600 text-sm mt-1"
+                        class="text-red-600 dark:text-red-400 text-sm mt-1"
                     >
                         {{ errors.max_per_bidder[0] }}
                     </p>

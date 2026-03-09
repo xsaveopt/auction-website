@@ -37,17 +37,17 @@ async function submit() {
 <template>
     <div class="max-w-sm mx-auto">
         <h1 class="text-2xl font-bold mb-4">Login</h1>
-        <div v-if="error" class="bg-red-100 text-red-700 p-3 rounded mb-4">
+        <div v-if="error" class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4">
             {{ error }}
         </div>
 
         <div v-if="ssoEnabled" class="space-y-4">
-            <p class="text-gray-600">
+            <p class="text-gray-600 dark:text-gray-400">
                 Microsoft SSO is required for this site.
             </p>
             <a
                 href="/auth/microsoft/redirect"
-                class="w-full flex items-center justify-center gap-2 bg-gray-100 border text-gray-700 py-2 rounded hover:bg-gray-200"
+                class="w-full flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
             >
                 <svg class="w-5 h-5" viewBox="0 0 23 23">
                     <path fill="#f3f3f3" d="M0 0h23v23H0z" />
@@ -86,9 +86,9 @@ async function submit() {
                 Login
             </button>
         </form>
-        <p v-if="!ssoEnabled" class="mt-4 text-center text-sm text-gray-600">
+        <p v-if="!ssoEnabled" class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?
-            <router-link to="/register" class="text-blue-600 hover:underline"
+            <router-link to="/register" class="text-blue-600 dark:text-blue-400 hover:underline"
                 >Register</router-link
             >
         </p>

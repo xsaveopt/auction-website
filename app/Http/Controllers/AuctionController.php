@@ -56,6 +56,45 @@ class AuctionController extends Controller
         ]);
     }
 
+    public function myAuctions(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
+        $auctions = $this
+            ->auctionQuery()
+            ->with(['seller:id,username', 'bids.user:id,username', 'images'])
+            ->whereHas('bids', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->get();
+
+        $active = [];
+        $won = [];
+        $lost = [];
+
+        foreach ($auctions as $auction) {
+            $response = $this->auctionResponse($auction, withBids: true);
+            if ($auction->isActive()) {
+                $active[] = $response;
+            } else {
+                $myBid = collect($response['bids'])->firstWhere('user.id', $user->id);
+                if ($myBid && $myBid['won_quantity'] > 0) {
+                    $won[] = $response;
+                } else {
+                    $lost[] = $response;
+                }
+            }
+        }
+
+        return response()->json([
+            'active' => $active,
+            'won' => $won,
+            'lost' => $lost,
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         /** @var array{title: string, description: string, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string} $validated */

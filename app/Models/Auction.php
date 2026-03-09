@@ -23,6 +23,7 @@ class Auction extends Model
 {
     /** @var list<string> */
     protected $fillable = [
+        'seller_id',
         'title',
         'description',
         'starting_price',

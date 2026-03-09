@@ -45,18 +45,18 @@ async function submit() {
         <h1 class="text-2xl font-bold mb-4">Register</h1>
         <div
             v-if="errors.general"
-            class="bg-red-100 text-red-700 p-3 rounded mb-4"
+            class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4"
         >
             {{ errors.general[0] }}
         </div>
 
         <div v-if="ssoEnabled" class="space-y-4">
-            <p class="text-gray-600">
+            <p class="text-gray-600 dark:text-gray-400">
                 Microsoft SSO is required for account creation.
             </p>
             <a
                 href="/auth/microsoft/redirect"
-                class="w-full flex items-center justify-center gap-2 bg-gray-100 border text-gray-700 py-2 rounded hover:bg-gray-200"
+                class="w-full flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
             >
                 <svg class="w-5 h-5" viewBox="0 0 23 23">
                     <path fill="#f3f3f3" d="M0 0h23v23H0z" />
@@ -67,9 +67,9 @@ async function submit() {
                 </svg>
                 Sign up with Microsoft
             </a>
-            <p class="text-center text-sm text-gray-600">
+            <p class="text-center text-sm text-gray-600 dark:text-gray-400">
                 Already have an account?
-                <router-link to="/login" class="text-blue-600 hover:underline"
+                <router-link to="/login" class="text-blue-600 dark:text-blue-400 hover:underline"
                     >Login</router-link
                 >
             </p>
@@ -84,7 +84,7 @@ async function submit() {
                     required
                     class="w-full border rounded px-3 py-2"
                 />
-                <p v-if="errors.username" class="text-red-600 text-sm mt-1">
+                <p v-if="errors.username" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.username[0] }}
                 </p>
             </div>
@@ -96,7 +96,7 @@ async function submit() {
                     required
                     class="w-full border rounded px-3 py-2"
                 />
-                <p v-if="errors.password" class="text-red-600 text-sm mt-1">
+                <p v-if="errors.password" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.password[0] }}
                 </p>
             </div>
@@ -107,9 +107,9 @@ async function submit() {
                 Register
             </button>
         </form>
-        <p v-if="!ssoEnabled" class="mt-4 text-center text-sm text-gray-600">
+        <p v-if="!ssoEnabled" class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
             Already have an account?
-            <router-link to="/login" class="text-blue-600 hover:underline"
+            <router-link to="/login" class="text-blue-600 dark:text-blue-400 hover:underline"
                 >Login</router-link
             >
         </p>

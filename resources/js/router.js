@@ -7,9 +7,15 @@ import AdminResults from "./pages/AdminResults.vue";
 import AdminQuestions from "./pages/AdminQuestions.vue";
 import Login from "./pages/Login.vue";
 import Register from "./pages/Register.vue";
+import MyDashboard from "./pages/MyDashboard.vue";
 
 const routes = [
     { path: "/", component: AuctionList },
+    {
+        path: "/dashboard",
+        component: MyDashboard,
+        meta: { requiresAuth: true },
+    },
     {
         path: "/admin/results",
         component: AdminResults,

@@ -1,10 +1,12 @@
 <script setup>
-import { ref, inject, onMounted } from "vue";
+import { ref, inject, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../api.js";
 
 const router = useRouter();
 const user = inject("user");
+const currencySymbol = inject("currencySymbol");
+const priceLabel = computed(() => `Starting Price (${currencySymbol.value})`);
 const props = defineProps({ id: String });
 
 const title = ref("");
@@ -71,11 +73,11 @@ async function submit() {
 <template>
     <div class="max-w-lg mx-auto">
         <h1 class="text-2xl font-bold mb-4">Edit Auction</h1>
-        <div v-if="loading" class="text-gray-500">Loading...</div>
+        <div v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</div>
         <template v-else>
             <div
                 v-if="errors.general"
-                class="bg-red-100 text-red-700 p-3 rounded mb-4"
+                class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4"
             >
                 {{ errors.general[0] }}
             </div>
@@ -88,7 +90,7 @@ async function submit() {
                         required
                         class="w-full border rounded px-3 py-2"
                     />
-                    <p v-if="errors.title" class="text-red-600 text-sm mt-1">
+                    <p v-if="errors.title" class="text-red-600 dark:text-red-400 text-sm mt-1">
                         {{ errors.title[0] }}
                     </p>
                 </div>
@@ -104,7 +106,7 @@ async function submit() {
                     ></textarea>
                     <p
                         v-if="errors.description"
-                        class="text-red-600 text-sm mt-1"
+                        class="text-red-600 dark:text-red-400 text-sm mt-1"
                     >
                         {{ errors.description[0] }}
                     </p>
@@ -112,7 +114,7 @@ async function submit() {
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-1"
-                            >Starting Price ($)</label
+                            >{{ priceLabel }}</label
                         >
                         <input
                             v-model="startingPrice"
@@ -124,7 +126,7 @@ async function submit() {
                         />
                         <p
                             v-if="errors.starting_price"
-                            class="text-red-600 text-sm mt-1"
+                            class="text-red-600 dark:text-red-400 text-sm mt-1"
                         >
                             {{ errors.starting_price[0] }}
                         </p>
@@ -141,7 +143,7 @@ async function submit() {
                         />
                         <p
                             v-if="errors.ends_at"
-                            class="text-red-600 text-sm mt-1"
+                            class="text-red-600 dark:text-red-400 text-sm mt-1"
                         >
                             {{ errors.ends_at[0] }}
                         </p>
@@ -161,7 +163,7 @@ async function submit() {
                         />
                         <p
                             v-if="errors.quantity"
-                            class="text-red-600 text-sm mt-1"
+                            class="text-red-600 dark:text-red-400 text-sm mt-1"
                         >
                             {{ errors.quantity[0] }}
                         </p>
@@ -178,12 +180,12 @@ async function submit() {
                             required
                             class="w-full border rounded px-3 py-2"
                         />
-                        <p class="text-gray-400 text-xs mt-1">
+                        <p class="text-gray-400 dark:text-gray-500 text-xs mt-1">
                             How many one person can win
                         </p>
                         <p
                             v-if="errors.max_per_bidder"
-                            class="text-red-600 text-sm mt-1"
+                            class="text-red-600 dark:text-red-400 text-sm mt-1"
                         >
                             {{ errors.max_per_bidder[0] }}
                         </p>
@@ -199,7 +201,7 @@ async function submit() {
                     </button>
                     <router-link
                         :to="`/auctions/${id}`"
-                        class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 text-center"
+                        class="px-4 py-2 border dark:border-gray-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 text-center"
                     >
                         Cancel
                     </router-link>

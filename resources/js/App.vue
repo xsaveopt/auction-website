@@ -3,6 +3,9 @@ import { computed, ref, onMounted, onUnmounted, provide, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api } from "./api.js";
 import { HEARTBEAT_INTERVAL_MS, presencePayload } from "./presence.js";
+import { useTheme } from "./useTheme.js";
+
+const { isDark, toggleTheme } = useTheme();
 
 const route = useRoute();
 const router = useRouter();
@@ -10,6 +13,7 @@ const user = ref(null);
 const loading = ref(true);
 const rawSchedule = ref(null);
 const ssoEnabled = ref(false);
+const currencySymbol = ref("$");
 const now = ref(new Date());
 
 function parseTime(str) {
@@ -72,7 +76,7 @@ const scheduleBar = computed(() => {
         return {
             open: false,
             percent: (elapsed / total) * 100,
-            label: `Opens in ${formatRemaining(remaining)}`,
+            label: `Bidding opens in ${formatRemaining(remaining)}`,
         };
     }
 
@@ -88,7 +92,7 @@ const scheduleBar = computed(() => {
         return {
             open: true,
             percent: (elapsed / total) * 100,
-            label: `Open for the weekend · closes in ${formatRemaining(remaining)}`,
+            label: `Bidding open for the weekend · closes in ${formatRemaining(remaining)}`,
         };
     }
 
@@ -103,7 +107,7 @@ const scheduleBar = computed(() => {
             return {
                 open: true,
                 percent: (elapsed / total) * 100,
-                label: `Closes in ${formatRemaining(remaining)}`,
+                label: `Bidding closes in ${formatRemaining(remaining)}`,
             };
         }
 
@@ -113,7 +117,7 @@ const scheduleBar = computed(() => {
         return {
             open: true,
             percent: (elapsed / total) * 100,
-            label: `Closes in ${formatRemaining(remaining)}`,
+            label: `Bidding closes in ${formatRemaining(remaining)}`,
         };
     }
 
@@ -127,7 +131,7 @@ const scheduleBar = computed(() => {
         return {
             open: true,
             percent: (elapsed / total) * 100,
-            label: `Open for the weekend · closes in ${formatRemaining(remaining)}`,
+            label: `Bidding open for the weekend · closes in ${formatRemaining(remaining)}`,
         };
     }
 
@@ -138,7 +142,7 @@ const scheduleBar = computed(() => {
     return {
         open: true,
         percent: (elapsed / total) * 100,
-        label: `Closes in ${formatRemaining(remaining)}`,
+        label: `Bidding closes in ${formatRemaining(remaining)}`,
     };
 });
 
@@ -159,6 +163,9 @@ async function fetchSchedule() {
     try {
         const data = await api("/schedule");
         rawSchedule.value = data.schedule;
+        if (data.schedule?.currency_symbol) {
+            currencySymbol.value = data.schedule.currency_symbol;
+        }
     } catch {
         // ignore
     }
@@ -232,18 +239,19 @@ function onLogin(u) {
 provide("user", user);
 provide("onLogin", onLogin);
 provide("schedule", schedule);
+provide("currencySymbol", currencySymbol);
 </script>
 
 <template>
     <div v-if="!loading">
-        <nav class="bg-white shadow mb-6">
+        <nav class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/20 mb-6">
             <div
                 :class="[
                     shellWidthClass,
                     'mx-auto px-4 py-3 flex items-center justify-between',
                 ]"
             >
-                <router-link to="/" class="text-xl font-bold text-gray-800"
+                <router-link to="/" class="text-xl font-bold text-gray-800 dark:text-gray-100"
                     >Auction House</router-link
                 >
                 <div class="flex items-center gap-4">
@@ -252,8 +260,8 @@ provide("schedule", schedule);
                             class="w-28 h-2 rounded-full overflow-hidden"
                             :class="
                                 scheduleBar.open
-                                    ? 'bg-green-100'
-                                    : 'bg-orange-100'
+                                    ? 'bg-green-100 dark:bg-green-900'
+                                    : 'bg-orange-100 dark:bg-orange-900'
                             "
                         >
                             <div
@@ -270,36 +278,55 @@ provide("schedule", schedule);
                             class="text-xs whitespace-nowrap"
                             :class="
                                 scheduleBar.open
-                                    ? 'text-green-700'
-                                    : 'text-orange-700'
+                                    ? 'text-green-700 dark:text-green-400'
+                                    : 'text-orange-700 dark:text-orange-400'
                             "
                         >
                             {{ scheduleBar.label }}
                         </span>
                     </div>
+                    <button
+                        @click="toggleTheme"
+                        class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+                    >
+                        <!-- Sun (shown in dark mode, click to go light) -->
+                        <svg v-if="isDark" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="5" /><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                        </svg>
+                        <!-- Moon (shown in light mode, click to go dark) -->
+                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                        </svg>
+                    </button>
                     <template v-if="user">
-                        <span class="text-gray-600">{{ user.username }}</span>
+                        <span class="text-gray-600 dark:text-gray-300">{{ user.username }}</span>
+                        <router-link
+                            to="/dashboard"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
+                            >My Bids</router-link
+                        >
                         <router-link
                             v-if="user.is_admin"
                             to="/admin/results"
-                            class="text-blue-600 hover:underline"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
                             >Results</router-link
                         >
                         <router-link
                             v-if="user.is_admin"
                             to="/admin/questions"
-                            class="text-blue-600 hover:underline"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
                             >Questions</router-link
                         >
                         <router-link
                             v-if="user.is_admin"
                             to="/auctions/new"
-                            class="text-blue-600 hover:underline"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
                             >Sell Item</router-link
                         >
                         <button
                             @click="logout"
-                            class="text-red-600 hover:underline"
+                            class="text-red-600 dark:text-red-400 hover:underline"
                         >
                             Logout
                         </button>
@@ -308,18 +335,18 @@ provide("schedule", schedule);
                         <a
                             v-if="ssoEnabled"
                             href="/auth/microsoft/redirect"
-                            class="text-blue-600 hover:underline"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
                             >Login with Microsoft</a
                         >
                         <template v-else>
                             <router-link
                                 to="/login"
-                                class="text-blue-600 hover:underline"
+                                class="text-blue-600 dark:text-blue-400 hover:underline"
                                 >Login</router-link
                             >
                             <router-link
                                 to="/register"
-                                class="text-blue-600 hover:underline"
+                                class="text-blue-600 dark:text-blue-400 hover:underline"
                                 >Register</router-link
                             >
                         </template>
