@@ -13,7 +13,7 @@ class ListUsersCommand extends Command
      * @var string
      */
     protected $signature = 'user:list
-                            {--search= : Filter by username or email}
+                            {--search= : Filter by username or Microsoft ID}
                             {--admins : Show only administrators}
                             {--limit=20 : Number of users to display}';
 
@@ -30,11 +30,12 @@ class ListUsersCommand extends Command
     public function handle(): void
     {
         $query = User::query();
+        /** @var string|null $search */
+        $search = $this->option('search');
 
-        if ($this->option('search')) {
-            $search = $this->option('search');
+        if (is_string($search) && $search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('username', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%");
+                $q->where('username', 'like', "%{$search}%")->orWhere('microsoft_id', 'like', "%{$search}%");
             });
         }
 
@@ -42,19 +43,19 @@ class ListUsersCommand extends Command
             $query->where('is_admin', true);
         }
 
-        $headers = ['ID', 'Username', 'Email', 'Is Admin', 'Created At'];
+        $headers = ['ID', 'Username', 'Microsoft ID', 'Is Admin', 'Created At'];
 
         $users = $query
             ->latest()
             ->limit((int) $this->option('limit'))
-            ->get(['id', 'username', 'email', 'is_admin', 'created_at'])
-            ->map(function ($user) {
+            ->get(['id', 'username', 'microsoft_id', 'is_admin', 'created_at'])
+            ->map(function (User $user): array {
                 return [
                     $user->id,
                     $user->username,
-                    $user->email,
+                    $user->microsoft_id ?? '-',
                     $user->is_admin ? 'Yes' : 'No',
-                    $user->created_at->toDateTimeString(),
+                    $user->created_at?->toDateTimeString() ?? 'Unknown',
                 ];
             });
 

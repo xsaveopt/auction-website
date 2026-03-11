@@ -51,13 +51,13 @@ class ListAuctionBidsCommand extends Command
             return;
         }
 
-        $rows = $bids->map(function ($bid) {
+        $rows = $bids->map(function (Bid $bid): array {
             return [
                 $bid->id,
                 $bid->user->username ?? 'Unknown',
                 $bid->amount,
                 $bid->quantity,
-                $bid->created_at->toDateTimeString(),
+                $bid->created_at?->toDateTimeString() ?? 'Unknown',
             ];
         });
 

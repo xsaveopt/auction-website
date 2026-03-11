@@ -11,6 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  * @property string $username
  * @property bool $is_admin
  * @property string|null $microsoft_id
+ * @property \Illuminate\Support\Carbon|null $created_at
  */
 class User extends Authenticatable
 {

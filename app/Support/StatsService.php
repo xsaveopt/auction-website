@@ -6,12 +6,32 @@ use App\Models\Auction;
 use App\Models\Bid;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @phpstan-type BidCountData array{label: string, date: string, count: int}
+ * @phpstan-type HotAuctionData array{id: int, title: string, bid_count: int}
+ * @phpstan-type TopBidderData array{username: string, auction_count: int}
+ * @phpstan-type EndingSoonData array{id: int, title: string, ends_at: string, bid_count: int}
+ * @phpstan-type StatsData array{
+ *     active_auctions: int,
+ *     ended_auctions: int,
+ *     total_items: int,
+ *     total_bids: int,
+ *     total_users: int,
+ *     current_bid_total: float,
+ *     online_users: int,
+ *     bids_per_day: list<BidCountData>,
+ *     hot_auctions: Collection<int, HotAuctionData>,
+ *     top_bidders: Collection<int, TopBidderData>,
+ *     ending_soon: Collection<int, EndingSoonData>
+ * }
+ */
 class StatsService
 {
     /**
-     * @return array<string, mixed>
+     * @return StatsData
      */
     public function getStats(): array
     {
@@ -50,7 +70,7 @@ class StatsService
             ->map(fn(Auction $a) => [
                 'id' => $a->id,
                 'title' => $a->title,
-                'bid_count' => $a->bids_count,
+                'bid_count' => (int) $a->bids_count,
             ]);
 
         // Top 5 bidders by number of auctions they've bid on
@@ -80,8 +100,8 @@ class StatsService
             ->map(fn(Auction $a) => [
                 'id' => $a->id,
                 'title' => $a->title,
-                'ends_at' => $a->ends_at->toISOString(),
-                'bid_count' => $a->bids_count,
+                'ends_at' => $a->ends_at->toIso8601String(),
+                'bid_count' => (int) $a->bids_count,
             ]);
 
         return [

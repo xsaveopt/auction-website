@@ -4,6 +4,7 @@
 .env.production
 .mcp.json
 .phpactor.json
+.phpstan.result.cache
 .phpunit.result.cache
 *.log
 **/caddy

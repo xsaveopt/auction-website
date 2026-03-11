@@ -45,9 +45,11 @@ class ShowStatsCommand extends Command
 
         $this->info('');
         $this->info('Top Bidders (by auction count)');
-        $this->table(['Username', 'Auctions Bid On'], collect($stats['top_bidders'])->map(fn($b) => [
-            $b['username'],
-            $b['auction_count'],
-        ]));
+        $topBidderRows = $stats['top_bidders']->map(fn(array $bidder): array => [
+            $bidder['username'],
+            $bidder['auction_count'],
+        ])->all();
+
+        $this->table(['Username', 'Auctions Bid On'], $topBidderRows);
     }
 }
