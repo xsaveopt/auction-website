@@ -37,7 +37,10 @@ async function submit() {
 <template>
     <div class="max-w-sm mx-auto">
         <h1 class="text-2xl font-bold mb-4">Login</h1>
-        <div v-if="error" class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4">
+        <div
+            v-if="error"
+            class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-4"
+        >
             {{ error }}
         </div>
 
@@ -86,9 +89,14 @@ async function submit() {
                 Login
             </button>
         </form>
-        <p v-if="!ssoEnabled" class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+        <p
+            v-if="!ssoEnabled"
+            class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400"
+        >
             Don't have an account?
-            <router-link to="/register" class="text-blue-600 dark:text-blue-400 hover:underline"
+            <router-link
+                to="/register"
+                class="text-blue-600 dark:text-blue-400 hover:underline"
                 >Register</router-link
             >
         </p>

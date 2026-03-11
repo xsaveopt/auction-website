@@ -7,6 +7,7 @@ use App\Http\Controllers\AuctionQuestionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BidController;
 use App\Http\Controllers\PresenceController;
+use App\Http\Controllers\QuotePdfController;
 use App\Http\Controllers\SocialiteController;
 use App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,7 @@ Route::middleware('sso')->group(function () {
     Route::get('/auctions', [AuctionController::class, 'index']);
     Route::get('/my-auctions', [AuctionController::class, 'myAuctions'])->middleware('auth');
     Route::get('/auctions/ended', [AuctionController::class, 'ended'])->middleware(['auth', 'admin']);
+    Route::get('/auctions/{auction}/quotes/{bid}', [QuotePdfController::class, 'download'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}', [AuctionController::class, 'show']);
     Route::post('/auctions', [AuctionController::class, 'store'])->middleware(['auth', 'admin']);
     Route::put('/auctions/{auction}', [AuctionController::class, 'update'])->middleware(['auth', 'admin']);

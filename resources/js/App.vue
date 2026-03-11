@@ -15,6 +15,7 @@ const rawSchedule = ref(null);
 const ssoEnabled = ref(false);
 const currencySymbol = ref("$");
 const now = ref(new Date());
+let serverOffsetMs = 0; // server time minus browser time
 
 function parseTime(str) {
     const [h, m] = str.split(":").map(Number);
@@ -84,10 +85,9 @@ const scheduleBar = computed(() => {
 
     // Weekend with weekends_open: window is Friday closed_end → Monday closed_start
     if (weekendsOpen && isWeekend(date)) {
-        const total = (1440 - end) + 2 * 1440 + start;
+        const total = 1440 - end + 2 * 1440 + start;
         const daysSinceFriday = day === 6 ? 1 : 2;
-        const elapsed =
-            (1440 - end) + (daysSinceFriday - 1) * 1440 + current;
+        const elapsed = 1440 - end + (daysSinceFriday - 1) * 1440 + current;
         const remaining = total - elapsed;
         return {
             open: true,
@@ -102,8 +102,8 @@ const scheduleBar = computed(() => {
 
         if (day === 1 && weekendsOpen) {
             // Monday morning, weekends were open: window started at Friday's closed_end
-            const total = (1440 - end) + 2 * 1440 + start;
-            const elapsed = (1440 - end) + 2 * 1440 + current;
+            const total = 1440 - end + 2 * 1440 + start;
+            const elapsed = 1440 - end + 2 * 1440 + current;
             return {
                 open: true,
                 percent: (elapsed / total) * 100,
@@ -112,8 +112,8 @@ const scheduleBar = computed(() => {
         }
 
         // Regular weekday morning: window started at previous day's closed_end
-        const total = (1440 - end) + start;
-        const elapsed = (1440 - end) + current;
+        const total = 1440 - end + start;
+        const elapsed = 1440 - end + current;
         return {
             open: true,
             percent: (elapsed / total) * 100,
@@ -125,7 +125,7 @@ const scheduleBar = computed(() => {
     const isFriday = day === 5;
     if (isFriday && weekendsOpen) {
         // Friday evening: open until Monday's closed_start
-        const total = (1440 - end) + 2 * 1440 + start;
+        const total = 1440 - end + 2 * 1440 + start;
         const elapsed = current - end;
         const remaining = total - elapsed;
         return {
@@ -136,7 +136,7 @@ const scheduleBar = computed(() => {
     }
 
     // Regular weekday evening: open until tomorrow's closed_start
-    const total = (1440 - end) + start;
+    const total = 1440 - end + start;
     const elapsed = current - end;
     const remaining = total - elapsed;
     return {
@@ -163,6 +163,11 @@ async function fetchSchedule() {
     try {
         const data = await api("/schedule");
         rawSchedule.value = data.schedule;
+        if (data.schedule?.server_time) {
+            serverOffsetMs =
+                new Date(data.schedule.server_time).getTime() - Date.now();
+            now.value = new Date(Date.now() + serverOffsetMs);
+        }
         if (data.schedule?.currency_symbol) {
             currencySymbol.value = data.schedule.currency_symbol;
         }
@@ -206,7 +211,7 @@ onMounted(() => {
         HEARTBEAT_INTERVAL_MS,
     );
     clockInterval = setInterval(() => {
-        now.value = new Date();
+        now.value = new Date(Date.now() + serverOffsetMs);
     }, 1000);
 });
 watch(
@@ -244,14 +249,18 @@ provide("currencySymbol", currencySymbol);
 
 <template>
     <div v-if="!loading">
-        <nav class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/20 mb-6">
+        <nav
+            class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/20 mb-6"
+        >
             <div
                 :class="[
                     shellWidthClass,
                     'mx-auto px-4 py-3 flex items-center justify-between',
                 ]"
             >
-                <router-link to="/" class="text-xl font-bold text-gray-800 dark:text-gray-100"
+                <router-link
+                    to="/"
+                    class="text-xl font-bold text-gray-800 dark:text-gray-100"
                     >Auction House</router-link
                 >
                 <div class="flex items-center gap-4">
@@ -288,19 +297,44 @@ provide("currencySymbol", currencySymbol);
                     <button
                         @click="toggleTheme"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+                        :title="
+                            isDark
+                                ? 'Switch to light mode'
+                                : 'Switch to dark mode'
+                        "
                     >
                         <!-- Sun (shown in dark mode, click to go light) -->
-                        <svg v-if="isDark" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="5" /><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                        <svg
+                            v-if="isDark"
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle cx="12" cy="12" r="5" />
+                            <path
+                                d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                            />
                         </svg>
                         <!-- Moon (shown in light mode, click to go dark) -->
-                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                        <svg
+                            v-else
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+                            />
                         </svg>
                     </button>
                     <template v-if="user">
-                        <span class="text-gray-600 dark:text-gray-300">{{ user.username }}</span>
+                        <span class="text-gray-600 dark:text-gray-300">{{
+                            user.username
+                        }}</span>
                         <router-link
                             to="/dashboard"
                             class="text-blue-600 dark:text-blue-400 hover:underline"

@@ -46,7 +46,9 @@ function timeLeft(endsAt) {
 
 <template>
     <div>
-        <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
+        <p v-if="loading" class="text-gray-500 dark:text-gray-400">
+            Loading...
+        </p>
         <template v-else>
             <!-- Stats Dashboard -->
             <div v-if="stats" class="mb-8 space-y-4">
@@ -54,43 +56,73 @@ function timeLeft(endsAt) {
                 <div
                     class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
                 >
-                    <div class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center">
-                        <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center"
+                    >
+                        <div
+                            class="text-3xl font-bold text-blue-600 dark:text-blue-400"
+                        >
                             {{ stats.active_auctions }}
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <div
+                            class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+                        >
                             Active Auctions
                         </div>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center">
-                        <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center"
+                    >
+                        <div
+                            class="text-3xl font-bold text-purple-600 dark:text-purple-400"
+                        >
                             {{ stats.total_items }}
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <div
+                            class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+                        >
                             Items Up for Grabs
                         </div>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center">
-                        <div class="text-3xl font-bold text-green-600 dark:text-green-400">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center"
+                    >
+                        <div
+                            class="text-3xl font-bold text-green-600 dark:text-green-400"
+                        >
                             {{ stats.total_bids }}
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <div
+                            class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+                        >
                             Bids Placed
                         </div>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center">
-                        <div class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center"
+                    >
+                        <div
+                            class="text-3xl font-bold text-emerald-600 dark:text-emerald-400"
+                        >
                             {{ stats.online_users }}
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <div
+                            class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+                        >
                             Online Right Now
                         </div>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center">
-                        <div class="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded shadow p-4 text-center"
+                    >
+                        <div
+                            class="text-3xl font-bold text-amber-600 dark:text-amber-400"
+                        >
                             {{ stats.total_users }}
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <div
+                            class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+                        >
                             Registered Users
                         </div>
                     </div>
@@ -99,7 +131,9 @@ function timeLeft(endsAt) {
                 <div class="grid gap-4 sm:grid-cols-3">
                     <!-- Bidding activity chart -->
                     <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
-                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <h3
+                            class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3"
+                        >
                             Bidding Activity (7 days)
                         </h3>
                         <div class="flex items-end gap-1 h-24">
@@ -127,16 +161,19 @@ function timeLeft(endsAt) {
                                             : 'bg-blue-400 dark:bg-blue-500'
                                     "
                                 ></div>
-                                <span class="text-xs text-gray-400 dark:text-gray-500">{{
-                                    day.label
-                                }}</span>
+                                <span
+                                    class="text-xs text-gray-400 dark:text-gray-500"
+                                    >{{ day.label }}</span
+                                >
                             </div>
                         </div>
                     </div>
 
                     <!-- Hot auctions -->
                     <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
-                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        <h3
+                            class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3"
+                        >
                             Most Competitive
                         </h3>
                         <div
@@ -164,7 +201,9 @@ function timeLeft(endsAt) {
                     </div>
 
                     <!-- Top bidders + ending soon -->
-                    <div class="bg-white dark:bg-gray-800 rounded shadow p-4 space-y-4">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded shadow p-4 space-y-4"
+                    >
                         <div>
                             <h3
                                 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
@@ -199,14 +238,17 @@ function timeLeft(endsAt) {
                                     <span class="text-sm">{{
                                         b.username
                                     }}</span>
-                                    <span class="text-xs text-gray-400 dark:text-gray-500 ml-auto"
+                                    <span
+                                        class="text-xs text-gray-400 dark:text-gray-500 ml-auto"
                                         >{{ b.auction_count }} auctions</span
                                     >
                                 </div>
                             </div>
                         </div>
                         <div v-if="stats.ending_soon.length > 0">
-                            <h3 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2">
+                            <h3
+                                class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2"
+                            >
                                 Ending Soon
                             </h3>
                             <ul class="space-y-1">
@@ -227,7 +269,10 @@ function timeLeft(endsAt) {
 
             <!-- Auction grid -->
             <h2 class="text-2xl font-bold mb-4">Auctions</h2>
-            <p v-if="auctions.length === 0" class="text-gray-500 dark:text-gray-400">
+            <p
+                v-if="auctions.length === 0"
+                class="text-gray-500 dark:text-gray-400"
+            >
                 No auctions yet.
             </p>
             <div v-else class="grid gap-4 sm:grid-cols-2">
@@ -247,16 +292,21 @@ function timeLeft(endsAt) {
                         <h2 class="text-lg font-semibold">
                             {{ auction.title }}
                         </h2>
-                        <p class="text-gray-600 dark:text-gray-400 text-sm mt-1 line-clamp-2">
+                        <p
+                            class="text-gray-600 dark:text-gray-400 text-sm mt-1 line-clamp-2"
+                        >
                             {{ auction.description }}
                         </p>
-                        <div class="mt-2 text-sm font-medium text-amber-600 dark:text-amber-400">
+                        <div
+                            class="mt-2 text-sm font-medium text-amber-600 dark:text-amber-400"
+                        >
                             {{ watchingText(auction.watcher_count) }}
                         </div>
                         <div
                             class="mt-3 flex items-center justify-between text-sm"
                         >
-                            <span class="font-bold text-green-700 dark:text-green-400"
+                            <span
+                                class="font-bold text-green-700 dark:text-green-400"
                                 >${{
                                     Number(auction.current_price).toFixed(2)
                                 }}</span
@@ -275,7 +325,9 @@ function timeLeft(endsAt) {
                                 }}
                             </span>
                         </div>
-                        <div class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                        <div
+                            class="mt-1 text-xs text-gray-400 dark:text-gray-500"
+                        >
                             <span
                                 v-if="auction.quantity > 1"
                                 class="text-purple-600 dark:text-purple-400 font-medium"

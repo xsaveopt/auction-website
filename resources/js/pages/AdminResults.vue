@@ -34,13 +34,62 @@ function winners(auction) {
 function formatDate(d) {
     return new Date(d).toLocaleString();
 }
+
+function quoteUrl(auctionId, bidId) {
+    return `/api/auctions/${auctionId}/quotes/${bidId}`;
+}
+
+function downloadAllQuotes(auction) {
+    for (const bid of winners(auction)) {
+        window.open(quoteUrl(auction.id, bid.id), "_blank");
+    }
+}
+
+function downloadEveryQuote() {
+    for (const auction of auctions.value) {
+        for (const bid of winners(auction)) {
+            window.open(quoteUrl(auction.id, bid.id), "_blank");
+        }
+    }
+}
+
+function hasAnyWinners() {
+    return auctions.value.some((a) => winners(a).length > 0);
+}
 </script>
 
 <template>
     <div>
-        <h1 class="text-2xl font-bold mb-4">Ended Auctions — Results</h1>
-        <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
-        <p v-else-if="auctions.length === 0" class="text-gray-500 dark:text-gray-400">
+        <div class="flex items-center justify-between mb-4">
+            <h1 class="text-2xl font-bold">Ended Auctions — Results</h1>
+            <button
+                v-if="!loading && hasAnyWinners()"
+                @click="downloadEveryQuote"
+                class="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+                <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                </svg>
+                Download all quotes
+            </button>
+        </div>
+        <p v-if="loading" class="text-gray-500 dark:text-gray-400">
+            Loading...
+        </p>
+        <p
+            v-else-if="auctions.length === 0"
+            class="text-gray-500 dark:text-gray-400"
+        >
             No ended auctions yet.
         </p>
         <div v-else class="space-y-3">
@@ -85,11 +134,12 @@ function formatDate(d) {
                                     0,
                                 )
                             }}
-                            sold @ {{ currencySymbol }}{{
-                                Number(auction.current_price).toFixed(2)
-                            }}
+                            sold @ {{ currencySymbol
+                            }}{{ Number(auction.current_price).toFixed(2) }}
                         </span>
-                        <span v-else class="text-sm text-gray-400 dark:text-gray-500"
+                        <span
+                            v-else
+                            class="text-sm text-gray-400 dark:text-gray-500"
                             >No bids</span
                         >
                         <svg
@@ -109,7 +159,10 @@ function formatDate(d) {
                     </div>
                 </button>
 
-                <div v-if="expanded[auction.id]" class="border-t dark:border-gray-700 px-5 py-4">
+                <div
+                    v-if="expanded[auction.id]"
+                    class="border-t dark:border-gray-700 px-5 py-4"
+                >
                     <div
                         v-if="winners(auction).length === 0"
                         class="text-gray-400 dark:text-gray-500 text-sm"
@@ -117,21 +170,25 @@ function formatDate(d) {
                         No winners — auction ended without bids.
                     </div>
                     <div v-else>
-                        <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
-                            Winners — clearing price: {{ currencySymbol }}{{
-                                Number(auction.current_price).toFixed(2)
-                            }}
+                        <h3
+                            class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2"
+                        >
+                            Winners — clearing price: {{ currencySymbol
+                            }}{{ Number(auction.current_price).toFixed(2) }}
                             / item
                         </h3>
                         <table class="w-full text-sm">
                             <thead>
-                                <tr class="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-700">
+                                <tr
+                                    class="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-700"
+                                >
                                     <th class="pb-1 font-medium">User</th>
                                     <th class="pb-1 font-medium">Bid</th>
                                     <th class="pb-1 font-medium">Won</th>
                                     <th class="pb-1 font-medium text-right">
                                         Total Owed
                                     </th>
+                                    <th class="pb-1 font-medium w-8"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -144,7 +201,8 @@ function formatDate(d) {
                                         {{ bid.user.username }}
                                     </td>
                                     <td class="py-2">
-                                        {{ currencySymbol }}{{ Number(bid.amount).toFixed(2) }}
+                                        {{ currencySymbol
+                                        }}{{ Number(bid.amount).toFixed(2) }}
                                     </td>
                                     <td class="py-2">
                                         {{ bid.won_quantity }} item{{
@@ -154,12 +212,35 @@ function formatDate(d) {
                                     <td
                                         class="py-2 text-right font-bold text-green-700 dark:text-green-400"
                                     >
-                                        {{ currencySymbol }}{{
+                                        {{ currencySymbol
+                                        }}{{
                                             (
                                                 bid.won_quantity *
                                                 auction.current_price
                                             ).toFixed(2)
                                         }}
+                                    </td>
+                                    <td class="py-2 text-right">
+                                        <a
+                                            :href="quoteUrl(auction.id, bid.id)"
+                                            target="_blank"
+                                            class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                                            title="Download quote PDF"
+                                        >
+                                            <svg
+                                                class="w-4 h-4 inline"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                />
+                                            </svg>
+                                        </a>
                                     </td>
                                 </tr>
                             </tbody>
@@ -176,7 +257,8 @@ function formatDate(d) {
                                         items
                                     </td>
                                     <td class="pt-2 text-right font-bold">
-                                        {{ currencySymbol }}{{
+                                        {{ currencySymbol
+                                        }}{{
                                             (
                                                 winners(auction).reduce(
                                                     (s, b) =>
@@ -186,6 +268,7 @@ function formatDate(d) {
                                             ).toFixed(2)
                                         }}
                                     </td>
+                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -198,19 +281,22 @@ function formatDate(d) {
                         "
                         class="mt-4"
                     >
-                        <h3 class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-1">
+                        <h3
+                            class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-1"
+                        >
                             Unsuccessful bids
                         </h3>
-                        <div class="text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
+                        <div
+                            class="text-xs text-gray-400 dark:text-gray-500 space-y-0.5"
+                        >
                             <div
                                 v-for="bid in auction.bids.filter(
                                     (b) => b.won_quantity === 0,
                                 )"
                                 :key="bid.id"
                             >
-                                {{ bid.user.username }} — {{ currencySymbol }}{{
-                                    Number(bid.amount).toFixed(2)
-                                }}
+                                {{ bid.user.username }} — {{ currencySymbol
+                                }}{{ Number(bid.amount).toFixed(2) }}
                                 <span v-if="bid.quantity > 1"
                                     >for {{ bid.quantity }}</span
                                 >
@@ -218,12 +304,32 @@ function formatDate(d) {
                         </div>
                     </div>
 
-                    <div class="mt-4 flex gap-2">
+                    <div class="mt-4 flex items-center gap-3">
                         <router-link
                             :to="`/auctions/${auction.id}`"
                             class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                             >View auction</router-link
                         >
+                        <button
+                            v-if="winners(auction).length > 0"
+                            @click.stop="downloadAllQuotes(auction)"
+                            class="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                        >
+                            <svg
+                                class="w-3.5 h-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                            </svg>
+                            Download all quotes
+                        </button>
                     </div>
                 </div>
             </div>
