@@ -52,10 +52,7 @@ class AuctionController extends Controller
             ->get();
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $allAuctions */
-        $allAuctions = $this
-            ->auctionQuery()
-            ->with('bids')
-            ->get();
+        $allAuctions = $this->auctionQuery()->with('bids')->get();
 
         /** @var array<int, array<string, mixed>> $auctionResponses */
         $auctionResponses = [];
