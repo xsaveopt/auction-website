@@ -51,8 +51,68 @@ class AuctionController extends Controller
             ->orderByDesc('ends_at')
             ->get();
 
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $allAuctions */
+        $allAuctions = $this
+            ->auctionQuery()
+            ->with('bids')
+            ->get();
+
+        /** @var array<int, array<string, mixed>> $auctionResponses */
+        $auctionResponses = [];
+        /** @var float $taxPercentage */
+        $taxPercentage = config('auction.invoice.btw_percentage');
+        $taxMultiplier = 1 + ($taxPercentage / 100);
+        $revenueAfterTax = 0.0;
+        $revenueBeforeTax = 0.0;
+        $totalValueAfterTax = 0.0;
+        $totalValueBeforeTax = 0.0;
+        $soldItems = 0;
+        $auctionsWithSales = 0;
+
+        foreach ($allAuctions as $auction) {
+            $allocation = $this->allocate($auction);
+            $auctionTotalValue = round($auction->quantity * $allocation['clearing_price'], 2);
+
+            $totalValueAfterTax += $auctionTotalValue;
+            $totalValueBeforeTax += round($auctionTotalValue / $taxMultiplier, 2);
+        }
+
+        foreach ($auctions as $auction) {
+            $allocation = $this->allocate($auction);
+            $soldQuantity = array_sum($allocation['allocations']);
+
+            $soldItems += $soldQuantity;
+
+            if ($soldQuantity > 0) {
+                $auctionsWithSales++;
+                $auctionRevenue = round($soldQuantity * $allocation['clearing_price'], 2);
+                $revenueAfterTax += $auctionRevenue;
+
+                foreach ($allocation['allocations'] as $wonQuantity) {
+                    $winnerTotal = round($wonQuantity * $allocation['clearing_price'], 2);
+                    $revenueBeforeTax += round($winnerTotal / $taxMultiplier, 2);
+                }
+            }
+
+            $auctionResponses[] = $this->auctionResponseFromAllocation($auction, $allocation, withBids: true);
+        }
+
+        $revenueAfterTax = round($revenueAfterTax, 2);
+        $revenueBeforeTax = round($revenueBeforeTax, 2);
+        $totalValueAfterTax = round($totalValueAfterTax, 2);
+        $totalValueBeforeTax = round($totalValueBeforeTax, 2);
+
         return response()->json([
-            'auctions' => $auctions->map(fn(Auction $auction) => $this->auctionResponse($auction, withBids: true)),
+            'auctions' => $auctionResponses,
+            'summary' => [
+                'ended_auctions' => count($auctionResponses),
+                'auctions_with_sales' => $auctionsWithSales,
+                'sold_items' => $soldItems,
+                'revenue_after_tax' => $revenueAfterTax,
+                'revenue_before_tax' => $revenueBeforeTax,
+                'total_value_after_tax' => $totalValueAfterTax,
+                'total_value_before_tax' => $totalValueBeforeTax,
+            ],
         ]);
     }
 
@@ -191,7 +251,15 @@ class AuctionController extends Controller
      */
     private function auctionResponse(Auction $auction, bool $withBids = false): array
     {
-        $result = $this->allocate($auction);
+        return $this->auctionResponseFromAllocation($auction, $this->allocate($auction), $withBids);
+    }
+
+    /**
+     * @param array{allocations: array<int, int>, clearing_price: float} $result
+     * @return array<string, mixed>
+     */
+    private function auctionResponseFromAllocation(Auction $auction, array $result, bool $withBids = false): array
+    {
         $allocations = $result['allocations'];
         $clearingPrice = $result['clearing_price'];
 

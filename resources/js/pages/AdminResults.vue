@@ -1,5 +1,5 @@
 <script setup>
-import { ref, inject, onMounted } from "vue";
+import { computed, ref, inject, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../api.js";
 
@@ -7,6 +7,7 @@ const router = useRouter();
 const user = inject("user");
 const currencySymbol = inject("currencySymbol");
 const auctions = ref([]);
+const summary = ref(null);
 const loading = ref(true);
 const expanded = ref({});
 
@@ -18,6 +19,7 @@ onMounted(async () => {
     try {
         const data = await api("/auctions/ended");
         auctions.value = data.auctions;
+        summary.value = data.summary;
     } finally {
         loading.value = false;
     }
@@ -56,6 +58,42 @@ function downloadEveryQuote() {
 function hasAnyWinners() {
     return auctions.value.some((a) => winners(a).length > 0);
 }
+
+function formatMoney(amount) {
+    return `${currencySymbol.value}${Number(amount ?? 0).toFixed(2)}`;
+}
+
+const statsCards = computed(() => {
+    if (!summary.value) {
+        return [];
+    }
+
+    const afterTaxRatio = summary.value.total_value_after_tax
+        ? (summary.value.revenue_after_tax / summary.value.total_value_after_tax) *
+          100
+        : 0;
+    const beforeTaxRatio = summary.value.total_value_before_tax
+        ? (summary.value.revenue_before_tax / summary.value.total_value_before_tax) *
+          100
+        : 0;
+
+    return [
+        {
+            label: "Revenue after tax",
+            value: `${formatMoney(summary.value.revenue_after_tax)} of ${formatMoney(summary.value.total_value_after_tax)} earned`,
+            accent: "text-green-700 dark:text-green-400",
+            detail: `${afterTaxRatio.toFixed(1)}% of all auction value`,
+            progress: afterTaxRatio,
+        },
+        {
+            label: "Revenue before tax",
+            value: `${formatMoney(summary.value.revenue_before_tax)} of ${formatMoney(summary.value.total_value_before_tax)} earned`,
+            accent: "text-blue-700 dark:text-blue-400",
+            detail: `${beforeTaxRatio.toFixed(1)}% of all auction value`,
+            progress: beforeTaxRatio,
+        },
+    ];
+});
 </script>
 
 <template>
@@ -82,6 +120,46 @@ function hasAnyWinners() {
                 </svg>
                 Download all quotes
             </button>
+        </div>
+        <div
+            v-if="!loading && summary && auctions.length > 0"
+            class="mb-6 bg-white dark:bg-gray-800 rounded shadow p-4 space-y-4"
+        >
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div
+                    v-for="card in statsCards"
+                    :key="card.label"
+                    class="rounded border border-gray-200 dark:border-gray-700 px-4 py-3"
+                >
+                    <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        {{ card.label }}
+                    </p>
+                    <p class="mt-1 text-xl font-bold leading-snug" :class="card.accent">
+                        {{ card.value }}
+                    </p>
+                    <div class="mt-3 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                        <div
+                            class="h-full rounded-full bg-current transition-[width]"
+                            :class="card.accent"
+                            :style="{ width: `${Math.min(card.progress, 100)}%` }"
+                        ></div>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {{ card.detail }}
+                    </p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-300">
+                Across {{ summary.ended_auctions }} ended auction{{
+                    summary.ended_auctions !== 1 ? "s" : ""
+                }},
+                {{ summary.auctions_with_sales }} with winner{{
+                    summary.auctions_with_sales !== 1 ? "s" : ""
+                }},
+                {{ summary.sold_items }} item{{
+                    summary.sold_items !== 1 ? "s" : ""
+                }} sold. Totals are measured against all auctions and all items.
+            </p>
         </div>
         <p v-if="loading" class="text-gray-500 dark:text-gray-400">
             Loading...
