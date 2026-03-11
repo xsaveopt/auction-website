@@ -45,9 +45,7 @@ async function submit() {
         </div>
 
         <div v-if="ssoEnabled" class="space-y-4">
-            <p class="text-gray-600 dark:text-gray-400">
-                Microsoft SSO is required for this site.
-            </p>
+            <p class="text-gray-600 dark:text-gray-400">Microsoft SSO is required for this site.</p>
             <a
                 href="/auth/microsoft/redirect"
                 class="w-full flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
@@ -89,14 +87,9 @@ async function submit() {
                 Login
             </button>
         </form>
-        <p
-            v-if="!ssoEnabled"
-            class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400"
-        >
+        <p v-if="!ssoEnabled" class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?
-            <router-link
-                to="/register"
-                class="text-blue-600 dark:text-blue-400 hover:underline"
+            <router-link to="/register" class="text-blue-600 dark:text-blue-400 hover:underline"
                 >Register</router-link
             >
         </p>

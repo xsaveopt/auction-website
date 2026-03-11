@@ -31,10 +31,7 @@ function isBiddingOpenNow(sched, date) {
     if (!sched) return true;
     if (sched.weekends_open && isWeekend(date)) return true;
     const current = date.getHours() * 60 + date.getMinutes();
-    return (
-        current < parseTime(sched.closed_start) ||
-        current >= parseTime(sched.closed_end)
-    );
+    return current < parseTime(sched.closed_start) || current >= parseTime(sched.closed_end);
 }
 
 function currentFractionalMinutes(date) {
@@ -164,8 +161,7 @@ async function fetchSchedule() {
         const data = await api("/schedule");
         rawSchedule.value = data.schedule;
         if (data.schedule?.server_time) {
-            serverOffsetMs =
-                new Date(data.schedule.server_time).getTime() - Date.now();
+            serverOffsetMs = new Date(data.schedule.server_time).getTime() - Date.now();
             now.value = new Date(Date.now() + serverOffsetMs);
         }
         if (data.schedule?.currency_symbol) {
@@ -206,10 +202,7 @@ onMounted(() => {
     fetchSsoEnabled();
     sendPresenceHeartbeat();
     scheduleInterval = setInterval(fetchSchedule, 60000);
-    presenceInterval = setInterval(
-        sendPresenceHeartbeat,
-        HEARTBEAT_INTERVAL_MS,
-    );
+    presenceInterval = setInterval(sendPresenceHeartbeat, HEARTBEAT_INTERVAL_MS);
     clockInterval = setInterval(() => {
         now.value = new Date(Date.now() + serverOffsetMs);
     }, 1000);
@@ -249,18 +242,9 @@ provide("currencySymbol", currencySymbol);
 
 <template>
     <div v-if="!loading">
-        <nav
-            class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/20 mb-6"
-        >
-            <div
-                :class="[
-                    shellWidthClass,
-                    'mx-auto px-4 py-3 flex items-center justify-between',
-                ]"
-            >
-                <router-link
-                    to="/"
-                    class="text-xl font-bold text-gray-800 dark:text-gray-100"
+        <nav class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/20 mb-6">
+            <div :class="[shellWidthClass, 'mx-auto px-4 py-3 flex items-center justify-between']">
+                <router-link to="/" class="text-xl font-bold text-gray-800 dark:text-gray-100"
                     >Auction House</router-link
                 >
                 <div class="flex items-center gap-4">
@@ -275,11 +259,7 @@ provide("currencySymbol", currencySymbol);
                         >
                             <div
                                 class="h-full rounded-full transition-[width] duration-1000 ease-linear"
-                                :class="
-                                    scheduleBar.open
-                                        ? 'bg-green-500'
-                                        : 'bg-orange-500'
-                                "
+                                :class="scheduleBar.open ? 'bg-green-500' : 'bg-orange-500'"
                                 :style="{ width: scheduleBar.percent + '%' }"
                             ></div>
                         </div>
@@ -297,11 +277,7 @@ provide("currencySymbol", currencySymbol);
                     <button
                         @click="toggleTheme"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        :title="
-                            isDark
-                                ? 'Switch to light mode'
-                                : 'Switch to dark mode'
-                        "
+                        :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
                     >
                         <!-- Sun (shown in dark mode, click to go light) -->
                         <svg
@@ -326,15 +302,11 @@ provide("currencySymbol", currencySymbol);
                             stroke-width="2"
                             viewBox="0 0 24 24"
                         >
-                            <path
-                                d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-                            />
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                         </svg>
                     </button>
                     <template v-if="user">
-                        <span class="text-gray-600 dark:text-gray-300">{{
-                            user.username
-                        }}</span>
+                        <span class="text-gray-600 dark:text-gray-300">{{ user.username }}</span>
                         <router-link
                             to="/dashboard"
                             class="text-blue-600 dark:text-blue-400 hover:underline"

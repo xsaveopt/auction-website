@@ -69,12 +69,10 @@ const statsCards = computed(() => {
     }
 
     const afterTaxRatio = summary.value.total_value_after_tax
-        ? (summary.value.revenue_after_tax / summary.value.total_value_after_tax) *
-          100
+        ? (summary.value.revenue_after_tax / summary.value.total_value_after_tax) * 100
         : 0;
     const beforeTaxRatio = summary.value.total_value_before_tax
-        ? (summary.value.revenue_before_tax / summary.value.total_value_before_tax) *
-          100
+        ? (summary.value.revenue_before_tax / summary.value.total_value_before_tax) * 100
         : 0;
 
     return [
@@ -152,22 +150,14 @@ const statsCards = computed(() => {
             <p class="text-sm text-gray-600 dark:text-gray-300">
                 Across {{ summary.ended_auctions }} ended auction{{
                     summary.ended_auctions !== 1 ? "s" : ""
-                }},
-                {{ summary.auctions_with_sales }} with winner{{
+                }}, {{ summary.auctions_with_sales }} with winner{{
                     summary.auctions_with_sales !== 1 ? "s" : ""
-                }},
-                {{ summary.sold_items }} item{{
-                    summary.sold_items !== 1 ? "s" : ""
-                }} sold. Totals are measured against all auctions and all items.
+                }}, {{ summary.sold_items }} item{{ summary.sold_items !== 1 ? "s" : "" }} sold.
+                Totals are measured against all auctions and all items.
             </p>
         </div>
-        <p v-if="loading" class="text-gray-500 dark:text-gray-400">
-            Loading...
-        </p>
-        <p
-            v-else-if="auctions.length === 0"
-            class="text-gray-500 dark:text-gray-400"
-        >
+        <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
+        <p v-else-if="auctions.length === 0" class="text-gray-500 dark:text-gray-400">
             No ended auctions yet.
         </p>
         <div v-else class="space-y-3">
@@ -192,12 +182,8 @@ const statsCards = computed(() => {
                             </h2>
                             <p class="text-xs text-gray-400 dark:text-gray-500">
                                 Ended {{ formatDate(auction.ends_at) }} ·
-                                {{ auction.quantity }} item{{
-                                    auction.quantity !== 1 ? "s" : ""
-                                }}
-                                · {{ auction.bid_count }} bid{{
-                                    auction.bid_count !== 1 ? "s" : ""
-                                }}
+                                {{ auction.quantity }} item{{ auction.quantity !== 1 ? "s" : "" }} ·
+                                {{ auction.bid_count }} bid{{ auction.bid_count !== 1 ? "s" : "" }}
                             </p>
                         </div>
                     </div>
@@ -206,20 +192,11 @@ const statsCards = computed(() => {
                             v-if="winners(auction).length > 0"
                             class="text-sm font-medium text-green-700 dark:text-green-400"
                         >
-                            {{
-                                winners(auction).reduce(
-                                    (s, b) => s + b.won_quantity,
-                                    0,
-                                )
-                            }}
+                            {{ winners(auction).reduce((s, b) => s + b.won_quantity, 0) }}
                             sold @ {{ currencySymbol
                             }}{{ Number(auction.current_price).toFixed(2) }}
                         </span>
-                        <span
-                            v-else
-                            class="text-sm text-gray-400 dark:text-gray-500"
-                            >No bids</span
-                        >
+                        <span v-else class="text-sm text-gray-400 dark:text-gray-500">No bids</span>
                         <svg
                             class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
                             :class="expanded[auction.id] ? 'rotate-180' : ''"
@@ -237,10 +214,7 @@ const statsCards = computed(() => {
                     </div>
                 </button>
 
-                <div
-                    v-if="expanded[auction.id]"
-                    class="border-t dark:border-gray-700 px-5 py-4"
-                >
+                <div v-if="expanded[auction.id]" class="border-t dark:border-gray-700 px-5 py-4">
                     <div
                         v-if="winners(auction).length === 0"
                         class="text-gray-400 dark:text-gray-500 text-sm"
@@ -248,9 +222,7 @@ const statsCards = computed(() => {
                         No winners — auction ended without bids.
                     </div>
                     <div v-else>
-                        <h3
-                            class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2"
-                        >
+                        <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                             Winners — clearing price: {{ currencySymbol
                             }}{{ Number(auction.current_price).toFixed(2) }}
                             / item
@@ -263,9 +235,7 @@ const statsCards = computed(() => {
                                     <th class="pb-1 font-medium">User</th>
                                     <th class="pb-1 font-medium">Bid</th>
                                     <th class="pb-1 font-medium">Won</th>
-                                    <th class="pb-1 font-medium text-right">
-                                        Total Owed
-                                    </th>
+                                    <th class="pb-1 font-medium text-right">Total Owed</th>
                                     <th class="pb-1 font-medium w-8"></th>
                                 </tr>
                             </thead>
@@ -279,8 +249,7 @@ const statsCards = computed(() => {
                                         {{ bid.user.username }}
                                     </td>
                                     <td class="py-2">
-                                        {{ currencySymbol
-                                        }}{{ Number(bid.amount).toFixed(2) }}
+                                        {{ currencySymbol }}{{ Number(bid.amount).toFixed(2) }}
                                     </td>
                                     <td class="py-2">
                                         {{ bid.won_quantity }} item{{
@@ -292,10 +261,7 @@ const statsCards = computed(() => {
                                     >
                                         {{ currencySymbol
                                         }}{{
-                                            (
-                                                bid.won_quantity *
-                                                auction.current_price
-                                            ).toFixed(2)
+                                            (bid.won_quantity * auction.current_price).toFixed(2)
                                         }}
                                     </td>
                                     <td class="py-2 text-right">
@@ -327,10 +293,7 @@ const statsCards = computed(() => {
                                     <td class="pt-2" colspan="2">Total</td>
                                     <td class="pt-2">
                                         {{
-                                            winners(auction).reduce(
-                                                (s, b) => s + b.won_quantity,
-                                                0,
-                                            )
+                                            winners(auction).reduce((s, b) => s + b.won_quantity, 0)
                                         }}
                                         items
                                     </td>
@@ -339,8 +302,7 @@ const statsCards = computed(() => {
                                         }}{{
                                             (
                                                 winners(auction).reduce(
-                                                    (s, b) =>
-                                                        s + b.won_quantity,
+                                                    (s, b) => s + b.won_quantity,
                                                     0,
                                                 ) * auction.current_price
                                             ).toFixed(2)
@@ -353,31 +315,20 @@ const statsCards = computed(() => {
                     </div>
 
                     <div
-                        v-if="
-                            auction.bids.filter((b) => b.won_quantity === 0)
-                                .length > 0
-                        "
+                        v-if="auction.bids.filter((b) => b.won_quantity === 0).length > 0"
                         class="mt-4"
                     >
-                        <h3
-                            class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-1"
-                        >
+                        <h3 class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-1">
                             Unsuccessful bids
                         </h3>
-                        <div
-                            class="text-xs text-gray-400 dark:text-gray-500 space-y-0.5"
-                        >
+                        <div class="text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
                             <div
-                                v-for="bid in auction.bids.filter(
-                                    (b) => b.won_quantity === 0,
-                                )"
+                                v-for="bid in auction.bids.filter((b) => b.won_quantity === 0)"
                                 :key="bid.id"
                             >
                                 {{ bid.user.username }} — {{ currencySymbol
                                 }}{{ Number(bid.amount).toFixed(2) }}
-                                <span v-if="bid.quantity > 1"
-                                    >for {{ bid.quantity }}</span
-                                >
+                                <span v-if="bid.quantity > 1">for {{ bid.quantity }}</span>
                             </div>
                         </div>
                     </div>

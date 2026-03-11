@@ -30,12 +30,8 @@ async function loadQuestions() {
     }
 }
 
-const unansweredQuestions = computed(() =>
-    questions.value.filter((q) => !q.answer),
-);
-const answeredQuestions = computed(() =>
-    questions.value.filter((q) => q.answer),
-);
+const unansweredQuestions = computed(() => questions.value.filter((q) => !q.answer));
+const answeredQuestions = computed(() => questions.value.filter((q) => q.answer));
 
 function startAnswer(question) {
     editingQuestionId.value = question.id;
@@ -68,10 +64,7 @@ async function submitAnswer(question) {
         editingQuestionId.value = null;
         await loadQuestions();
     } catch (e) {
-        error.value =
-            e.data?.message ||
-            e.data?.errors?.answer?.[0] ||
-            "Failed to save answer.";
+        error.value = e.data?.message || e.data?.errors?.answer?.[0] || "Failed to save answer.";
     } finally {
         savingAnswerId.value = null;
     }
@@ -106,9 +99,7 @@ function formatDate(d) {
     <div>
         <h1 class="text-2xl font-bold mb-4">All Questions</h1>
 
-        <p v-if="loading" class="text-gray-500 dark:text-gray-400">
-            Loading...
-        </p>
+        <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
 
         <template v-else>
             <div
@@ -118,18 +109,13 @@ function formatDate(d) {
                 {{ error }}
             </div>
 
-            <p
-                v-if="questions.length === 0"
-                class="text-gray-500 dark:text-gray-400"
-            >
+            <p v-if="questions.length === 0" class="text-gray-500 dark:text-gray-400">
                 No questions yet.
             </p>
 
             <template v-else>
                 <div v-if="unansweredQuestions.length" class="mb-8">
-                    <h2
-                        class="text-lg font-semibold text-amber-700 dark:text-amber-400 mb-3"
-                    >
+                    <h2 class="text-lg font-semibold text-amber-700 dark:text-amber-400 mb-3">
                         Awaiting Answer ({{ unansweredQuestions.length }})
                     </h2>
                     <div class="space-y-3">
@@ -149,9 +135,7 @@ function formatDate(d) {
                                     <p class="mt-2 whitespace-pre-line">
                                         {{ question.question }}
                                     </p>
-                                    <p
-                                        class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                                    >
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         Asked by {{ question.user.username }} ·
                                         {{ formatDate(question.created_at) }}
                                     </p>
@@ -163,12 +147,8 @@ function formatDate(d) {
                                 </span>
                             </div>
 
-                            <div
-                                v-if="editingQuestionId === question.id"
-                                class="mt-4"
-                            >
-                                <label
-                                    class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                            <div v-if="editingQuestionId === question.id" class="mt-4">
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                     >Answer</label
                                 >
                                 <textarea
@@ -180,9 +160,7 @@ function formatDate(d) {
                                     <button
                                         @click="submitAnswer(question)"
                                         class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60"
-                                        :disabled="
-                                            savingAnswerId === question.id
-                                        "
+                                        :disabled="savingAnswerId === question.id"
                                     >
                                         {{
                                             savingAnswerId === question.id
@@ -208,9 +186,7 @@ function formatDate(d) {
                                 <button
                                     @click="deleteQuestion(question)"
                                     class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-60"
-                                    :disabled="
-                                        deletingQuestionId === question.id
-                                    "
+                                    :disabled="deletingQuestionId === question.id"
                                 >
                                     {{
                                         deletingQuestionId === question.id
@@ -224,9 +200,7 @@ function formatDate(d) {
                 </div>
 
                 <div v-if="answeredQuestions.length">
-                    <h2
-                        class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3"
-                    >
+                    <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
                         Answered ({{ answeredQuestions.length }})
                     </h2>
                     <div class="space-y-3">
@@ -245,20 +219,14 @@ function formatDate(d) {
                                 <p class="mt-2 font-medium whitespace-pre-line">
                                     {{ question.question }}
                                 </p>
-                                <p
-                                    class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                                >
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                     Asked by {{ question.user.username }} ·
                                     {{ formatDate(question.created_at) }}
                                 </p>
                             </div>
 
-                            <div
-                                v-if="editingQuestionId === question.id"
-                                class="mt-4"
-                            >
-                                <label
-                                    class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                            <div v-if="editingQuestionId === question.id" class="mt-4">
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                     >Answer</label
                                 >
                                 <textarea
@@ -270,9 +238,7 @@ function formatDate(d) {
                                     <button
                                         @click="submitAnswer(question)"
                                         class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60"
-                                        :disabled="
-                                            savingAnswerId === question.id
-                                        "
+                                        :disabled="savingAnswerId === question.id"
                                     >
                                         {{
                                             savingAnswerId === question.id
@@ -289,12 +255,8 @@ function formatDate(d) {
                                 </div>
                             </div>
                             <template v-else>
-                                <div
-                                    class="mt-3 rounded-lg bg-gray-50 dark:bg-gray-700 p-3"
-                                >
-                                    <p
-                                        class="text-gray-700 dark:text-gray-300 whitespace-pre-line"
-                                    >
+                                <div class="mt-3 rounded-lg bg-gray-50 dark:bg-gray-700 p-3">
+                                    <p class="text-gray-700 dark:text-gray-300 whitespace-pre-line">
                                         {{ question.answer }}
                                     </p>
                                     <p
@@ -315,9 +277,7 @@ function formatDate(d) {
                                     <button
                                         @click="deleteQuestion(question)"
                                         class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-60"
-                                        :disabled="
-                                            deletingQuestionId === question.id
-                                        "
+                                        :disabled="deletingQuestionId === question.id"
                                     >
                                         {{
                                             deletingQuestionId === question.id

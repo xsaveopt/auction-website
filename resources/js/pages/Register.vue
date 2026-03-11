@@ -69,9 +69,7 @@ async function submit() {
             </a>
             <p class="text-center text-sm text-gray-600 dark:text-gray-400">
                 Already have an account?
-                <router-link
-                    to="/login"
-                    class="text-blue-600 dark:text-blue-400 hover:underline"
+                <router-link to="/login" class="text-blue-600 dark:text-blue-400 hover:underline"
                     >Login</router-link
                 >
             </p>
@@ -86,10 +84,7 @@ async function submit() {
                     required
                     class="w-full border rounded px-3 py-2"
                 />
-                <p
-                    v-if="errors.username"
-                    class="text-red-600 dark:text-red-400 text-sm mt-1"
-                >
+                <p v-if="errors.username" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.username[0] }}
                 </p>
             </div>
@@ -101,10 +96,7 @@ async function submit() {
                     required
                     class="w-full border rounded px-3 py-2"
                 />
-                <p
-                    v-if="errors.password"
-                    class="text-red-600 dark:text-red-400 text-sm mt-1"
-                >
+                <p v-if="errors.password" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.password[0] }}
                 </p>
             </div>
@@ -115,14 +107,9 @@ async function submit() {
                 Register
             </button>
         </form>
-        <p
-            v-if="!ssoEnabled"
-            class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400"
-        >
+        <p v-if="!ssoEnabled" class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
             Already have an account?
-            <router-link
-                to="/login"
-                class="text-blue-600 dark:text-blue-400 hover:underline"
+            <router-link to="/login" class="text-blue-600 dark:text-blue-400 hover:underline"
                 >Login</router-link
             >
         </p>

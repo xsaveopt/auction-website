@@ -100,27 +100,19 @@ async function submit() {
                     required
                     class="w-full border rounded px-3 py-2"
                 />
-                <p
-                    v-if="errors.title"
-                    class="text-red-600 dark:text-red-400 text-sm mt-1"
-                >
+                <p v-if="errors.title" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.title[0] }}
                 </p>
             </div>
             <div>
-                <label class="block text-sm font-medium mb-1"
-                    >Description</label
-                >
+                <label class="block text-sm font-medium mb-1">Description</label>
                 <textarea
                     v-model="description"
                     required
                     rows="4"
                     class="w-full border rounded px-3 py-2"
                 ></textarea>
-                <p
-                    v-if="errors.description"
-                    class="text-red-600 dark:text-red-400 text-sm mt-1"
-                >
+                <p v-if="errors.description" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.description[0] }}
                 </p>
             </div>
@@ -139,19 +131,9 @@ async function submit() {
                 >
                     {{ (errors["images"] || errors["images.0"])[0] }}
                 </p>
-                <div
-                    v-if="imagePreviews.length"
-                    class="mt-2 flex flex-wrap gap-2"
-                >
-                    <div
-                        v-for="(src, i) in imagePreviews"
-                        :key="i"
-                        class="relative w-20 h-20"
-                    >
-                        <img
-                            :src="src"
-                            class="w-full h-full object-cover rounded"
-                        />
+                <div v-if="imagePreviews.length" class="mt-2 flex flex-wrap gap-2">
+                    <div v-for="(src, i) in imagePreviews" :key="i" class="relative w-20 h-20">
+                        <img :src="src" class="w-full h-full object-cover rounded" />
                         <button
                             type="button"
                             @click="removeImage(i)"
@@ -164,9 +146,7 @@ async function submit() {
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium mb-1">{{
-                        priceLabel
-                    }}</label>
+                    <label class="block text-sm font-medium mb-1">{{ priceLabel }}</label>
                     <input
                         v-model="startingPrice"
                         type="number"
@@ -183,28 +163,21 @@ async function submit() {
                     </p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1"
-                        >Ends At</label
-                    >
+                    <label class="block text-sm font-medium mb-1">Ends At</label>
                     <input
                         v-model="endsAt"
                         type="datetime-local"
                         required
                         class="w-full border rounded px-3 py-2"
                     />
-                    <p
-                        v-if="errors.ends_at"
-                        class="text-red-600 dark:text-red-400 text-sm mt-1"
-                    >
+                    <p v-if="errors.ends_at" class="text-red-600 dark:text-red-400 text-sm mt-1">
                         {{ errors.ends_at[0] }}
                     </p>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium mb-1"
-                        >Total Quantity</label
-                    >
+                    <label class="block text-sm font-medium mb-1">Total Quantity</label>
                     <input
                         v-model="quantity"
                         type="number"
@@ -212,17 +185,12 @@ async function submit() {
                         required
                         class="w-full border rounded px-3 py-2"
                     />
-                    <p
-                        v-if="errors.quantity"
-                        class="text-red-600 dark:text-red-400 text-sm mt-1"
-                    >
+                    <p v-if="errors.quantity" class="text-red-600 dark:text-red-400 text-sm mt-1">
                         {{ errors.quantity[0] }}
                     </p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1"
-                        >Max per Bidder</label
-                    >
+                    <label class="block text-sm font-medium mb-1">Max per Bidder</label>
                     <input
                         v-model="maxPerBidder"
                         type="number"

@@ -1,8 +1,6 @@
 import { ref, watchEffect } from "vue";
 
-const systemDark = ref(
-    window.matchMedia("(prefers-color-scheme: dark)").matches,
-);
+const systemDark = ref(window.matchMedia("(prefers-color-scheme: dark)").matches);
 
 const mql = window.matchMedia("(prefers-color-scheme: dark)");
 mql.addEventListener("change", (e) => {

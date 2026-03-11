@@ -52,8 +52,7 @@ const answeredQuestions = computed(
     () => auction.value?.questions?.filter((question) => question.answer) ?? [],
 );
 const openQuestions = computed(
-    () =>
-        auction.value?.questions?.filter((question) => !question.answer) ?? [],
+    () => auction.value?.questions?.filter((question) => !question.answer) ?? [],
 );
 
 function bidKey(bid) {
@@ -80,10 +79,7 @@ async function load(showLoading = false) {
     }
 
     auction.value = data.auction;
-    activeImage.value = Math.min(
-        activeImage.value,
-        Math.max(data.auction.images.length - 1, 0),
-    );
+    activeImage.value = Math.min(activeImage.value, Math.max(data.auction.images.length - 1, 0));
     const my = data.auction.bids.find((b) => b.user.id === user.value?.id);
     bidAmount.value = my
         ? (Number(my.amount) + 1).toFixed(2)
@@ -157,9 +153,7 @@ async function submitQuestion() {
         await load();
     } catch (e) {
         questionError.value =
-            e.data?.message ||
-            e.data?.errors?.question?.[0] ||
-            "Failed to ask question.";
+            e.data?.message || e.data?.errors?.question?.[0] || "Failed to ask question.";
     } finally {
         askingQuestion.value = false;
     }
@@ -185,9 +179,7 @@ async function submitAnswer(question) {
         await load();
     } catch (e) {
         questionError.value =
-            e.data?.message ||
-            e.data?.errors?.answer?.[0] ||
-            "Failed to save answer.";
+            e.data?.message || e.data?.errors?.answer?.[0] || "Failed to save answer.";
     } finally {
         savingAnswerId.value = null;
     }
@@ -243,9 +235,7 @@ onUnmounted(() => clearInterval(refreshInterval));
 </script>
 
 <template>
-    <div v-if="loading" class="text-gray-500 dark:text-gray-400">
-        Loading...
-    </div>
+    <div v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</div>
     <div
         v-else-if="auction"
         class="xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-start xl:gap-6"
@@ -283,10 +273,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                         :alt="auction.title"
                         class="w-full max-h-96 object-contain rounded bg-gray-50 dark:bg-gray-700"
                     />
-                    <div
-                        v-if="auction.images.length > 1"
-                        class="flex gap-2 mt-2"
-                    >
+                    <div v-if="auction.images.length > 1" class="flex gap-2 mt-2">
                         <button
                             v-for="(img, i) in auction.images"
                             :key="img.id"
@@ -298,36 +285,25 @@ onUnmounted(() => clearInterval(refreshInterval));
                                     : 'border-transparent opacity-60 hover:opacity-100'
                             "
                         >
-                            <img
-                                :src="img.url"
-                                class="w-full h-full object-cover"
-                            />
+                            <img :src="img.url" class="w-full h-full object-cover" />
                         </button>
                     </div>
                 </div>
 
-                <p
-                    class="mt-4 text-gray-700 dark:text-gray-300 whitespace-pre-line"
-                >
+                <p class="mt-4 text-gray-700 dark:text-gray-300 whitespace-pre-line">
                     {{ auction.description }}
                 </p>
                 <div class="mt-4 flex flex-wrap items-center gap-6 text-sm">
                     <div>
-                        <span class="text-gray-500 dark:text-gray-400"
-                            >Starting price:</span
-                        >
+                        <span class="text-gray-500 dark:text-gray-400">Starting price:</span>
                         <span class="ml-1"
-                            >{{ currencySymbol
-                            }}{{ Number(auction.starting_price).toFixed(2) }} /
+                            >{{ currencySymbol }}{{ Number(auction.starting_price).toFixed(2) }} /
                             item</span
                         >
                     </div>
                     <div v-if="auction.quantity > 1">
-                        <span class="text-gray-500 dark:text-gray-400"
-                            >Available:</span
-                        >
-                        <span
-                            class="ml-1 font-semibold text-purple-700 dark:text-purple-400"
+                        <span class="text-gray-500 dark:text-gray-400">Available:</span>
+                        <span class="ml-1 font-semibold text-purple-700 dark:text-purple-400"
                             >{{ auction.quantity }} items</span
                         >
                         <span class="text-gray-400 dark:text-gray-500 ml-1"
@@ -335,12 +311,8 @@ onUnmounted(() => clearInterval(refreshInterval));
                         >
                     </div>
                     <div>
-                        <span class="text-gray-500 dark:text-gray-400"
-                            >Ends:</span
-                        >
-                        <span class="ml-1">{{
-                            formatDate(auction.ends_at)
-                        }}</span>
+                        <span class="text-gray-500 dark:text-gray-400">Ends:</span>
+                        <span class="ml-1">{{ formatDate(auction.ends_at) }}</span>
                     </div>
                 </div>
                 <div
@@ -348,18 +320,18 @@ onUnmounted(() => clearInterval(refreshInterval));
                     class="mt-3 text-sm text-gray-500 dark:text-gray-400"
                 >
                     <p>
-                        Items allocated top-down by bid price. All winners pay
-                        the same clearing price (the lowest winning bid).
+                        Items allocated top-down by bid price. All winners pay the same clearing
+                        price (the lowest winning bid).
                     </p>
                     <p class="mt-1">
                         Your bid amount is per item. Entering
-                        {{ currencySymbol }}10.00 for 4 items means a total
-                        commitment of {{ currencySymbol }}40.00.
+                        {{ currencySymbol }}10.00 for 4 items means a total commitment of
+                        {{ currencySymbol }}40.00.
                     </p>
                     <p v-if="auction.max_per_bidder > 1" class="mt-1">
                         You can bid for up to
-                        {{ auction.max_per_bidder }} items. Bids may be
-                        partially filled if stock runs out.
+                        {{ auction.max_per_bidder }} items. Bids may be partially filled if stock
+                        runs out.
                     </p>
                     <p
                         v-if="auction.bid_count > 0"
@@ -367,16 +339,13 @@ onUnmounted(() => clearInterval(refreshInterval));
                     >
                         Clearing price: {{ currencySymbol
                         }}{{ formatMoney(auction.current_price) }} / item ·
-                        {{ auction.items_allocated }} /
-                        {{ auction.quantity }} allocated
+                        {{ auction.items_allocated }} / {{ auction.quantity }} allocated
                     </p>
                 </div>
             </div>
 
             <div
-                v-if="
-                    auction.is_active && user && user.id !== auction.seller.id
-                "
+                v-if="auction.is_active && user && user.id !== auction.seller.id"
                 class="bg-white dark:bg-gray-800 rounded shadow p-6"
             >
                 <h2 class="text-lg font-semibold mb-3">
@@ -386,20 +355,15 @@ onUnmounted(() => clearInterval(refreshInterval));
                     v-if="schedule && !schedule.is_open"
                     class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded p-3 mb-3 text-orange-700 dark:text-orange-400 text-sm"
                 >
-                    Bidding is closed during office hours ({{
-                        schedule.closed_start
-                    }}
-                    – {{ schedule.closed_end }}). You can bid again after
-                    {{ schedule.closed_end }}.
+                    Bidding is closed during office hours ({{ schedule.closed_start }} –
+                    {{ schedule.closed_end }}). You can bid again after {{ schedule.closed_end }}.
                 </div>
                 <template v-else>
                     <div v-if="myBid" class="mb-3">
                         <p class="text-sm text-gray-500 dark:text-gray-400">
                             Your current bid:
-                            <span
-                                class="font-bold text-green-700 dark:text-green-400"
-                                >{{ currencySymbol
-                                }}{{ formatMoney(myBid.amount) }}</span
+                            <span class="font-bold text-green-700 dark:text-green-400"
+                                >{{ currencySymbol }}{{ formatMoney(myBid.amount) }}</span
                             >
                             <span v-if="auction.max_per_bidder > 1">
                                 for {{ myBid.quantity }} item{{
@@ -408,10 +372,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                             >
                             <span v-if="auction.max_per_bidder > 1" class="ml-1"
                                 >(up to {{ currencySymbol
-                                }}{{
-                                    formatMoney(myBid.amount * myBid.quantity)
-                                }}
-                                total)</span
+                                }}{{ formatMoney(myBid.amount * myBid.quantity) }} total)</span
                             >
                             <span
                                 v-if="myBid.won_quantity > 0"
@@ -426,20 +387,15 @@ onUnmounted(() => clearInterval(refreshInterval));
                     >
                         {{ error }}
                     </div>
-                    <form
-                        @submit.prevent="placeBid"
-                        class="flex flex-wrap gap-3 items-end"
-                    >
+                    <form @submit.prevent="placeBid" class="flex flex-wrap gap-3 items-end">
                         <div>
-                            <label
-                                class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                 >Price per item</label
                             >
                             <div class="flex items-center">
-                                <span
-                                    class="text-gray-500 dark:text-gray-400 mr-1"
-                                    >{{ currencySymbol }}</span
-                                >
+                                <span class="text-gray-500 dark:text-gray-400 mr-1">{{
+                                    currencySymbol
+                                }}</span>
                                 <input
                                     v-model="bidAmount"
                                     type="number"
@@ -451,8 +407,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                             </div>
                         </div>
                         <div v-if="auction.max_per_bidder > 1">
-                            <label
-                                class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                 >Quantity</label
                             >
                             <input
@@ -470,10 +425,8 @@ onUnmounted(() => clearInterval(refreshInterval));
                         >
                             Your price is per item, so bidding
                             {{ currencySymbol }}{{ formatMoney(bidAmount) }} for
-                            {{ bidQuantity }} item{{
-                                Number(bidQuantity) !== 1 ? "s" : ""
-                            }}
-                            means a maximum total of {{ currencySymbol
+                            {{ bidQuantity }} item{{ Number(bidQuantity) !== 1 ? "s" : "" }} means a
+                            maximum total of {{ currencySymbol
                             }}{{ formatMoney(selectedBidTotal) }}.
                         </div>
                         <button
@@ -499,14 +452,10 @@ onUnmounted(() => clearInterval(refreshInterval));
                         v-if="auction.quantity > 1"
                         class="text-sm font-normal text-gray-500 dark:text-gray-400"
                     >
-                        — {{ auction.items_allocated }} /
-                        {{ auction.quantity }} allocated
+                        — {{ auction.items_allocated }} / {{ auction.quantity }} allocated
                     </span>
                 </h2>
-                <p
-                    v-if="auction.bids.length === 0"
-                    class="text-gray-500 dark:text-gray-400"
-                >
+                <p v-if="auction.bids.length === 0" class="text-gray-500 dark:text-gray-400">
                     No bids yet.
                 </p>
                 <TransitionGroup
@@ -527,9 +476,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                         ]"
                     >
                         <div class="flex items-center gap-2">
-                            <span class="font-medium">{{
-                                bid.user.username
-                            }}</span>
+                            <span class="font-medium">{{ bid.user.username }}</span>
                             <span
                                 v-if="bid.user.id === user?.id"
                                 class="text-xs text-blue-600 dark:text-blue-400"
@@ -540,10 +487,9 @@ onUnmounted(() => clearInterval(refreshInterval));
                                 class="text-gray-400 dark:text-gray-500 text-xs"
                                 >wants {{ bid.quantity }}</span
                             >
-                            <span
-                                class="text-gray-400 dark:text-gray-500 text-xs"
-                                >{{ formatDate(bid.created_at) }}</span
-                            >
+                            <span class="text-gray-400 dark:text-gray-500 text-xs">{{
+                                formatDate(bid.created_at)
+                            }}</span>
                         </div>
                         <div class="text-right">
                             <span
@@ -554,13 +500,10 @@ onUnmounted(() => clearInterval(refreshInterval));
                                         : 'text-gray-500 dark:text-gray-400'
                                 "
                             >
-                                {{ currencySymbol
-                                }}{{ Number(bid.amount).toFixed(2) }}
+                                {{ currencySymbol }}{{ Number(bid.amount).toFixed(2) }}
                             </span>
                             <span
-                                v-if="
-                                    bid.won_quantity > 0 && auction.quantity > 1
-                                "
+                                v-if="bid.won_quantity > 0 && auction.quantity > 1"
                                 class="block text-xs text-green-600 dark:text-green-400"
                             >
                                 wins {{ bid.won_quantity }} @ {{ currencySymbol
@@ -576,12 +519,8 @@ onUnmounted(() => clearInterval(refreshInterval));
             <div class="bg-white dark:bg-gray-800 rounded shadow p-6">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <h2 class="text-lg font-semibold">
-                            Frequently Asked Questions
-                        </h2>
-                        <p
-                            class="text-sm text-gray-500 dark:text-gray-400 mt-1"
-                        >
+                        <h2 class="text-lg font-semibold">Frequently Asked Questions</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             Answered responses stay here for future buyers.
                         </p>
                     </div>
@@ -611,19 +550,13 @@ onUnmounted(() => clearInterval(refreshInterval));
                         <p class="mt-2 font-medium whitespace-pre-line">
                             {{ question.question }}
                         </p>
-                        <p
-                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                        >
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Asked by {{ question.user.username }} ·
                             {{ formatDate(question.created_at) }}
                         </p>
 
-                        <div
-                            v-if="editingQuestionId === question.id"
-                            class="mt-4"
-                        >
-                            <label
-                                class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                        <div v-if="editingQuestionId === question.id" class="mt-4">
+                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                 >Answer</label
                             >
                             <textarea
@@ -638,9 +571,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                                     :disabled="savingAnswerId === question.id"
                                 >
                                     {{
-                                        savingAnswerId === question.id
-                                            ? "Saving..."
-                                            : "Save answer"
+                                        savingAnswerId === question.id ? "Saving..." : "Save answer"
                                     }}
                                 </button>
                                 <button
@@ -651,18 +582,13 @@ onUnmounted(() => clearInterval(refreshInterval));
                                 </button>
                             </div>
                         </div>
-                        <div
-                            v-else
-                            class="mt-4 rounded-lg bg-gray-50 dark:bg-gray-700 p-4"
-                        >
+                        <div v-else class="mt-4 rounded-lg bg-gray-50 dark:bg-gray-700 p-4">
                             <p
                                 class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
                             >
                                 Answer
                             </p>
-                            <p
-                                class="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-line"
-                            >
+                            <p class="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-line">
                                 {{ question.answer }}
                             </p>
                             <p
@@ -673,10 +599,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                             </p>
                         </div>
 
-                        <div
-                            v-if="canModerateQuestions"
-                            class="mt-4 flex gap-3"
-                        >
+                        <div v-if="canModerateQuestions" class="mt-4 flex gap-3">
                             <button
                                 v-if="editingQuestionId !== question.id"
                                 @click="startAnswer(question)"
@@ -721,9 +644,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                                     <p class="font-medium">
                                         {{ question.user.username }}
                                     </p>
-                                    <p
-                                        class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                                    >
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         {{ formatDate(question.created_at) }}
                                     </p>
                                 </div>
@@ -734,18 +655,12 @@ onUnmounted(() => clearInterval(refreshInterval));
                                 </span>
                             </div>
 
-                            <p
-                                class="mt-3 text-gray-700 dark:text-gray-300 whitespace-pre-line"
-                            >
+                            <p class="mt-3 text-gray-700 dark:text-gray-300 whitespace-pre-line">
                                 {{ question.question }}
                             </p>
 
-                            <div
-                                v-if="editingQuestionId === question.id"
-                                class="mt-4"
-                            >
-                                <label
-                                    class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                            <div v-if="editingQuestionId === question.id" class="mt-4">
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                     >Answer</label
                                 >
                                 <textarea
@@ -757,9 +672,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                                     <button
                                         @click="submitAnswer(question)"
                                         class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60"
-                                        :disabled="
-                                            savingAnswerId === question.id
-                                        "
+                                        :disabled="savingAnswerId === question.id"
                                     >
                                         {{
                                             savingAnswerId === question.id
@@ -775,10 +688,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                                     </button>
                                 </div>
                             </div>
-                            <div
-                                v-else-if="canModerateQuestions"
-                                class="mt-4 flex gap-3"
-                            >
+                            <div v-else-if="canModerateQuestions" class="mt-4 flex gap-3">
                                 <button
                                     @click="startAnswer(question)"
                                     class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
@@ -788,9 +698,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                                 <button
                                     @click="deleteQuestion(question)"
                                     class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-60"
-                                    :disabled="
-                                        deletingQuestionId === question.id
-                                    "
+                                    :disabled="deletingQuestionId === question.id"
                                 >
                                     {{
                                         deletingQuestionId === question.id
@@ -801,10 +709,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                             </div>
                         </div>
                     </div>
-                    <p
-                        v-else
-                        class="mt-4 text-sm text-gray-500 dark:text-gray-400"
-                    >
+                    <p v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
                         No open questions right now.
                     </p>
                 </div>
@@ -812,13 +717,8 @@ onUnmounted(() => clearInterval(refreshInterval));
                 <div class="mt-6 border-t dark:border-gray-700 pt-6">
                     <h3 class="font-semibold">Ask a question</h3>
 
-                    <form
-                        v-if="canAskQuestion"
-                        @submit.prevent="submitQuestion"
-                        class="mt-4"
-                    >
-                        <label
-                            class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                    <form v-if="canAskQuestion" @submit.prevent="submitQuestion" class="mt-4">
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                             >Your question</label
                         >
                         <textarea
@@ -828,9 +728,7 @@ onUnmounted(() => clearInterval(refreshInterval));
                             class="w-full border rounded px-3 py-2"
                             placeholder="Ask about condition, pickup, included accessories, or anything else buyers should know."
                         ></textarea>
-                        <div
-                            class="mt-3 flex items-center justify-between gap-3"
-                        >
+                        <div class="mt-3 flex items-center justify-between gap-3">
                             <p class="text-xs text-gray-500 dark:text-gray-400">
                                 Answered questions move into the FAQ above.
                             </p>
@@ -839,24 +737,14 @@ onUnmounted(() => clearInterval(refreshInterval));
                                 class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60"
                                 :disabled="askingQuestion"
                             >
-                                {{
-                                    askingQuestion
-                                        ? "Sending..."
-                                        : "Send question"
-                                }}
+                                {{ askingQuestion ? "Sending..." : "Send question" }}
                             </button>
                         </div>
                     </form>
-                    <p
-                        v-else-if="isSeller"
-                        class="mt-4 text-sm text-gray-500 dark:text-gray-400"
-                    >
+                    <p v-else-if="isSeller" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
                         You can answer or remove questions from the lists above.
                     </p>
-                    <p
-                        v-else
-                        class="mt-4 text-sm text-gray-500 dark:text-gray-400"
-                    >
+                    <p v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
                         <router-link
                             to="/login"
                             class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"

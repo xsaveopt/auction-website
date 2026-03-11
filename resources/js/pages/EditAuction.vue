@@ -73,9 +73,7 @@ async function submit() {
 <template>
     <div class="max-w-lg mx-auto">
         <h1 class="text-2xl font-bold mb-4">Edit Auction</h1>
-        <div v-if="loading" class="text-gray-500 dark:text-gray-400">
-            Loading...
-        </div>
+        <div v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</div>
         <template v-else>
             <div
                 v-if="errors.general"
@@ -92,17 +90,12 @@ async function submit() {
                         required
                         class="w-full border rounded px-3 py-2"
                     />
-                    <p
-                        v-if="errors.title"
-                        class="text-red-600 dark:text-red-400 text-sm mt-1"
-                    >
+                    <p v-if="errors.title" class="text-red-600 dark:text-red-400 text-sm mt-1">
                         {{ errors.title[0] }}
                     </p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1"
-                        >Description</label
-                    >
+                    <label class="block text-sm font-medium mb-1">Description</label>
                     <textarea
                         v-model="description"
                         required
@@ -118,9 +111,7 @@ async function submit() {
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">{{
-                            priceLabel
-                        }}</label>
+                        <label class="block text-sm font-medium mb-1">{{ priceLabel }}</label>
                         <input
                             v-model="startingPrice"
                             type="number"
@@ -137,9 +128,7 @@ async function submit() {
                         </p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1"
-                            >Ends At</label
-                        >
+                        <label class="block text-sm font-medium mb-1">Ends At</label>
                         <input
                             v-model="endsAt"
                             type="datetime-local"
@@ -156,9 +145,7 @@ async function submit() {
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1"
-                            >Total Quantity</label
-                        >
+                        <label class="block text-sm font-medium mb-1">Total Quantity</label>
                         <input
                             v-model="quantity"
                             type="number"
@@ -174,9 +161,7 @@ async function submit() {
                         </p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1"
-                            >Max per Bidder</label
-                        >
+                        <label class="block text-sm font-medium mb-1">Max per Bidder</label>
                         <input
                             v-model="maxPerBidder"
                             type="number"
@@ -185,9 +170,7 @@ async function submit() {
                             required
                             class="w-full border rounded px-3 py-2"
                         />
-                        <p
-                            class="text-gray-400 dark:text-gray-500 text-xs mt-1"
-                        >
+                        <p class="text-gray-400 dark:text-gray-500 text-xs mt-1">
                             How many one person can win
                         </p>
                         <p
