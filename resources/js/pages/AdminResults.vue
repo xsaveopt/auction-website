@@ -120,7 +120,7 @@ const statsCards = computed(() => {
             </button>
         </div>
         <div
-            v-if="!loading && summary && auctions.length > 0"
+            v-if="!loading && summary"
             class="mb-6 bg-white dark:bg-gray-800 rounded shadow p-4 space-y-4"
         >
             <div class="grid gap-3 sm:grid-cols-2">
@@ -158,7 +158,7 @@ const statsCards = computed(() => {
         </div>
         <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
         <p v-else-if="auctions.length === 0" class="text-gray-500 dark:text-gray-400">
-            No ended auctions yet.
+            No ended auctions yet, but the totals above show the current earning potential.
         </p>
         <div v-else class="space-y-3">
             <div

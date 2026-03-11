@@ -47,6 +47,10 @@
             "@php artisan key:generate",
             "@php artisan migrate --force"
         ],
+        "dev": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php artisan octane:start --watch"
+        ],
         "format": [
             "composer exec mago -- format app/"
         ],
