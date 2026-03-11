@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 class AuctionController extends Controller
 {
     public function __construct(
-        protected AuctionService $auctionService
+        protected AuctionService $auctionService,
     ) {}
 
     public function index(): JsonResponse
@@ -56,7 +56,10 @@ class AuctionController extends Controller
             ->get();
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $allAuctions */
-        $allAuctions = $this->auctionService->auctionQuery()->with('bids')->get();
+        $allAuctions = $this->auctionService
+            ->auctionQuery()
+            ->with('bids')
+            ->get();
 
         /** @var array<int, array<string, mixed>> $auctionResponses */
         $auctionResponses = [];
@@ -95,7 +98,11 @@ class AuctionController extends Controller
                 }
             }
 
-            $auctionResponses[] = $this->auctionService->auctionResponseFromAllocation($auction, $allocation, withBids: true);
+            $auctionResponses[] = $this->auctionService->auctionResponseFromAllocation(
+                $auction,
+                $allocation,
+                withBids: true,
+            );
         }
 
         $revenueAfterTax = round($revenueAfterTax, 2);

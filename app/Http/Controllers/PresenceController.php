@@ -15,7 +15,7 @@ class PresenceController extends Controller
 {
     public function __construct(
         protected AuctionService $auctionService,
-        protected StatsService $statsService
+        protected StatsService $statsService,
     ) {}
 
     public function heartbeat(Request $request): JsonResponse
@@ -62,7 +62,9 @@ class PresenceController extends Controller
                 ->orderByDesc('created_at')
                 ->get();
 
-            $response['auctions'] = $auctions->map(fn(Auction $auction) => $this->auctionService->auctionResponse($auction));
+            $response['auctions'] = $auctions->map(
+                fn(Auction $auction) => $this->auctionService->auctionResponse($auction),
+            );
             $response['stats'] = $this->statsService->getStats();
         } elseif ($validated['page_type'] === 'auction' && $auctionId) {
             /** @var Auction|null $auction */
