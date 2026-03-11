@@ -3,10 +3,15 @@
 .env
 .git
 .gitattributes
+.github
 .gitignore
+.mcp.json
+.mcp.json.example
 CLAUDE.md
 database/database.sqlite
 Dockerfile
+frankenphp
+mcp-server
 node_modules
 public/build
 README.md

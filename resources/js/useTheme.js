@@ -1,4 +1,4 @@
-import { ref, computed, watchEffect } from "vue";
+import { ref, watchEffect } from "vue";
 
 const systemDark = ref(
     window.matchMedia("(prefers-color-scheme: dark)").matches,
