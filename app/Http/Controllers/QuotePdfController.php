@@ -26,14 +26,23 @@ class QuotePdfController extends Controller
         $totalOwed = $wonQty * $clearingPrice;
 
         $data = [
+            'quote_number' =>
+                'Q-'
+                    . str_pad((string) $auction->id, 4, '0', STR_PAD_LEFT)
+                    . '-'
+                    . str_pad((string) $bid->id, 4, '0', STR_PAD_LEFT),
             'auction' => [
+                'id' => $auction->id,
                 'title' => $auction->title,
                 'description' => $auction->description,
                 'ends_at' => $auction->ends_at->format('M j, Y \a\t H:i'),
+                'quantity' => $auction->quantity,
+                'bid_count' => $auction->bids->count(),
             ],
             'winner' => [
                 'username' => $bid->user->username ?? 'Unknown',
                 'bid_amount' => (float) $bid->amount,
+                'bid_date' => $bid->created_at?->format('M j, Y \a\t H:i') ?? '',
                 'won_quantity' => $wonQty,
                 'total_owed' => $totalOwed,
             ],
