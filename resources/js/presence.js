@@ -1,10 +1,13 @@
-export const HEARTBEAT_INTERVAL_MS = 3000;
+export const HEARTBEAT_INTERVAL_MS = 1000;
 
 const CLIENT_STORAGE_KEY = "auction-presence-client-id";
 const PAGE_STORAGE_KEY = "auction-presence-page-id";
 
 function createIdentifier() {
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    if (
+        typeof crypto !== "undefined" &&
+        typeof crypto.randomUUID === "function"
+    ) {
         return crypto.randomUUID();
     }
 

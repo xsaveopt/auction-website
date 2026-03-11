@@ -15,6 +15,7 @@ const rawSchedule = ref(null);
 const ssoEnabled = ref(false);
 const currencySymbol = ref("$");
 const now = ref(new Date());
+const heartbeatData = ref(null);
 let serverOffsetMs = 0; // server time minus browser time
 
 function parseTime(str) {
@@ -183,10 +184,11 @@ async function fetchSsoEnabled() {
 
 async function sendPresenceHeartbeat() {
     try {
-        await api("/presence/heartbeat", {
+        const data = await api("/presence/heartbeat", {
             method: "POST",
             body: JSON.stringify(presencePayload(route)),
         });
+        heartbeatData.value = data;
     } catch {
         // ignore presence failures so navigation stays responsive
     }
@@ -238,6 +240,7 @@ provide("user", user);
 provide("onLogin", onLogin);
 provide("schedule", schedule);
 provide("currencySymbol", currencySymbol);
+provide("heartbeatData", heartbeatData);
 </script>
 
 <template>

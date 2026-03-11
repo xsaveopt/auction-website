@@ -1,11 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, inject, watch } from "vue";
 import { api } from "../api.js";
-import { HEARTBEAT_INTERVAL_MS } from "../presence.js";
 
 const auctions = ref([]);
 const stats = ref(null);
 const loading = ref(true);
+const heartbeatData = inject("heartbeatData");
 
 async function load() {
     const [auctionData, statsData] = await Promise.all([
@@ -18,16 +18,22 @@ async function load() {
     loading.value = false;
 }
 
+watch(heartbeatData, (data) => {
+    if (data?.auctions) {
+        auctions.value = data.auctions;
+    }
+    if (data?.stats) {
+        stats.value = data.stats;
+    }
+});
+
 function watchingText(count) {
     return `${count} currently watching`;
 }
 
-let refreshInterval;
 onMounted(async () => {
     await load();
-    refreshInterval = setInterval(load, HEARTBEAT_INTERVAL_MS);
 });
-onUnmounted(() => clearInterval(refreshInterval));
 
 const bidsMax = computed(() => {
     if (!stats.value) return 1;

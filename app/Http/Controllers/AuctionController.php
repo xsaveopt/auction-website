@@ -3,18 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Support\AuctionService;
 use App\Support\Presence;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class AuctionController extends Controller
 {
+    public function __construct(
+        protected AuctionService $auctionService
+    ) {}
+
     public function index(): JsonResponse
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = $this
+        $auctions = $this->auctionService
             ->auctionQuery()
             ->with(['seller:id,username', 'bids', 'images'])
             ->orderByDesc('watcher_count')
@@ -23,25 +27,25 @@ class AuctionController extends Controller
             ->get();
 
         return response()->json([
-            'auctions' => $auctions->map(fn(Auction $auction) => $this->auctionResponse($auction)),
+            'auctions' => $auctions->map(fn(Auction $auction) => $this->auctionService->auctionResponse($auction)),
         ]);
     }
 
     public function show(Auction $auction): JsonResponse
     {
         /** @var Auction $auction */
-        $auction = $this
+        $auction = $this->auctionService
             ->auctionQuery()
             ->with(['seller:id,username', 'bids.user:id,username', 'images', 'questions.user:id,username'])
             ->findOrFail($auction->id);
 
-        return response()->json(['auction' => $this->auctionResponse($auction, withBids: true)]);
+        return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);
     }
 
     public function ended(): JsonResponse
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = $this
+        $auctions = $this->auctionService
             ->auctionQuery()
             ->with(['seller:id,username', 'bids.user:id,username', 'images'])
             ->where(function ($q) {
@@ -52,7 +56,7 @@ class AuctionController extends Controller
             ->get();
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $allAuctions */
-        $allAuctions = $this->auctionQuery()->with('bids')->get();
+        $allAuctions = $this->auctionService->auctionQuery()->with('bids')->get();
 
         /** @var array<int, array<string, mixed>> $auctionResponses */
         $auctionResponses = [];
@@ -67,7 +71,7 @@ class AuctionController extends Controller
         $auctionsWithSales = 0;
 
         foreach ($allAuctions as $auction) {
-            $allocation = $this->allocate($auction);
+            $allocation = $this->auctionService->allocate($auction);
             $auctionTotalValue = round($auction->quantity * $allocation['clearing_price'], 2);
 
             $totalValueAfterTax += $auctionTotalValue;
@@ -75,7 +79,7 @@ class AuctionController extends Controller
         }
 
         foreach ($auctions as $auction) {
-            $allocation = $this->allocate($auction);
+            $allocation = $this->auctionService->allocate($auction);
             $soldQuantity = array_sum($allocation['allocations']);
 
             $soldItems += $soldQuantity;
@@ -91,7 +95,7 @@ class AuctionController extends Controller
                 }
             }
 
-            $auctionResponses[] = $this->auctionResponseFromAllocation($auction, $allocation, withBids: true);
+            $auctionResponses[] = $this->auctionService->auctionResponseFromAllocation($auction, $allocation, withBids: true);
         }
 
         $revenueAfterTax = round($revenueAfterTax, 2);
@@ -119,7 +123,7 @@ class AuctionController extends Controller
         $user = $request->user();
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = $this
+        $auctions = $this->auctionService
             ->auctionQuery()
             ->with(['seller:id,username', 'bids.user:id,username', 'images'])
             ->whereHas('bids', function ($q) use ($user) {
@@ -132,7 +136,7 @@ class AuctionController extends Controller
         $lost = [];
 
         foreach ($auctions as $auction) {
-            $response = $this->auctionResponse($auction, withBids: true);
+            $response = $this->auctionService->auctionResponse($auction, withBids: true);
             if ($auction->isActive()) {
                 $active[] = $response;
             } else {
@@ -176,7 +180,7 @@ class AuctionController extends Controller
         $auction = $user->auctions()->create($validated);
         $auction->load(['seller:id,username', 'images']);
 
-        return response()->json(['auction' => $this->auctionResponse($auction)], 201);
+        return response()->json(['auction' => $this->auctionService->auctionResponse($auction)], 201);
     }
 
     public function update(Request $request, Auction $auction): JsonResponse
@@ -198,7 +202,7 @@ class AuctionController extends Controller
         $auction->update($validated);
         $auction->load(['seller:id,username', 'bids.user:id,username', 'images']);
 
-        return response()->json(['auction' => $this->auctionResponse($auction, withBids: true)]);
+        return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);
     }
 
     public function destroy(Auction $auction): JsonResponse
@@ -210,127 +214,5 @@ class AuctionController extends Controller
         $auction->delete();
 
         return response()->json(['message' => 'Auction deleted.']);
-    }
-
-    /**
-     * Allocate items to bids, sorted by amount descending.
-     * Returns a map of bid ID => number of items won.
-     *
-     * @return array{allocations: array<int, int>, clearing_price: float}
-     */
-    private function allocate(Auction $auction): array
-    {
-        $sortedBids = $auction->bids->sortByDesc('amount')->values();
-        $remaining = (int) $auction->quantity;
-        /** @var array<int, int> $allocations */
-        $allocations = [];
-        $clearingPrice = (float) $auction->starting_price;
-
-        foreach ($sortedBids as $bid) {
-            if ($remaining <= 0) {
-                break;
-            }
-
-            $give = min((int) $bid->quantity, $remaining);
-            $allocations[$bid->id] = $give;
-            $remaining -= $give;
-            $clearingPrice = (float) $bid->amount;
-        }
-
-        return [
-            'allocations' => $allocations,
-            'clearing_price' => $clearingPrice,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function auctionResponse(Auction $auction, bool $withBids = false): array
-    {
-        return $this->auctionResponseFromAllocation($auction, $this->allocate($auction), $withBids);
-    }
-
-    /**
-     * @param array{allocations: array<int, int>, clearing_price: float} $result
-     * @return array<string, mixed>
-     */
-    private function auctionResponseFromAllocation(Auction $auction, array $result, bool $withBids = false): array
-    {
-        $allocations = $result['allocations'];
-        $clearingPrice = $result['clearing_price'];
-
-        $data = [
-            'id' => $auction->id,
-            'title' => $auction->title,
-            'description' => $auction->description,
-            'starting_price' => $auction->starting_price,
-            'current_price' => $clearingPrice,
-            'quantity' => $auction->quantity,
-            'max_per_bidder' => $auction->max_per_bidder,
-            'ends_at' => $auction->ends_at->toISOString(),
-            'status' => $auction->status,
-            'is_active' => $auction->isActive(),
-            'seller' => $auction->seller
-                ? [
-                    'id' => $auction->seller->id,
-                    'username' => $auction->seller->username,
-                ] : null,
-            'bid_count' => $auction->bids->count(),
-            'watcher_count' => $auction->watcher_count,
-            'items_allocated' => array_sum($allocations),
-            'images' => $auction
-                ->images
-                ->map(fn($img) => [
-                    'id' => $img->id,
-                    'url' => "/api/images/{$img->id}",
-                ])
-                ->values(),
-            'created_at' => $auction->created_at?->toISOString(),
-        ];
-
-        if ($withBids) {
-            $sortedBids = $auction->bids->sortByDesc('amount')->values();
-            $data['bids'] = $sortedBids->map(fn(\App\Models\Bid $bid) => [
-                'id' => $bid->id,
-                'amount' => $bid->amount,
-                'quantity' => $bid->quantity,
-                'won_quantity' => $allocations[$bid->id] ?? 0,
-                'user' => [
-                    'id' => $bid->user?->id,
-                    'username' => $bid->user?->username,
-                ],
-                'created_at' => $bid->created_at?->toISOString(),
-            ]);
-        }
-
-        if ($auction->relationLoaded('questions')) {
-            $data['questions'] = $auction
-                ->questions
-                ->map(fn(\App\Models\AuctionQuestion $question) => [
-                    'id' => $question->id,
-                    'question' => $question->question,
-                    'answer' => $question->answer,
-                    'answered_at' => $question->answered_at?->toISOString(),
-                    'user' => [
-                        'id' => $question->user?->id,
-                        'username' => $question->user?->username,
-                    ],
-                    'created_at' => $question->created_at?->toISOString(),
-                ])
-                ->values();
-        }
-
-        return $data;
-    }
-
-    /** @return Builder<Auction> */
-    private function auctionQuery(): Builder
-    {
-        return Auction::query()
-            ->select('auctions.*')
-            ->addSelect([
-                'watcher_count' => Presence::watcherCountSubquery(),
-            ]);
     }
 }

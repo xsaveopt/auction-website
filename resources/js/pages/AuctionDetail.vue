@@ -1,8 +1,7 @@
 <script setup>
-import { ref, inject, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, inject, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../api.js";
-import { HEARTBEAT_INTERVAL_MS } from "../presence.js";
 
 const router = useRouter();
 
@@ -10,6 +9,7 @@ const props = defineProps({ id: String });
 const user = inject("user");
 const schedule = inject("schedule");
 const currencySymbol = inject("currencySymbol");
+const heartbeatData = inject("heartbeatData");
 const auction = ref(null);
 const bidAmount = ref("");
 const bidQuantity = ref(1);
@@ -59,15 +59,13 @@ function bidKey(bid) {
     return `${bid.id}:${bid.amount}:${bid.quantity}`;
 }
 
-async function load(showLoading = false) {
-    if (showLoading) loading.value = true;
-
-    const data = await api(`/auctions/${props.id}`);
+function updateAuction(newAuction) {
+    if (!newAuction) return;
 
     // Detect new or changed bids for highlight animation
     if (auction.value?.bids) {
         const oldKeys = new Set(auction.value.bids.map(bidKey));
-        const newHighlights = data.auction.bids
+        const newHighlights = newAuction.bids
             .filter((b) => !oldKeys.has(bidKey(b)))
             .map((b) => b.id);
         if (newHighlights.length) {
@@ -78,13 +76,19 @@ async function load(showLoading = false) {
         }
     }
 
-    auction.value = data.auction;
-    activeImage.value = Math.min(activeImage.value, Math.max(data.auction.images.length - 1, 0));
-    const my = data.auction.bids.find((b) => b.user.id === user.value?.id);
+    auction.value = newAuction;
+    activeImage.value = Math.min(activeImage.value, Math.max(newAuction.images.length - 1, 0));
+    const my = newAuction.bids.find((b) => b.user.id === user.value?.id);
     bidAmount.value = my
         ? (Number(my.amount) + 1).toFixed(2)
-        : Number(data.auction.starting_price).toFixed(2);
+        : Number(newAuction.starting_price).toFixed(2);
     bidQuantity.value = my ? my.quantity : 1;
+}
+
+async function load(showLoading = false) {
+    if (showLoading) loading.value = true;
+    const data = await api(`/auctions/${props.id}`);
+    updateAuction(data.auction);
     loading.value = false;
 }
 
@@ -219,11 +223,16 @@ function watchingText(count) {
     return `${count} currently watching`;
 }
 
-let refreshInterval;
 onMounted(async () => {
     await load(true);
-    refreshInterval = setInterval(load, HEARTBEAT_INTERVAL_MS);
 });
+
+watch(heartbeatData, (data) => {
+    if (data?.auction && String(data.auction.id) === String(props.id)) {
+        updateAuction(data.auction);
+    }
+});
+
 watch(
     () => props.id,
     async () => {
@@ -231,7 +240,6 @@ watch(
         await load(true);
     },
 );
-onUnmounted(() => clearInterval(refreshInterval));
 </script>
 
 <template>
