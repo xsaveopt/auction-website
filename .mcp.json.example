@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "auction-pricing": {
+            "command": "node",
+            "args": ["mcp-server/index.js"],
+            "env": {
+                "AUCTION_URL": "https://example.com",
+                "MCP_API_KEY": "CHANGE_ME"
+            }
+        }
+    }
+}

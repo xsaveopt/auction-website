@@ -1,0 +1,12 @@
+{
+    "name": "auction-mcp-server",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "bin": {
+        "auction-mcp": "./index.js"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.12.1"
+    }
+}

@@ -25,6 +25,7 @@ jobs:
       - run: composer install --no-interaction
       - run: npm ci
       - run: composer format:check
+      - run: npm run format:check
 
   lint:
     name: Linting
@@ -46,6 +47,7 @@ jobs:
       - run: composer install --no-interaction
       - run: npm ci
       - run: composer lint
+      - run: npm run lint
 
   test:
     name: Tests

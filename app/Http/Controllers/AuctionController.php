@@ -79,7 +79,9 @@ class AuctionController extends Controller
             if ($auction->isActive()) {
                 $active[] = $response;
             } else {
-                $myBid = collect($response['bids'])->firstWhere('user.id', $user->id);
+                /** @var array<int, array{user: array{id: int, username: string}, won_quantity: int}> $bids */
+                $bids = $response['bids'];
+                $myBid = collect($bids)->firstWhere('user.id', $user->id);
                 if ($myBid && $myBid['won_quantity'] > 0) {
                     $won[] = $response;
                 } else {

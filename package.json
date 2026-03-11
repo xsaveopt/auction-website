@@ -5,7 +5,9 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "lint": "oxlint resources/js/"
+        "lint": "oxlint resources/js/",
+        "format": "prettier --write resources/js/",
+        "format:check": "prettier --check resources/js/"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
