@@ -34,8 +34,7 @@ class ListUsersCommand extends Command
         if ($this->option('search')) {
             $search = $this->option('search');
             $query->where(function ($q) use ($search) {
-                $q->where('username', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                $q->where('username', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -44,8 +43,9 @@ class ListUsersCommand extends Command
         }
 
         $headers = ['ID', 'Username', 'Email', 'Is Admin', 'Created At'];
-        
-        $users = $query->latest()
+
+        $users = $query
+            ->latest()
             ->limit((int) $this->option('limit'))
             ->get(['id', 'username', 'email', 'is_admin', 'created_at'])
             ->map(function ($user) {
@@ -59,7 +59,7 @@ class ListUsersCommand extends Command
             });
 
         $this->table($headers, $users);
-        
+
         if ($users->isEmpty()) {
             $this->info('No users found.');
         } else {

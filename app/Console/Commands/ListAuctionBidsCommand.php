@@ -38,7 +38,7 @@ class ListAuctionBidsCommand extends Command
         }
 
         $this->info("Bids for auction: {$auction->title} (ID: {$auction->id})");
-        $this->info("Current Price: " . $auction->currentPrice());
+        $this->info('Current Price: ' . $auction->currentPrice());
 
         $bids = Bid::with('user')
             ->where('auction_id', $auctionId)

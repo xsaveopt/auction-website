@@ -77,7 +77,7 @@ class BulkUpdateAuctionsCommand extends Command
                         if (!str_starts_with($modifier, '+') && !str_starts_with($modifier, '-')) {
                             $modifier = "+{$modifier}";
                         }
-                        
+
                         $auction->ends_at = $auction->ends_at->modify($modifier);
                         $updated = true;
                     } catch (\Exception $e) {
