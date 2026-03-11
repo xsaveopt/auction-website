@@ -25,6 +25,12 @@ class QuotePdfController extends Controller
 
         $totalOwed = $wonQty * $clearingPrice;
 
+        /** @var float $btwPercentage */
+        $btwPercentage = config('auction.invoice.btw_percentage');
+        $total = $totalOwed;
+        $subtotal = round($total / (1 + ($btwPercentage / 100)), 2);
+        $btwAmount = round($total - $subtotal, 2);
+
         $data = [
             'quote_number' =>
                 'Q-'
@@ -35,20 +41,26 @@ class QuotePdfController extends Controller
                 'id' => $auction->id,
                 'title' => $auction->title,
                 'description' => $auction->description,
-                'ends_at' => $auction->ends_at->format('M j, Y \a\t H:i'),
+                'ends_at' => $auction->ends_at->format('d-m-Y'),
                 'quantity' => $auction->quantity,
                 'bid_count' => $auction->bids->count(),
             ],
             'winner' => [
                 'username' => $bid->user->username ?? 'Unknown',
                 'bid_amount' => (float) $bid->amount,
-                'bid_date' => $bid->created_at?->format('M j, Y \a\t H:i') ?? '',
+                'bid_date' => $bid->created_at?->format('d-m-Y') ?? '',
                 'won_quantity' => $wonQty,
                 'total_owed' => $totalOwed,
             ],
             'clearing_price' => $clearingPrice,
             'currency' => BiddingSchedule::currencySymbol(),
-            'generated_at' => now()->format('M j, Y \a\t H:i'),
+            'generated_at' => now()->format('d-m-Y'),
+            'company' => config('auction.company'),
+            'subtotal' => $subtotal,
+            'btw_percentage' => number_format($btwPercentage, 2),
+            'btw_amount' => $btwAmount,
+            'total' => $total,
+            'payment_days' => config('auction.invoice.payment_days'),
         ];
 
         /** @var \Barryvdh\DomPDF\PDF $pdf */

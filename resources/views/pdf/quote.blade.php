@@ -3,10 +3,13 @@
 <head>
     <meta charset="utf-8">
     <style>
+        @page {
+            margin: 0;
+        }
         body {
             font-family: DejaVu Sans, sans-serif;
             color: #333333;
-            font-size: 11px;
+            font-size: 10px;
             margin: 0;
             padding: 0;
         }
@@ -18,73 +21,146 @@
 </head>
 <body>
 
-    <table>
+    {{-- Header bar --}}
+    <table cellpadding="0" cellspacing="0" style="background-color: #1e3e50; color: #ffffff;">
         <tr>
-            <td style="font-size: 16px; font-weight: bold; color: #111111; padding-bottom: 50px;">
-                Auction House
+            <td style="width: 25%; padding: 22px 15px 22px 50px; vertical-align: middle;">
+                <span style="font-size: 22px; font-weight: bold; letter-spacing: 0.5px;">{{ $company['name'] }}</span>
             </td>
-            <td style="text-align: right; padding-bottom: 50px;">
-                <span style="font-size: 24px; font-weight: bold; color: #111111;">Quote</span><br>
-                <span style="color: #666666;">{{ $quote_number }}</span><br>
-                <span style="color: #666666;">{{ $generated_at }}</span>
+            <td style="width: 25%; padding: 22px 15px; vertical-align: top; font-size: 8.5px; line-height: 1.6;">
+                <span style="font-size: 9px; font-weight: bold;">Bezoekadres</span><br>
+                {{ $company['name'] }}<br>
+                {{ $company['street'] }}<br>
+                {{ $company['postal_code'] }} {{ $company['city'] }}
             </td>
-        </tr>
-    </table>
-
-    <table>
-        <tr>
-            <td style="padding-bottom: 40px; width: 50%;">
-                <span style="color: #999999; font-size: 10px;">ISSUED TO</span><br>
-                <span style="font-weight: bold; color: #111111; font-size: 12px;">{{ $winner['username'] }}</span>
+            <td style="width: 25%; padding: 22px 15px; vertical-align: top; font-size: 8.5px; line-height: 1.6;">
+                <span style="font-size: 9px; font-weight: bold;">Zakelijk</span><br>
+                KvK {{ $company['kvk'] }}<br>
+                BTW {{ $company['btw'] }}
             </td>
-            <td style="padding-bottom: 40px; width: 50%; text-align: right;">
-                <span style="color: #999999; font-size: 10px;">AUCTION ENDED</span><br>
-                <span>{{ $auction['ends_at'] }}</span>
-            </td>
-        </tr>
-    </table>
-
-    <table>
-        <tr>
-            <td style="padding: 8px 0; border-bottom: 1px solid #111111; font-size: 10px; color: #666666; font-weight: bold;">Description</td>
-            <td style="padding: 8px 0; border-bottom: 1px solid #111111; font-size: 10px; color: #666666; font-weight: bold; text-align: right; width: 60px;">Qty</td>
-            <td style="padding: 8px 0; border-bottom: 1px solid #111111; font-size: 10px; color: #666666; font-weight: bold; text-align: right; width: 100px;">Unit price</td>
-            <td style="padding: 8px 0; border-bottom: 1px solid #111111; font-size: 10px; color: #666666; font-weight: bold; text-align: right; width: 100px;">Amount</td>
-        </tr>
-        <tr>
-            <td style="padding: 12px 0; border-bottom: 1px solid #eeeeee;">{{ $auction['title'] }}</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right;">{{ $winner['won_quantity'] }}</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right;">{{ $currency }}{{ number_format($clearing_price, 2) }}</td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right;">{{ $currency }}{{ number_format($winner['total_owed'], 2) }}</td>
-        </tr>
-    </table>
-
-    <br>
-
-    <table>
-        <tr>
-            <td></td>
-            <td style="width: 120px; padding: 6px 0; color: #666666;">Subtotal</td>
-            <td style="width: 100px; padding: 6px 0; text-align: right;">{{ $currency }}{{ number_format($winner['total_owed'], 2) }}</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td style="padding: 10px 0; font-weight: bold; color: #111111; font-size: 13px; border-top: 2px solid #111111;">Total due</td>
-            <td style="padding: 10px 0; font-weight: bold; color: #111111; font-size: 13px; border-top: 2px solid #111111; text-align: right;">{{ $currency }}{{ number_format($winner['total_owed'], 2) }}</td>
-        </tr>
-    </table>
-
-    <br><br><br>
-
-    <table>
-        <tr>
-            <td style="border-top: 1px solid #eeeeee; padding-top: 15px; color: #999999; font-size: 10px;">
-                Clearing price: {{ $currency }}{{ number_format($clearing_price, 2) }} per item.
-                All winners pay the same unit price regardless of individual bid amount.
-                <br>{{ $quote_number }}
+            <td style="width: 25%; padding: 22px 15px 22px 15px; vertical-align: top; font-size: 8.5px; line-height: 1.6;">
+                <span style="font-size: 9px; font-weight: bold;">Financieel</span><br>
+                {{ $company['iban_1'] }}<br>
+                {{ $company['iban_2'] }}
             </td>
         </tr>
     </table>
+
+    {{-- Content --}}
+    <div style="padding: 40px 50px 120px 50px;">
+
+        {{-- Recipient --}}
+        <div style="margin-bottom: 40px;">
+            <div style="font-size: 8.5px; color: #999999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+                {{ $company['name'] }}
+            </div>
+            <div style="font-size: 11px; font-weight: bold; color: #111111; line-height: 1.6;">
+                {{ $winner['username'] }}
+            </div>
+        </div>
+
+        {{-- Title --}}
+        <div style="font-size: 28px; font-weight: bold; color: #111111; margin-bottom: 20px;">
+            Factuur
+        </div>
+
+        {{-- Invoice details --}}
+        <table style="margin-bottom: 50px;">
+            <tr>
+                <td style="width: 180px; padding: 3px 0; font-size: 10px;">Factuurnummer:</td>
+                <td style="padding: 3px 0; font-size: 10px;">{{ $quote_number }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 3px 0; font-size: 10px;">Factuurdatum:</td>
+                <td style="padding: 3px 0; font-size: 10px;">{{ $generated_at }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 3px 0; font-size: 10px;">Artikel:</td>
+                <td style="padding: 3px 0; font-size: 10px;">{{ $auction['title'] }}</td>
+            </tr>
+        </table>
+
+        {{-- Line items --}}
+        <table>
+            <tr>
+                <td style="font-weight: bold; font-size: 10px; padding: 8px 0; border-bottom: 2px solid #c0392b;">
+                    Omschrijving
+                </td>
+                <td style="font-weight: bold; font-size: 10px; padding: 8px 0; border-bottom: 2px solid #c0392b; text-align: right; width: 120px;">
+                    Totaal
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 0; border-bottom: 1px solid #eeeeee; font-size: 10px;">
+                    {{ $auction['title'] }}
+                    @if($winner['won_quantity'] > 1)
+                        ({{ $winner['won_quantity'] }}&times;)
+                    @endif
+                </td>
+                <td style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-size: 10px; white-space: nowrap;">
+                    {{ $currency }} {{ number_format($total, 2, ',', '.') }}
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+        {{-- Totals --}}
+        <table>
+            <tr>
+                <td></td>
+                <td style="width: 240px; padding: 4px 0; font-weight: bold; font-size: 10px; text-align: right; padding-right: 15px;">
+                    Totaal excl. BTW
+                </td>
+                <td style="width: 15px; text-align: right; font-size: 10px; padding: 4px 0;">{{ $currency }}</td>
+                <td style="width: 80px; text-align: right; font-size: 10px; padding: 4px 0;">
+                    {{ number_format($subtotal, 2, ',', '.') }}
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td style="padding: 4px 0; font-size: 10px; text-align: right; padding-right: 15px;">
+                    <strong>{{ $btw_percentage }}% BTW</strong>
+                    &nbsp;&nbsp;<span style="color: #666666;">over {{ $currency }} {{ number_format($subtotal, 2, ',', '.') }}</span>
+                </td>
+                <td style="text-align: right; font-size: 10px; padding: 4px 0;">{{ $currency }}</td>
+                <td style="text-align: right; font-size: 10px; padding: 4px 0;">
+                    {{ number_format($btw_amount, 2, ',', '.') }}
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td style="padding: 4px 0; font-weight: bold; font-size: 10px; text-align: right; padding-right: 15px;">
+                    Totaal te voldoen
+                </td>
+                <td style="text-align: right; font-size: 10px; padding: 4px 0;">{{ $currency }}</td>
+                <td style="text-align: right; font-size: 10px; padding: 4px 0;">
+                    {{ number_format($total, 2, ',', '.') }}
+                </td>
+            </tr>
+        </table>
+
+        {{-- Payment terms --}}
+        <div style="margin-top: 50px; font-size: 10px; line-height: 1.6;">
+            Graag verzoeken wij u dit bedrag binnen {{ $payment_days }} dagen na dagtekening van deze nota te betalen
+            (o.v.v. het factuurnummer) door overschrijving naar onze bankrekening: {{ $company['iban_1'] }}
+        </div>
+
+        <div style="margin-top: 20px; font-size: 10px;">
+            {{ $company['name'] }}
+        </div>
+
+    </div>
+
+    {{-- Footer --}}
+    <div style="position: fixed; bottom: 0; left: 0; right: 0; border-top: 1px solid #cccccc; padding: 15px 50px;">
+        <table>
+            <tr>
+                <td style="font-weight: bold; font-size: 9px;">{{ $company['name'] }}</td>
+                <td style="text-align: right; font-size: 9px;">Pagina 1</td>
+            </tr>
+        </table>
+    </div>
 
 </body>
 </html>
