@@ -250,7 +250,8 @@ function timeLeft(endsAt) {
                         </div>
                         <div class="mt-3 flex items-center justify-between text-sm">
                             <span class="font-bold text-green-700 dark:text-green-400"
-                                >{{ currencySymbol }}{{ Number(auction.current_price).toFixed(2) }}</span
+                                >{{ currencySymbol
+                                }}{{ Number(auction.current_price).toFixed(2) }}</span
                             >
                             <span
                                 :class="
