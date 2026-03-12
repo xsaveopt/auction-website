@@ -6,6 +6,7 @@ const auctions = ref([]);
 const stats = ref(null);
 const loading = ref(true);
 const heartbeatData = inject("heartbeatData");
+const currencySymbol = inject("currencySymbol");
 
 async function load() {
     const [auctionData, statsData] = await Promise.all([
@@ -249,7 +250,7 @@ function timeLeft(endsAt) {
                         </div>
                         <div class="mt-3 flex items-center justify-between text-sm">
                             <span class="font-bold text-green-700 dark:text-green-400"
-                                >${{ Number(auction.current_price).toFixed(2) }}</span
+                                >{{ currencySymbol }}{{ Number(auction.current_price).toFixed(2) }}</span
                             >
                             <span
                                 :class="
