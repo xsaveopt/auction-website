@@ -317,6 +317,12 @@ provide("heartbeatData", heartbeatData);
                         >
                         <router-link
                             v-if="user.is_admin"
+                            to="/admin/monitoring"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
+                            >Monitoring</router-link
+                        >
+                        <router-link
+                            v-if="user.is_admin"
                             to="/admin/results"
                             class="text-blue-600 dark:text-blue-400 hover:underline"
                             >Results</router-link

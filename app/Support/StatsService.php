@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\DB;
  * @phpstan-type BidCountData array{label: string, date: string, count: int}
  * @phpstan-type HotAuctionData array{id: int, title: string, bid_count: int}
  * @phpstan-type TopBidderData array{username: string, auction_count: int}
- * @phpstan-type EndingSoonData array{id: int, title: string, ends_at: string, bid_count: int}
  * @phpstan-type StatsData array{
  *     active_auctions: int,
  *     ended_auctions: int,
@@ -24,8 +23,7 @@ use Illuminate\Support\Facades\DB;
  *     online_users: int,
  *     bids_per_day: list<BidCountData>,
  *     hot_auctions: Collection<int, HotAuctionData>,
- *     top_bidders: Collection<int, TopBidderData>,
- *     ending_soon: Collection<int, EndingSoonData>
+ *     top_bidders: Collection<int, TopBidderData>
  * }
  */
 class StatsService
@@ -89,21 +87,6 @@ class StatsService
                 'auction_count' => intval($b->auction_count),
             ]);
 
-        // Auctions ending soon (next 24h)
-        $endingSoon = Auction::where('status', 'active')
-            ->where('ends_at', '>', $now)
-            ->where('ends_at', '<=', $now->copy()->addDay())
-            ->withCount('bids')
-            ->orderBy('ends_at')
-            ->limit(3)
-            ->get()
-            ->map(fn(Auction $a) => [
-                'id' => $a->id,
-                'title' => $a->title,
-                'ends_at' => $a->ends_at->toIso8601String(),
-                'bid_count' => (int) $a->bids_count,
-            ]);
-
         return [
             'active_auctions' => $activeAuctions,
             'ended_auctions' => $endedAuctions,
@@ -115,7 +98,6 @@ class StatsService
             'bids_per_day' => $bidsPerDay,
             'hot_auctions' => $hotAuctions,
             'top_bidders' => $topBidders,
-            'ending_soon' => $endingSoon,
         ];
     }
 }

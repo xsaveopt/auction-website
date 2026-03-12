@@ -1,6 +1,8 @@
 {
 	{$CADDY_GLOBAL_OPTIONS}
 
+	metrics
+
 	frankenphp {
 		{$FRANKENPHP_CONFIG}
 	}

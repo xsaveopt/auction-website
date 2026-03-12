@@ -162,8 +162,8 @@ function timeLeft(endsAt) {
                         </ul>
                     </div>
 
-                    <!-- Top bidders + ending soon -->
-                    <div class="bg-white dark:bg-gray-800 rounded shadow p-4 space-y-4">
+                    <!-- Top bidders -->
+                    <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
                         <div>
                             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Top Bidders
@@ -199,22 +199,6 @@ function timeLeft(endsAt) {
                                     >
                                 </div>
                             </div>
-                        </div>
-                        <div v-if="stats.ending_soon.length > 0">
-                            <h3 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2">
-                                Ending Soon
-                            </h3>
-                            <ul class="space-y-1">
-                                <li v-for="a in stats.ending_soon" :key="a.id">
-                                    <router-link
-                                        :to="`/auctions/${a.id}`"
-                                        class="text-sm text-red-600 dark:text-red-400 hover:underline"
-                                    >
-                                        {{ a.title }} —
-                                        {{ timeLeft(a.ends_at) }}
-                                    </router-link>
-                                </li>
-                            </ul>
                         </div>
                     </div>
                 </div>

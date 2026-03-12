@@ -3,6 +3,7 @@ import AuctionList from "./pages/AuctionList.vue";
 import AuctionDetail from "./pages/AuctionDetail.vue";
 import CreateAuction from "./pages/CreateAuction.vue";
 import EditAuction from "./pages/EditAuction.vue";
+import AdminMonitoring from "./pages/AdminMonitoring.vue";
 import AdminResults from "./pages/AdminResults.vue";
 import AdminQuestions from "./pages/AdminQuestions.vue";
 import Login from "./pages/Login.vue";
@@ -14,6 +15,11 @@ const routes = [
     {
         path: "/dashboard",
         component: MyDashboard,
+        meta: { requiresAuth: true },
+    },
+    {
+        path: "/admin/monitoring",
+        component: AdminMonitoring,
         meta: { requiresAuth: true },
     },
     {

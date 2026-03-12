@@ -42,4 +42,8 @@ return [
         'tenant' => env('MICROSOFT_TENANT_ID'),
     ],
 
+    'caddy' => [
+        'metrics_url' => env('CADDY_METRICS_URL', 'http://127.0.0.1:2019/metrics'),
+    ],
+
 ];
