@@ -14,6 +14,12 @@ class MetricsController extends Controller
 {
     public function __invoke(PrometheusService $prometheus): Response
     {
+        $token = config('services.metrics.token');
+
+        if ($token && request()->bearerToken() !== $token) {
+            abort(404);
+        }
+
         $now = now();
 
         $activeAuctions = Auction::where('status', 'active')->where('ends_at', '>', $now)->count();

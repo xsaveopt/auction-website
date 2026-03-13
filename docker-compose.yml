@@ -13,9 +13,15 @@ services:
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
+    env_file: .env
+    entrypoint: /bin/sh
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.retention.time=30d"
+      - -c
+      - |
+        printf '%s' "$$METRICS_TOKEN" > /tmp/metrics_token
+        exec /bin/prometheus \
+          --config.file=/etc/prometheus/prometheus.yml \
+          --storage.tsdb.retention.time=30d
 
   grafana:
     image: grafana/grafana:latest

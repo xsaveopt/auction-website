@@ -42,5 +42,8 @@ return [
         'tenant' => env('MICROSOFT_TENANT_ID'),
     ],
 
+    'metrics' => [
+        'token' => env('METRICS_TOKEN'),
+    ],
 
 ];
