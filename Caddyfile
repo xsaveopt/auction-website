@@ -31,3 +31,10 @@
 
 	php_server
 }
+
+:9113 {
+	root * /app/public
+	php_server {
+		resolve_root_symlink
+	}
+}
