@@ -11,7 +11,8 @@ FROM dunglas/frankenphp:1-php8
 RUN apt-get update && apt-get install -y --no-install-recommends unzip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN install-php-extensions pdo_sqlite bcmath opcache pcntl
+RUN install-php-extensions pdo_sqlite bcmath opcache pcntl apcu \
+    && echo "apc.enable_cli=1" >> /usr/local/etc/php/conf.d/docker-php-ext-apcu.ini
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

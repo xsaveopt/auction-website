@@ -5,7 +5,6 @@ use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\AuctionImageController;
 use App\Http\Controllers\AuctionQuestionController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\AdminMonitoringController;
 use App\Http\Controllers\BidController;
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\QuotePdfController;
@@ -24,7 +23,6 @@ Route::get('/user', [AuthController::class, 'user']);
 Route::middleware('sso')->group(function () {
     // Stats
     Route::get('/stats', [StatsController::class, 'index']);
-    Route::get('/admin/monitoring', [AdminMonitoringController::class, 'index'])->middleware(['auth', 'admin']);
     Route::post('/presence/heartbeat', [PresenceController::class, 'heartbeat']);
 
     // Bidding schedule

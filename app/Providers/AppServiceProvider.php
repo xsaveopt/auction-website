@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\PrometheusService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use SocialiteProviders\Manager\SocialiteWasCalled;
@@ -14,7 +15,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(PrometheusService::class);
     }
 
     /**

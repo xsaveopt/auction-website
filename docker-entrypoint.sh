@@ -28,4 +28,4 @@ php artisan config:cache
 php artisan migrate --force
 
 # Serve with Octane (FrankenPHP)
-exec php artisan octane:frankenphp --host=0.0.0.0 --port=443 --admin-port=2019 --caddyfile /app/Caddyfile
+exec php artisan octane:frankenphp --host=0.0.0.0 --port=443 --caddyfile /app/Caddyfile

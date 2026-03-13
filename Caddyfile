@@ -1,10 +1,16 @@
 {
 	{$CADDY_GLOBAL_OPTIONS}
 
+	admin 0.0.0.0:2019
+
 	metrics
 
 	frankenphp {
 		{$FRANKENPHP_CONFIG}
+	}
+
+	servers {
+		metrics
 	}
 }
 
@@ -18,6 +24,10 @@
 	encode zstd br gzip
 
 	{$CADDY_SERVER_EXTRA_DIRECTIVES}
+
+	handle /grafana* {
+		reverse_proxy {$GRAFANA_HOST:grafana:3000}
+	}
 
 	php_server
 }
