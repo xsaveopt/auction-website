@@ -11,6 +11,11 @@ mkdir -p /data/images
 rm -rf /app/storage/app/public
 ln -sf /data/images /app/storage/app/public
 
+# Persist logs
+mkdir -p /data/logs
+rm -rf /app/storage/logs
+ln -sf /data/logs /app/storage/logs
+
 # Persist Caddy TLS certificates
 export XDG_DATA_HOME=/data/caddy_data
 export XDG_CONFIG_HOME=/data/caddy_config
