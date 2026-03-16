@@ -144,6 +144,11 @@ const scheduleBar = computed(() => {
     };
 });
 
+const serverClock = computed(() => {
+    const d = now.value;
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+});
+
 const shellWidthClass = "max-w-7xl";
 
 async function fetchUser() {
@@ -298,6 +303,11 @@ provide("heartbeatData", heartbeatData);
                             {{ scheduleBar.label }}
                         </span>
                     </div>
+                    <span
+                        class="text-xs tabular-nums text-gray-500 dark:text-gray-400"
+                        title="Server time"
+                        >{{ serverClock }}</span
+                    >
                     <button
                         @click="toggleTheme"
                         class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"

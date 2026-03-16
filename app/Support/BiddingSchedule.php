@@ -59,7 +59,24 @@ class BiddingSchedule
     }
 
     /**
-     * @return array{enabled: bool, closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, currency_symbol: string}
+     * @return array{enabled: bool, window: int, extension: int}
+     */
+    public static function antiSniping(): array
+    {
+        /** @var int $window */
+        $window = config('auction.anti_sniping_window', 60);
+        /** @var int $extension */
+        $extension = config('auction.anti_sniping_extension', 300);
+
+        return [
+            'enabled' => boolval(config('auction.anti_sniping_enabled', true)),
+            'window' => $window,
+            'extension' => $extension,
+        ];
+    }
+
+    /**
+     * @return array{enabled: bool, closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, currency_symbol: string, anti_sniping: array{enabled: bool, window: int, extension: int}}
      */
     public static function toArray(): array
     {
@@ -71,6 +88,7 @@ class BiddingSchedule
             'is_open' => self::isBiddingOpen(),
             'server_time' => now()->toISOString() ?? '',
             'currency_symbol' => self::currencySymbol(),
+            'anti_sniping' => self::antiSniping(),
         ];
     }
 }

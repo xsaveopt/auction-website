@@ -70,9 +70,15 @@ class BidController extends Controller
             $auction->bids()->save($bid);
         }
 
-        // Soft Close: extend by 2 minutes if bid is within 2 minutes of end
-        if (now()->diffInSeconds($auction->ends_at, false) < 120) {
-            $auction->ends_at = $auction->ends_at->addMinutes(2);
+        // Anti-sniping: extend auction if bid placed near the end
+        $antiSnipingEnabled = boolval(config('auction.anti_sniping_enabled', true));
+        /** @var int $antiSnipingWindow */
+        $antiSnipingWindow = config('auction.anti_sniping_window', 60);
+        /** @var int $antiSnipingExtension */
+        $antiSnipingExtension = config('auction.anti_sniping_extension', 300);
+
+        if ($antiSnipingEnabled && now()->diffInSeconds($auction->ends_at, false) < $antiSnipingWindow) {
+            $auction->ends_at = $auction->ends_at->addSeconds($antiSnipingExtension);
             $auction->save();
         }
 

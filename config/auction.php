@@ -6,6 +6,10 @@ return [
     'bidding_closed_end' => env('BIDDING_CLOSED_END', '18:00'),
     'weekends_open' => env('BIDDING_WEEKENDS_OPEN', true),
     'currency_symbol' => env('CURRENCY_SYMBOL', '$'),
+
+    'anti_sniping_enabled' => (bool) env('ANTI_SNIPING_ENABLED', true),
+    'anti_sniping_window' => (int) env('ANTI_SNIPING_WINDOW', 60),
+    'anti_sniping_extension' => (int) env('ANTI_SNIPING_EXTENSION', 300),
     'mcp_api_key' => env('MCP_API_KEY'),
 
     'company' => [
