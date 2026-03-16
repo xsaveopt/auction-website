@@ -58,7 +58,7 @@ const schedule = computed(() => {
 });
 
 const scheduleBar = computed(() => {
-    if (!rawSchedule.value) return null;
+    if (!rawSchedule.value || !rawSchedule.value.enabled) return null;
     const date = now.value;
     const day = date.getDay();
     const current = currentFractionalMinutes(date);

@@ -6,6 +6,11 @@ use Illuminate\Support\Carbon;
 
 class BiddingSchedule
 {
+    public static function isEnabled(): bool
+    {
+        return boolval(config('auction.bidding_schedule_enabled', true));
+    }
+
     public static function closedStart(): string
     {
         /** @var string */
@@ -25,6 +30,10 @@ class BiddingSchedule
 
     public static function isBiddingOpen(?Carbon $at = null): bool
     {
+        if (!self::isEnabled()) {
+            return true;
+        }
+
         $now = $at ?? now();
 
         if (self::weekendsOpen() && $now->isWeekend()) {
@@ -50,11 +59,12 @@ class BiddingSchedule
     }
 
     /**
-     * @return array{closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, currency_symbol: string}
+     * @return array{enabled: bool, closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, currency_symbol: string}
      */
     public static function toArray(): array
     {
         return [
+            'enabled' => self::isEnabled(),
             'closed_start' => self::closedStart(),
             'closed_end' => self::closedEnd(),
             'weekends_open' => self::weekendsOpen(),

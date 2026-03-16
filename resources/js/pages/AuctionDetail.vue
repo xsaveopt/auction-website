@@ -360,7 +360,7 @@ watch(
                     {{ myBid ? "Update Your Bid" : "Place a Bid" }}
                 </h2>
                 <div
-                    v-if="schedule && !schedule.is_open"
+                    v-if="schedule && schedule.enabled && !schedule.is_open"
                     class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded p-3 mb-3 text-orange-700 dark:text-orange-400 text-sm"
                 >
                     Bidding is closed during office hours ({{ schedule.closed_start }} –
