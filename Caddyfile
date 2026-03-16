@@ -9,9 +9,7 @@
 		{$FRANKENPHP_CONFIG}
 	}
 
-	servers {
-		metrics
-	}
+	servers
 }
 
 {$SERVER_NAME:localhost} {
