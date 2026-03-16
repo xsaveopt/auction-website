@@ -25,13 +25,15 @@ class McpApiKeyMiddleware
 
         $bearer = $request->bearerToken();
 
-        if ($bearer && is_string($configuredKey) && hash_equals($configuredKey, $bearer)) {
-            $admin = User::where('is_admin', true)->first();
+        if (!$bearer || !is_string($configuredKey) || !hash_equals($configuredKey, $bearer)) {
+            return $next($request);
+        }
 
-            if ($admin) {
-                Auth::setUser($admin);
-                $request->attributes->set('mcp_authenticated', true);
-            }
+        $admin = User::where('is_admin', true)->first();
+
+        if ($admin) {
+            Auth::setUser($admin);
+            $request->attributes->set('mcp_authenticated', true);
         }
 
         return $next($request);

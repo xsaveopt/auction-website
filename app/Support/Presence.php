@@ -17,11 +17,16 @@ class Presence
         return now()->subSeconds(self::HEARTBEAT_TTL_SECONDS);
     }
 
+    private const CLEANUP_INTERVAL_SECONDS = 30;
+
     public static function heartbeat(string $pageId, string $clientId, string $pageType, ?int $auctionId = null): void
     {
         $now = now();
 
-        PresenceHeartbeat::query()->where('last_seen_at', '<', self::cutoff())->delete();
+        if (!apcu_exists('presence_cleanup') || apcu_fetch('presence_cleanup') < time()) {
+            PresenceHeartbeat::query()->where('last_seen_at', '<', self::cutoff())->delete();
+            apcu_store('presence_cleanup', time() + self::CLEANUP_INTERVAL_SECONDS);
+        }
 
         PresenceHeartbeat::query()->upsert(
             [
@@ -47,6 +52,26 @@ class Presence
             ->select('client_id')
             ->distinct()
             ->count('client_id');
+    }
+
+    /**
+     * @param array<int, int> $auctionIds
+     * @return array<int, int>
+     */
+    public static function watcherCountsForAuctions(array $auctionIds): array
+    {
+        if (empty($auctionIds)) {
+            return [];
+        }
+
+        /** @var array<int, int> */
+        return PresenceHeartbeat::query()
+            ->selectRaw('auction_id, COUNT(DISTINCT client_id) as watcher_count')
+            ->whereIn('auction_id', $auctionIds)
+            ->where('last_seen_at', '>=', self::cutoff())
+            ->groupBy('auction_id')
+            ->pluck('watcher_count', 'auction_id')
+            ->all();
     }
 
     public static function watchersForAuction(int $auctionId): int

@@ -54,13 +54,14 @@ class PresenceController extends Controller
 
         if ($validated['page_type'] === 'home') {
             /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-            $auctions = $this->auctionService
-                ->auctionQuery()
+            $auctions = Auction::query()
                 ->with(['seller:id,username', 'bids', 'images'])
-                ->orderByDesc('watcher_count')
                 ->orderByRaw("CASE WHEN status = 'active' AND ends_at > ? THEN 1 ELSE 0 END DESC", [now()])
                 ->orderByDesc('created_at')
                 ->get();
+
+            $this->auctionService->loadWatcherCounts($auctions);
+            $auctions = $auctions->sortByDesc('watcher_count')->values();
 
             $response['auctions'] = $auctions->map(
                 fn(Auction $auction) => $this->auctionService->auctionResponse($auction),
@@ -68,12 +69,12 @@ class PresenceController extends Controller
             $response['stats'] = $this->statsService->getStats();
         } elseif ($validated['page_type'] === 'auction' && $auctionId) {
             /** @var Auction|null $auction */
-            $auction = $this->auctionService
-                ->auctionQuery()
+            $auction = Auction::query()
                 ->with(['seller:id,username', 'bids.user:id,username', 'images', 'questions.user:id,username'])
                 ->find($auctionId);
 
             if ($auction) {
+                $auction->setAttribute('watcher_count', Presence::watchersForAuction($auctionId));
                 $response['auction'] = $this->auctionService->auctionResponse($auction, withBids: true);
             }
         }

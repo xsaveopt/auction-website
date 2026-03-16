@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Models\Auction;
 use App\Models\Bid;
 use App\Support\Presence;
-use Illuminate\Database\Eloquent\Builder;
 
 class AuctionService
 {
@@ -121,13 +120,17 @@ class AuctionService
         return $data;
     }
 
-    /** @return Builder<Auction> */
-    public function auctionQuery(): Builder
+    /**
+     * @param \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions
+     */
+    public function loadWatcherCounts(\Illuminate\Database\Eloquent\Collection $auctions): void
     {
-        return Auction::query()
-            ->select('auctions.*')
-            ->addSelect([
-                'watcher_count' => Presence::watcherCountSubquery(),
-            ]);
+        /** @var array<int, int> $auctionIds */
+        $auctionIds = $auctions->pluck('id')->all();
+        $counts = Presence::watcherCountsForAuctions($auctionIds);
+
+        $auctions->each(function (Auction $auction) use ($counts) {
+            $auction->setAttribute('watcher_count', (int) ($counts[$auction->id] ?? 0));
+        });
     }
 }

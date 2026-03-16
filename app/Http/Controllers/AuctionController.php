@@ -18,13 +18,14 @@ class AuctionController extends Controller
     public function index(): JsonResponse
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = $this->auctionService
-            ->auctionQuery()
+        $auctions = Auction::query()
             ->with(['seller:id,username', 'bids', 'images'])
-            ->orderByDesc('watcher_count')
             ->orderByRaw("CASE WHEN status = 'active' AND ends_at > ? THEN 1 ELSE 0 END DESC", [now()])
             ->orderByDesc('created_at')
             ->get();
+
+        $this->auctionService->loadWatcherCounts($auctions);
+        $auctions = $auctions->sortByDesc('watcher_count')->values();
 
         return response()->json([
             'auctions' => $auctions->map(fn(Auction $auction) => $this->auctionService->auctionResponse($auction)),
@@ -33,33 +34,18 @@ class AuctionController extends Controller
 
     public function show(Auction $auction): JsonResponse
     {
-        /** @var Auction $auction */
-        $auction = $this->auctionService
-            ->auctionQuery()
-            ->with(['seller:id,username', 'bids.user:id,username', 'images', 'questions.user:id,username'])
-            ->findOrFail($auction->id);
+        $auction->load(['seller:id,username', 'bids.user:id,username', 'images', 'questions.user:id,username']);
+        $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
 
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);
     }
 
     public function ended(): JsonResponse
     {
-        /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = $this->auctionService
-            ->auctionQuery()
-            ->with(['seller:id,username', 'bids.user:id,username', 'images'])
-            ->where(function ($q) {
-                $q->where('ends_at', '<=', now())->orWhere('status', '!=', 'active');
-            })
-            ->orderByDesc('watcher_count')
-            ->orderByDesc('ends_at')
-            ->get();
-
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $allAuctions */
-        $allAuctions = $this->auctionService
-            ->auctionQuery()
-            ->with('bids')
-            ->get();
+        $allAuctions = Auction::query()->with(['seller:id,username', 'bids.user:id,username', 'images'])->get();
+
+        $this->auctionService->loadWatcherCounts($allAuctions);
 
         /** @var array<int, array<string, mixed>> $auctionResponses */
         $auctionResponses = [];
@@ -79,30 +65,28 @@ class AuctionController extends Controller
 
             $totalValueAfterTax += $auctionTotalValue;
             $totalValueBeforeTax += round($auctionTotalValue / $taxMultiplier, 2);
-        }
 
-        foreach ($auctions as $auction) {
-            $allocation = $this->auctionService->allocate($auction);
-            $soldQuantity = array_sum($allocation['allocations']);
+            if (!$auction->isActive()) {
+                $soldQuantity = array_sum($allocation['allocations']);
+                $soldItems += $soldQuantity;
 
-            $soldItems += $soldQuantity;
+                if ($soldQuantity > 0) {
+                    $auctionsWithSales++;
+                    $auctionRevenue = round($soldQuantity * $allocation['clearing_price'], 2);
+                    $revenueAfterTax += $auctionRevenue;
 
-            if ($soldQuantity > 0) {
-                $auctionsWithSales++;
-                $auctionRevenue = round($soldQuantity * $allocation['clearing_price'], 2);
-                $revenueAfterTax += $auctionRevenue;
-
-                foreach ($allocation['allocations'] as $wonQuantity) {
-                    $winnerTotal = round($wonQuantity * $allocation['clearing_price'], 2);
-                    $revenueBeforeTax += round($winnerTotal / $taxMultiplier, 2);
+                    foreach ($allocation['allocations'] as $wonQuantity) {
+                        $winnerTotal = round($wonQuantity * $allocation['clearing_price'], 2);
+                        $revenueBeforeTax += round($winnerTotal / $taxMultiplier, 2);
+                    }
                 }
-            }
 
-            $auctionResponses[] = $this->auctionService->auctionResponseFromAllocation(
-                $auction,
-                $allocation,
-                withBids: true,
-            );
+                $auctionResponses[] = $this->auctionService->auctionResponseFromAllocation(
+                    $auction,
+                    $allocation,
+                    withBids: true,
+                );
+            }
         }
 
         $revenueAfterTax = round($revenueAfterTax, 2);
@@ -130,13 +114,14 @@ class AuctionController extends Controller
         $user = $request->user();
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = $this->auctionService
-            ->auctionQuery()
+        $auctions = Auction::query()
             ->with(['seller:id,username', 'bids.user:id,username', 'images'])
             ->whereHas('bids', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
             ->get();
+
+        $this->auctionService->loadWatcherCounts($auctions);
 
         $active = [];
         $won = [];
@@ -186,6 +171,7 @@ class AuctionController extends Controller
 
         $auction = $user->auctions()->create($validated);
         $auction->load(['seller:id,username', 'images']);
+        $auction->setAttribute('watcher_count', 0);
 
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction)], 201);
     }
@@ -208,6 +194,7 @@ class AuctionController extends Controller
 
         $auction->update($validated);
         $auction->load(['seller:id,username', 'bids.user:id,username', 'images']);
+        $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
 
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);
     }
