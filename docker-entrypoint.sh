@@ -33,4 +33,5 @@ php artisan config:cache
 php artisan migrate --force
 
 # Serve with Octane (FrankenPHP)
-exec php artisan octane:frankenphp --host=0.0.0.0 --port=443 --caddyfile /app/Caddyfile
+WORKERS=${OCTANE_WORKERS:-auto}
+exec php artisan octane:frankenphp --host=0.0.0.0 --port=443 --workers="$WORKERS" --caddyfile /app/Caddyfile

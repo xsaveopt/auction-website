@@ -7,6 +7,14 @@ services:
     volumes:
       - app-data:/data
     env_file: .env
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
 
   prometheus:
     image: prom/prometheus:latest
@@ -33,5 +41,6 @@ services:
 
 volumes:
   app-data:
+  redis-data:
   prometheus-data:
   grafana-data:
