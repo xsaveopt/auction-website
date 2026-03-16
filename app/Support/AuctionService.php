@@ -12,17 +12,29 @@ class AuctionService
      * Allocate items to bids, sorted by amount descending.
      * Returns a map of bid ID => number of items won.
      *
-     * @return array{allocations: array<int, int>, clearing_price: float}
+     * Pricing rule: if the lowest winner received their full requested quantity,
+     * all winners pay the clearing price (uniform). Otherwise each winner pays
+     * their own bid amount (pay-your-bid).
+     *
+     * @return array{allocations: array<int, int>, clearing_price: float, prices: array<int, float>}
      */
     public function allocate(Auction $auction): array
     {
-        $sortedBids = $auction->bids->sortByDesc('amount')->values();
+        $sortedBids = $auction
+            ->bids
+            ->sortBy([
+                ['amount', 'desc'],
+                ['quantity', 'desc'],
+            ])
+            ->values();
         $remaining = (int) $auction->quantity;
         /** @var array<int, int> $allocations */
         $allocations = [];
         $clearingPrice = (float) $auction->starting_price;
+        /** @var int|null $lastWinnerIndex */
+        $lastWinnerIndex = null;
 
-        foreach ($sortedBids as $bid) {
+        foreach ($sortedBids as $index => $bid) {
             if ($remaining <= 0) {
                 break;
             }
@@ -31,11 +43,30 @@ class AuctionService
             $allocations[$bid->id] = $give;
             $remaining -= $give;
             $clearingPrice = (float) $bid->amount;
+            $lastWinnerIndex = $index;
+        }
+
+        // Determine pricing mode: uniform if the lowest winner got everything they wanted
+        $uniform = true;
+        if ($lastWinnerIndex !== null) {
+            /** @var Bid $lastWinner */
+            $lastWinner = $sortedBids[$lastWinnerIndex];
+            $uniform = $allocations[$lastWinner->id] >= (int) $lastWinner->quantity;
+        }
+
+        /** @var array<int, float> $prices */
+        $prices = [];
+        foreach ($sortedBids as $bid) {
+            if (!isset($allocations[$bid->id])) {
+                break;
+            }
+            $prices[$bid->id] = $uniform ? $clearingPrice : (float) $bid->amount;
         }
 
         return [
             'allocations' => $allocations,
             'clearing_price' => $clearingPrice,
+            'prices' => $prices,
         ];
     }
 
@@ -48,13 +79,14 @@ class AuctionService
     }
 
     /**
-     * @param array{allocations: array<int, int>, clearing_price: float} $result
+     * @param array{allocations: array<int, int>, clearing_price: float, prices: array<int, float>} $result
      * @return array<string, mixed>
      */
     public function auctionResponseFromAllocation(Auction $auction, array $result, bool $withBids = false): array
     {
         $allocations = $result['allocations'];
         $clearingPrice = $result['clearing_price'];
+        $prices = $result['prices'];
 
         $data = [
             'id' => $auction->id,
@@ -86,12 +118,19 @@ class AuctionService
         ];
 
         if ($withBids) {
-            $sortedBids = $auction->bids->sortByDesc('amount')->values();
+            $sortedBids = $auction
+                ->bids
+                ->sortBy([
+                    ['amount', 'desc'],
+                    ['quantity', 'desc'],
+                ])
+                ->values();
             $data['bids'] = $sortedBids->map(fn(Bid $bid) => [
                 'id' => $bid->id,
                 'amount' => $bid->amount,
                 'quantity' => $bid->quantity,
                 'won_quantity' => $allocations[$bid->id] ?? 0,
+                'price' => isset($prices[$bid->id]) ? number_format($prices[$bid->id], 2, '.', '') : null,
                 'user' => [
                     'id' => $bid->user?->id,
                     'username' => $bid->user?->username,

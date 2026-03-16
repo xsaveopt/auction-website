@@ -86,7 +86,7 @@
       ]
     },
     {
-      "title": "Active Bid Total",
+      "title": "Winning Bid Total",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
@@ -104,7 +104,7 @@
       },
       "targets": [
         {
-          "expr": "app_active_bid_total",
+          "expr": "app_winning_bid_total",
           "legendFormat": "",
           "refId": "A"
         }
@@ -159,7 +159,7 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Bid total" },
+            "matcher": { "id": "byName", "options": "Winning total" },
             "properties": [
               { "id": "unit", "value": "currencyUSD" },
               { "id": "custom.axisPlacement", "value": "right" }
@@ -180,23 +180,112 @@
           "refId": "A"
         },
         {
-          "expr": "app_active_bid_total",
-          "legendFormat": "Bid total",
+          "expr": "app_winning_bid_total",
+          "legendFormat": "Winning total",
           "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "Recent User Signups",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "sortBy": [{ "displayName": "Signed Up", "desc": true }]
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Signed Up" },
+            "properties": [
+              { "id": "unit", "value": "dateTimeAsSystem" }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true },
+            "renameByName": {
+              "username": "Username",
+              "Value": "Signed Up"
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "expr": "app_user_signup_timestamp",
+          "legendFormat": "",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "title": "Bids on Active Listings",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 11 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "sortBy": [{ "displayName": "Last Updated", "desc": true }]
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Amount" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "decimals", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Last Updated" },
+            "properties": [
+              { "id": "unit", "value": "dateTimeAsSystem" }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true, "quantity": true },
+            "renameByName": {
+              "auction": "Auction",
+              "username": "Bidder",
+              "amount": "Amount",
+              "Value": "Last Updated"
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "expr": "app_auction_bid_info",
+          "legendFormat": "",
+          "refId": "A",
+          "format": "table",
+          "instant": true
         }
       ]
     },
     {
       "title": "HTTP Overview",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 11 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
       "collapsed": false,
       "panels": []
     },
     {
       "title": "Request Rate",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -220,7 +309,7 @@
     {
       "title": "Error Rate %",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 20 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -255,7 +344,7 @@
     {
       "title": "Request Volume by Method",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 20 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -274,7 +363,7 @@
     {
       "title": "Request Duration (p50 / p95 / p99)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 28 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -303,7 +392,7 @@
     {
       "title": "Requests by Status Code",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 20 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 28 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -340,7 +429,7 @@
     {
       "title": "Request Duration Heatmap",
       "type": "heatmap",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 20 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 28 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "calculate": false,
@@ -360,7 +449,7 @@
     {
       "title": "Requests by Route (top 10)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -379,7 +468,7 @@
     {
       "title": "Slowest Routes (p95)",
       "type": "bargauge",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -411,7 +500,7 @@
     {
       "title": "Route Performance Table",
       "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 44 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "sortBy": [{ "displayName": "p95 Duration", "desc": true }]
@@ -495,14 +584,14 @@
     {
       "title": "Caddy Infrastructure",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
       "collapsed": false,
       "panels": []
     },
     {
       "title": "Caddy — HTTP Request Duration",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 45 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 53 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -526,7 +615,7 @@
     {
       "title": "Caddy — Memory & Goroutines",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 45 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 53 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {

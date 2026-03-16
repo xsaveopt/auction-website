@@ -61,7 +61,6 @@ class PresenceController extends Controller
                 ->get();
 
             $this->auctionService->loadWatcherCounts($auctions);
-            $auctions = $auctions->sortByDesc('watcher_count')->values();
 
             $response['auctions'] = $auctions->map(
                 fn(Auction $auction) => $this->auctionService->auctionResponse($auction),

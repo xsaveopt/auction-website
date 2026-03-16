@@ -25,7 +25,6 @@ class AuctionController extends Controller
             ->get();
 
         $this->auctionService->loadWatcherCounts($auctions);
-        $auctions = $auctions->sortByDesc('watcher_count')->values();
 
         return response()->json([
             'auctions' => $auctions->map(fn(Auction $auction) => $this->auctionService->auctionResponse($auction)),
@@ -61,24 +60,34 @@ class AuctionController extends Controller
 
         foreach ($allAuctions as $auction) {
             $allocation = $this->auctionService->allocate($auction);
-            $auctionTotalValue = round($auction->quantity * $allocation['clearing_price'], 2);
+            $prices = $allocation['prices'];
+            $allocations = $allocation['allocations'];
+
+            $auctionTotalValue = 0.0;
+            foreach ($allocations as $bidId => $wonQty) {
+                $auctionTotalValue += round($wonQty * ($prices[$bidId] ?? 0.0), 2);
+            }
+            // For unsold items, use starting price as potential value
+            $unsoldItems = $auction->quantity - array_sum($allocations);
+            $auctionTotalValue += round($unsoldItems * (float) $auction->starting_price, 2);
 
             $totalValueAfterTax += $auctionTotalValue;
             $totalValueBeforeTax += round($auctionTotalValue / $taxMultiplier, 2);
 
             if (!$auction->isActive()) {
-                $soldQuantity = array_sum($allocation['allocations']);
+                $soldQuantity = array_sum($allocations);
                 $soldItems += $soldQuantity;
 
                 if ($soldQuantity > 0) {
                     $auctionsWithSales++;
-                    $auctionRevenue = round($soldQuantity * $allocation['clearing_price'], 2);
-                    $revenueAfterTax += $auctionRevenue;
+                    $auctionRevenue = 0.0;
 
-                    foreach ($allocation['allocations'] as $wonQuantity) {
-                        $winnerTotal = round($wonQuantity * $allocation['clearing_price'], 2);
+                    foreach ($allocations as $bidId => $wonQuantity) {
+                        $winnerTotal = round($wonQuantity * ($prices[$bidId] ?? 0.0), 2);
+                        $auctionRevenue += $winnerTotal;
                         $revenueBeforeTax += round($winnerTotal / $taxMultiplier, 2);
                     }
+                    $revenueAfterTax += $auctionRevenue;
                 }
 
                 $auctionResponses[] = $this->auctionService->auctionResponseFromAllocation(

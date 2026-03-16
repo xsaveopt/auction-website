@@ -68,13 +68,18 @@ function myBid(auction) {
                                         myBid(auction).won_quantity !== 1 ? "s" : ""
                                     }}
                                     @ {{ currencySymbol
-                                    }}{{ Number(auction.current_price).toFixed(2) }}
+                                    }}{{
+                                        Number(
+                                            myBid(auction).price ?? myBid(auction).amount,
+                                        ).toFixed(2)
+                                    }}
                                 </p>
                                 <p class="mt-1 font-bold text-green-700 dark:text-green-400">
                                     Total: {{ currencySymbol
                                     }}{{
                                         (
-                                            myBid(auction).won_quantity * auction.current_price
+                                            myBid(auction).won_quantity *
+                                            Number(myBid(auction).price ?? myBid(auction).amount)
                                         ).toFixed(2)
                                     }}
                                 </p>

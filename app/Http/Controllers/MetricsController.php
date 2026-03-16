@@ -4,15 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Auction;
 use App\Models\Bid;
+use App\Models\User;
+use App\Support\AuctionService;
 use App\Support\Presence;
 use App\Support\PrometheusService;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 use Prometheus\RenderTextFormat;
 
 class MetricsController extends Controller
 {
-    public function __invoke(PrometheusService $prometheus): Response
+    public function __invoke(PrometheusService $prometheus, AuctionService $auctionService): Response
     {
         $token = config('services.metrics.token');
 
@@ -22,20 +23,66 @@ class MetricsController extends Controller
 
         $now = now();
 
-        $activeAuctions = Auction::where('status', 'active')->where('ends_at', '>', $now)->count();
+        $activeAuctionsList = Auction::where('status', 'active')
+            ->where('ends_at', '>', $now)
+            ->with('bids.user:id,username')
+            ->get();
+
+        $activeAuctions = $activeAuctionsList->count();
         $totalBids = Bid::count();
         $onlineUsers = Presence::onlineUsers();
-        $activeBidTotal = (float) Bid::query()
-            ->join('auctions', 'auctions.id', '=', 'bids.auction_id')
-            ->where('auctions.status', 'active')
-            ->where('auctions.ends_at', '>', $now)
-            ->sum(DB::raw('bids.amount * bids.quantity'));
+
+        // Calculate winning bid total using per-bid pricing from AuctionService
+        $winningBidTotal = 0.0;
+        foreach ($activeAuctionsList as $auction) {
+            $result = $auctionService->allocate($auction);
+            foreach ($result['allocations'] as $bidId => $qty) {
+                $winningBidTotal += ($result['prices'][$bidId] ?? 0.0) * $qty;
+            }
+        }
 
         $prometheus->registerGauge('active_auctions', 'Number of active auctions', $activeAuctions);
         $prometheus->registerGauge('total_bids', 'Total number of bids', $totalBids);
         $prometheus->registerGauge('online_users', 'Number of online users', $onlineUsers);
-        $prometheus->registerGauge('active_bid_total', 'Total value of bids on active auctions', $activeBidTotal);
+        $prometheus->registerGauge(
+            'winning_bid_total',
+            'Total value of winning bids on active auctions',
+            $winningBidTotal,
+        );
 
-        return new Response($prometheus->renderMetrics(), 200, ['Content-Type' => RenderTextFormat::MIME_TYPE]);
+        $output = $prometheus->renderMetrics();
+
+        // Recent user signups (last 25)
+        $recentUsers = User::orderByDesc('created_at')->limit(25)->get(['username', 'created_at']);
+        $output .= "# HELP app_user_signup_timestamp User signup timestamp in milliseconds\n";
+        $output .= "# TYPE app_user_signup_timestamp gauge\n";
+        foreach ($recentUsers as $user) {
+            $username = self::escapeLabel($user->username);
+            $ts = ($user->created_at?->getTimestamp() ?? 0) * 1000;
+            $output .= "app_user_signup_timestamp{username=\"{$username}\"} {$ts}\n";
+        }
+
+        // All bids on active listings
+        $output .= "# HELP app_auction_bid_info Active auction bid timestamp in milliseconds\n";
+        $output .= "# TYPE app_auction_bid_info gauge\n";
+        foreach ($activeAuctionsList as $auction) {
+            $auctionTitle = self::escapeLabel($auction->title);
+            foreach ($auction->bids->sortByDesc('amount') as $bid) {
+                /** @var User $bidUser */
+                $bidUser = $bid->user;
+                $username = self::escapeLabel($bidUser->username);
+                $amount = number_format((float) $bid->amount, 2, '.', '');
+                $qty = $bid->quantity;
+                $ts = ($bid->updated_at?->getTimestamp() ?? 0) * 1000;
+                $output .= "app_auction_bid_info{auction=\"{$auctionTitle}\",username=\"{$username}\",amount=\"{$amount}\",quantity=\"{$qty}\"} {$ts}\n";
+            }
+        }
+
+        return new Response($output, 200, ['Content-Type' => RenderTextFormat::MIME_TYPE]);
+    }
+
+    private static function escapeLabel(string $value): string
+    {
+        return str_replace(['\\', '"', "\n"], ['\\\\', '\\"', '\\n'], $value);
     }
 }

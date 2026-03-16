@@ -198,16 +198,36 @@ async function sendPresenceHeartbeat() {
 let scheduleInterval;
 let presenceInterval;
 let clockInterval;
+function startHeartbeat() {
+    if (!presenceInterval) {
+        sendPresenceHeartbeat();
+        presenceInterval = setInterval(sendPresenceHeartbeat, HEARTBEAT_INTERVAL_MS);
+    }
+}
+
+function stopHeartbeat() {
+    clearInterval(presenceInterval);
+    presenceInterval = null;
+}
+
+function handleVisibilityChange() {
+    if (document.hidden) {
+        stopHeartbeat();
+    } else {
+        startHeartbeat();
+    }
+}
+
 onMounted(() => {
     fetchUser();
     fetchSchedule();
     fetchSsoEnabled();
-    sendPresenceHeartbeat();
+    startHeartbeat();
     scheduleInterval = setInterval(fetchSchedule, 60000);
-    presenceInterval = setInterval(sendPresenceHeartbeat, HEARTBEAT_INTERVAL_MS);
     clockInterval = setInterval(() => {
         now.value = new Date(Date.now() + serverOffsetMs);
     }, 1000);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 });
 watch(
     () => route.fullPath,
@@ -217,8 +237,9 @@ watch(
 );
 onUnmounted(() => {
     clearInterval(scheduleInterval);
-    clearInterval(presenceInterval);
+    stopHeartbeat();
     clearInterval(clockInterval);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
 });
 
 async function logout() {

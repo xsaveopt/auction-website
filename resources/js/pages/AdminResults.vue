@@ -193,8 +193,15 @@ const statsCards = computed(() => {
                             class="text-sm font-medium text-green-700 dark:text-green-400"
                         >
                             {{ winners(auction).reduce((s, b) => s + b.won_quantity, 0) }}
-                            sold @ {{ currencySymbol
-                            }}{{ Number(auction.current_price).toFixed(2) }}
+                            sold · {{ currencySymbol
+                            }}{{
+                                winners(auction)
+                                    .reduce(
+                                        (s, b) => s + b.won_quantity * Number(b.price ?? b.amount),
+                                        0,
+                                    )
+                                    .toFixed(2)
+                            }}
                         </span>
                         <span v-else class="text-sm text-gray-400 dark:text-gray-500">No bids</span>
                         <svg
@@ -223,9 +230,7 @@ const statsCards = computed(() => {
                     </div>
                     <div v-else>
                         <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
-                            Winners — clearing price: {{ currencySymbol
-                            }}{{ Number(auction.current_price).toFixed(2) }}
-                            / item
+                            Winners
                         </h3>
                         <table class="w-full text-sm">
                             <thead>
@@ -261,7 +266,9 @@ const statsCards = computed(() => {
                                     >
                                         {{ currencySymbol
                                         }}{{
-                                            (bid.won_quantity * auction.current_price).toFixed(2)
+                                            (
+                                                bid.won_quantity * Number(bid.price ?? bid.amount)
+                                            ).toFixed(2)
                                         }}
                                     </td>
                                     <td class="py-2 text-right">
@@ -300,12 +307,15 @@ const statsCards = computed(() => {
                                     <td class="pt-2 text-right font-bold">
                                         {{ currencySymbol
                                         }}{{
-                                            (
-                                                winners(auction).reduce(
-                                                    (s, b) => s + b.won_quantity,
+                                            winners(auction)
+                                                .reduce(
+                                                    (s, b) =>
+                                                        s +
+                                                        b.won_quantity *
+                                                            Number(b.price ?? b.amount),
                                                     0,
-                                                ) * auction.current_price
-                                            ).toFixed(2)
+                                                )
+                                                .toFixed(2)
                                         }}
                                     </td>
                                     <td></td>

@@ -59,7 +59,7 @@ function bidKey(bid) {
     return `${bid.id}:${bid.amount}:${bid.quantity}`;
 }
 
-function updateAuction(newAuction) {
+function updateAuction(newAuction, resetForm = false) {
     if (!newAuction) return;
 
     // Detect new or changed bids for highlight animation
@@ -78,17 +78,19 @@ function updateAuction(newAuction) {
 
     auction.value = newAuction;
     activeImage.value = Math.min(activeImage.value, Math.max(newAuction.images.length - 1, 0));
-    const my = newAuction.bids.find((b) => b.user.id === user.value?.id);
-    bidAmount.value = my
-        ? (Number(my.amount) + 1).toFixed(2)
-        : Number(newAuction.starting_price).toFixed(2);
-    bidQuantity.value = my ? my.quantity : 1;
+    if (resetForm) {
+        const my = newAuction.bids.find((b) => b.user.id === user.value?.id);
+        bidAmount.value = my
+            ? (Number(my.amount) + 1).toFixed(2)
+            : Number(newAuction.starting_price).toFixed(2);
+        bidQuantity.value = my ? my.quantity : 1;
+    }
 }
 
-async function load(showLoading = false) {
+async function load(showLoading = false, resetForm = false) {
     if (showLoading) loading.value = true;
     const data = await api(`/auctions/${props.id}`);
-    updateAuction(data.auction);
+    updateAuction(data.auction, resetForm);
     loading.value = false;
 }
 
@@ -112,7 +114,7 @@ async function placeBid() {
                 quantity: Number(bidQuantity.value),
             }),
         });
-        await load();
+        await load(false, true);
     } catch (e) {
         error.value =
             e.data?.message ||
@@ -224,7 +226,7 @@ function watchingText(count) {
 }
 
 onMounted(async () => {
-    await load(true);
+    await load(true, true);
 });
 
 watch(heartbeatData, (data) => {
@@ -237,7 +239,7 @@ watch(
     () => props.id,
     async () => {
         activeImage.value = 0;
-        await load(true);
+        await load(true, true);
     },
 );
 </script>
@@ -328,8 +330,9 @@ watch(
                     class="mt-3 text-sm text-gray-500 dark:text-gray-400"
                 >
                     <p>
-                        Items allocated top-down by bid price. All winners pay the same clearing
-                        price (the lowest winning bid).
+                        Items allocated top-down by bid price. When all winners receive their full
+                        quantity, everyone pays the lowest winning bid. When demand exceeds supply,
+                        each winner pays their own bid.
                     </p>
                     <p class="mt-1">
                         Your bid amount is per item. Entering
@@ -515,7 +518,7 @@ watch(
                                 class="block text-xs text-green-600 dark:text-green-400"
                             >
                                 wins {{ bid.won_quantity }} @ {{ currencySymbol
-                                }}{{ Number(auction.current_price).toFixed(2) }}
+                                }}{{ Number(bid.price ?? bid.amount).toFixed(2) }}
                             </span>
                         </div>
                     </li>
