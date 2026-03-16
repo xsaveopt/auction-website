@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\BiddingSchedule;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\AuctionImageController;
 use App\Http\Controllers\AuctionQuestionController;
@@ -27,6 +28,11 @@ Route::middleware('sso')->group(function () {
 
     // Bidding schedule
     Route::get('/schedule', fn () => response()->json(['schedule' => BiddingSchedule::toArray()]));
+
+    // Announcements
+    Route::get('/announcement', [AnnouncementController::class, 'active']);
+    Route::post('/announcement', [AnnouncementController::class, 'store'])->middleware(['auth', 'admin']);
+    Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->middleware(['auth', 'admin']);
 
     // Auctions
     Route::get('/auctions', [AuctionController::class, 'index']);
