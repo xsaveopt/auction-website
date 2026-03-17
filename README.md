@@ -1,24 +1,39 @@
-### Create an admin user
+# Auction Website
+
+Laravel 12 + Vue 3 SPA. SQLite. Runs on FrankenPHP.
+
+## Run
 
 ```bash
-docker exec -it <container> php artisan app:create-admin admin yourpassword
+docker build -t auction .
+docker run -v auction-data:/data -p 443:443 -p 80:80 -e SERVER_NAME=auction.example.com auction
 ```
 
-To promote an existing user (including Microsoft SSO users), use:
+With monitoring (Prometheus + Grafana):
 
 ```bash
-docker exec -it <container> php artisan app:make-admin user@example.com
+docker compose up --build
 ```
 
-### Environment variables
+## Environment
 
-Read .env.example
+See `.env.example` for all variables.
 
-### Persistent data
+## Commands
 
-The `/data` volume stores:
+All commands live under `app:`. Run inside the container with `docker exec -it <container> php artisan ...`.
 
-- `database.sqlite` — SQLite database
-- `images/` — uploaded auction images
-- `caddy_data/` — TLS certificates (Let's Encrypt)
-- `caddy_config/` — Caddy configuration state
+```
+app:create-admin {username} {password}   Create an admin user
+app:make-admin {identifier}              Promote user to admin
+app:remove-admin {identifier}            Demote admin to regular user
+app:list-users                           List users (--search, --admins, --limit)
+app:list-auctions                        List auctions (--status, --search, --limit)
+app:list-bids {id}                       List bids for an auction (--limit)
+app:update-auctions                      Bulk update auctions (--ids/--all-active, --add-time, --set-end, --status)
+app:stats                                Show platform statistics
+```
+
+## Persistent data
+
+The `/data` volume stores the SQLite database, uploaded images, and Caddy TLS certificates.
