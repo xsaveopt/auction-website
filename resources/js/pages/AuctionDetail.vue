@@ -214,7 +214,8 @@ async function deleteQuestion(question) {
 }
 
 function formatDate(d) {
-    return new Date(d).toLocaleString();
+    if (!d) return "";
+    return d.slice(0, 16).replace("T", " ");
 }
 
 function formatMoney(value) {

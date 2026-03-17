@@ -52,7 +52,7 @@ async function submit() {
                 starting_price: Number(startingPrice.value),
                 quantity: Number(quantity.value),
                 max_per_bidder: Number(maxPerBidder.value),
-                ends_at: new Date(endsAt.value).toISOString(),
+                ends_at: endsAt.value,
             }),
         });
 

@@ -169,7 +169,7 @@ function myBid(auction) {
                             </h3>
                             <p class="text-xs text-gray-400">
                                 Ended
-                                {{ new Date(auction.ends_at).toLocaleDateString() }}
+                                {{ auction.ends_at.slice(0, 10) }}
                             </p>
                         </div>
                         <div class="text-right">

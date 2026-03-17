@@ -96,7 +96,7 @@ class AuctionService
             'current_price' => $clearingPrice,
             'quantity' => $auction->quantity,
             'max_per_bidder' => $auction->max_per_bidder,
-            'ends_at' => $auction->ends_at->toISOString(),
+            'ends_at' => $auction->ends_at->format('Y-m-d\TH:i:sP'),
             'status' => $auction->status,
             'is_active' => $auction->isActive(),
             'seller' => $auction->seller
@@ -114,7 +114,7 @@ class AuctionService
                     'url' => "/api/images/{$img->id}",
                 ])
                 ->values(),
-            'created_at' => $auction->created_at?->toISOString(),
+            'created_at' => $auction->created_at?->format('Y-m-d\TH:i:sP'),
         ];
 
         if ($withBids) {
@@ -135,7 +135,7 @@ class AuctionService
                     'id' => $bid->user?->id,
                     'username' => $bid->user?->username,
                 ],
-                'created_at' => $bid->created_at?->toISOString(),
+                'created_at' => $bid->created_at?->format('Y-m-d\TH:i:sP'),
             ]);
         }
 
@@ -146,12 +146,12 @@ class AuctionService
                     'id' => $question->id,
                     'question' => $question->question,
                     'answer' => $question->answer,
-                    'answered_at' => $question->answered_at?->toISOString(),
+                    'answered_at' => $question->answered_at?->format('Y-m-d\TH:i:sP'),
                     'user' => [
                         'id' => $question->user?->id,
                         'username' => $question->user?->username,
                     ],
-                    'created_at' => $question->created_at?->toISOString(),
+                    'created_at' => $question->created_at?->format('Y-m-d\TH:i:sP'),
                 ])
                 ->values();
         }

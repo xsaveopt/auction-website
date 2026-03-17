@@ -17,6 +17,7 @@ const currencySymbol = ref("$");
 const now = ref(new Date());
 const heartbeatData = ref(null);
 let serverOffsetMs = 0; // server time minus browser time
+const serverClockSeconds = ref(0); // seconds since midnight in server-local time
 
 function parseTime(str) {
     const [h, m] = str.split(":").map(Number);
@@ -145,8 +146,11 @@ const scheduleBar = computed(() => {
 });
 
 const serverClock = computed(() => {
-    const d = now.value;
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const total = ((serverClockSeconds.value % 86400) + 86400) % 86400;
+    const h = String(Math.floor(total / 3600)).padStart(2, "0");
+    const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+    const s = String(total % 60).padStart(2, "0");
+    return `${h}:${m}:${s}`;
 });
 
 const shellWidthClass = "max-w-7xl";
@@ -169,6 +173,10 @@ async function fetchSchedule() {
         if (data.schedule?.server_time) {
             serverOffsetMs = new Date(data.schedule.server_time).getTime() - Date.now();
             now.value = new Date(Date.now() + serverOffsetMs);
+        }
+        if (data.schedule?.server_time_local) {
+            const [h, m, s] = data.schedule.server_time_local.split(":").map(Number);
+            serverClockSeconds.value = h * 3600 + m * 60 + s;
         }
         if (data.schedule?.currency_symbol) {
             currencySymbol.value = data.schedule.currency_symbol;
@@ -231,6 +239,7 @@ onMounted(() => {
     scheduleInterval = setInterval(fetchSchedule, 60000);
     clockInterval = setInterval(() => {
         now.value = new Date(Date.now() + serverOffsetMs);
+        serverClockSeconds.value++;
     }, 1000);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 });

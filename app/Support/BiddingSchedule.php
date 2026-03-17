@@ -76,7 +76,7 @@ class BiddingSchedule
     }
 
     /**
-     * @return array{enabled: bool, closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, currency_symbol: string, anti_sniping: array{enabled: bool, window: int, extension: int}}
+     * @return array{enabled: bool, closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, server_time_local: string, currency_symbol: string, anti_sniping: array{enabled: bool, window: int, extension: int}}
      */
     public static function toArray(): array
     {
@@ -87,6 +87,7 @@ class BiddingSchedule
             'weekends_open' => self::weekendsOpen(),
             'is_open' => self::isBiddingOpen(),
             'server_time' => now()->toISOString() ?? '',
+            'server_time_local' => now()->format('H:i:s'),
             'currency_symbol' => self::currencySymbol(),
             'anti_sniping' => self::antiSniping(),
         ];

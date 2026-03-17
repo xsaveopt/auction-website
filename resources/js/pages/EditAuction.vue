@@ -32,7 +32,7 @@ onMounted(async () => {
         startingPrice.value = Number(a.starting_price).toFixed(2);
         quantity.value = a.quantity;
         maxPerBidder.value = a.max_per_bidder;
-        endsAt.value = new Date(a.ends_at).toISOString().slice(0, 16);
+        endsAt.value = a.ends_at.slice(0, 16);
     } catch {
         errors.value = { general: ["Failed to load auction."] };
     } finally {
@@ -52,7 +52,7 @@ async function submit() {
                 starting_price: Number(startingPrice.value),
                 quantity: Number(quantity.value),
                 max_per_bidder: Number(maxPerBidder.value),
-                ends_at: new Date(endsAt.value).toISOString(),
+                ends_at: endsAt.value,
             }),
         });
         router.push(`/auctions/${props.id}`);
