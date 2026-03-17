@@ -17,7 +17,6 @@ const currencySymbol = ref("$");
 const now = ref(new Date());
 const heartbeatData = ref(null);
 let serverOffsetMs = 0; // server time minus browser time
-const serverTimezone = ref("UTC");
 
 function parseTime(str) {
     const [h, m] = str.split(":").map(Number);
@@ -147,12 +146,7 @@ const scheduleBar = computed(() => {
 
 const serverClock = computed(() => {
     const d = now.value;
-    return d.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        timeZone: serverTimezone.value,
-    });
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 });
 
 const shellWidthClass = "max-w-7xl";
@@ -175,9 +169,6 @@ async function fetchSchedule() {
         if (data.schedule?.server_time) {
             serverOffsetMs = new Date(data.schedule.server_time).getTime() - Date.now();
             now.value = new Date(Date.now() + serverOffsetMs);
-        }
-        if (data.schedule?.server_timezone) {
-            serverTimezone.value = data.schedule.server_timezone;
         }
         if (data.schedule?.currency_symbol) {
             currencySymbol.value = data.schedule.currency_symbol;
