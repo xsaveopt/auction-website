@@ -352,6 +352,7 @@ provide("now", now);
                     <template v-if="user">
                         <span class="text-gray-600 dark:text-gray-300">{{ user.username }}</span>
                         <router-link
+                            v-if="!user.is_admin"
                             to="/dashboard"
                             class="text-blue-600 dark:text-blue-400 hover:underline"
                             >My Bids</router-link

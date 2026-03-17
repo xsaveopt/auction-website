@@ -6,7 +6,7 @@
   "links": [],
   "panels": [
     {
-      "title": "Business Metrics",
+      "title": "Business Overview",
       "type": "row",
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "collapsed": false,
@@ -15,7 +15,7 @@
     {
       "title": "Active Auctions",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "gridPos": { "h": 3, "w": 5, "x": 0, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -28,6 +28,7 @@
           }
         }
       },
+      "options": { "graphMode": "area" },
       "targets": [
         {
           "expr": "app_active_auctions",
@@ -39,7 +40,7 @@
     {
       "title": "Online Users",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "gridPos": { "h": 3, "w": 5, "x": 5, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -53,6 +54,7 @@
           }
         }
       },
+      "options": { "graphMode": "area" },
       "targets": [
         {
           "expr": "app_online_users",
@@ -64,7 +66,7 @@
     {
       "title": "Total Bids",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "gridPos": { "h": 3, "w": 5, "x": 10, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -77,6 +79,7 @@
           }
         }
       },
+      "options": { "graphMode": "area" },
       "targets": [
         {
           "expr": "app_total_bids",
@@ -88,7 +91,7 @@
     {
       "title": "Winning Bid Total",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "gridPos": { "h": 3, "w": 5, "x": 15, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -102,6 +105,7 @@
           }
         }
       },
+      "options": { "graphMode": "area" },
       "targets": [
         {
           "expr": "app_winning_bid_total",
@@ -111,85 +115,36 @@
       ]
     },
     {
-      "title": "Active Auctions Over Time",
-      "type": "timeseries",
-      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 5 },
+      "title": "Unanswered Questions",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "green" },
-          "custom": { "drawStyle": "line", "fillOpacity": 15, "pointSize": 3, "lineWidth": 2 }
-        }
-      },
-      "targets": [
-        {
-          "expr": "app_active_auctions",
-          "legendFormat": "Active auctions",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "title": "Online Users Over Time",
-      "type": "timeseries",
-      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 5 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "blue" },
-          "custom": { "drawStyle": "line", "fillOpacity": 15, "pointSize": 3, "lineWidth": 2 }
-        }
-      },
-      "targets": [
-        {
-          "expr": "app_online_users",
-          "legendFormat": "Online users",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "title": "Bidding Activity & Value",
-      "type": "timeseries",
-      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 5 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
-        },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Winning total" },
-            "properties": [
-              { "id": "unit", "value": "currencyUSD" },
-              { "id": "custom.axisPlacement", "value": "right" }
-            ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Bids" },
-            "properties": [
-              { "id": "unit", "value": "short" }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 10 }
             ]
           }
-        ]
+        }
       },
+      "options": { "graphMode": "area" },
       "targets": [
         {
-          "expr": "app_total_bids",
-          "legendFormat": "Bids",
+          "expr": "app_questions_unanswered",
+          "legendFormat": "",
           "refId": "A"
-        },
-        {
-          "expr": "app_winning_bid_total",
-          "legendFormat": "Winning total",
-          "refId": "B"
         }
       ]
     },
     {
       "title": "Recent User Signups",
       "type": "table",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "sortBy": [{ "displayName": "Signed Up", "desc": true }]
@@ -229,7 +184,7 @@
     {
       "title": "Bids on Active Listings",
       "type": "table",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 11 },
+      "gridPos": { "h": 7, "w": 16, "x": 8, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "sortBy": [{ "displayName": "Last Updated", "desc": true }]
@@ -276,47 +231,48 @@
       ]
     },
     {
-      "title": "HTTP Overview",
+      "title": "Application Health",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 11 },
       "collapsed": false,
       "panels": []
     },
     {
       "title": "Request Rate",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 8, "x": 0, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
-          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null },
+              { "color": "green", "value": 0.1 }
+            ]
+          }
         }
       },
+      "options": { "graphMode": "area" },
       "targets": [
         {
           "expr": "sum(rate(app_http_requests_total[1m]))",
-          "legendFormat": "Total",
+          "legendFormat": "",
           "refId": "A"
-        },
-        {
-          "expr": "sum(rate(app_http_requests_total{status_code=~\"5..\"}[1m]))",
-          "legendFormat": "5xx errors",
-          "refId": "B"
         }
       ]
     },
     {
-      "title": "Error Rate %",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 20 },
+      "title": "Error Rate",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 8, "x": 8, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
-          "min": 0,
-          "max": 1,
-          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 },
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -324,112 +280,118 @@
               { "color": "yellow", "value": 0.01 },
               { "color": "red", "value": 0.05 }
             ]
-          },
-          "color": { "mode": "thresholds" }
+          }
         }
       },
+      "options": { "graphMode": "area" },
       "targets": [
         {
           "expr": "sum(rate(app_http_requests_total{status_code=~\"[45]..\"}[5m])) / sum(rate(app_http_requests_total[5m]))",
-          "legendFormat": "4xx + 5xx",
-          "refId": "A"
-        },
-        {
-          "expr": "sum(rate(app_http_requests_total{status_code=~\"5..\"}[5m])) / sum(rate(app_http_requests_total[5m]))",
-          "legendFormat": "5xx only",
-          "refId": "B"
-        }
-      ]
-    },
-    {
-      "title": "Request Volume by Method",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "custom": { "drawStyle": "bars", "fillOpacity": 50, "stacking": { "mode": "normal" }, "lineWidth": 0 }
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(app_http_requests_total[1m])) by (method)",
-          "legendFormat": "{{method}}",
+          "legendFormat": "",
           "refId": "A"
         }
       ]
     },
     {
-      "title": "Request Duration (p50 / p95 / p99)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 28 },
+      "title": "p95 Latency",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 8, "x": 16, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.25 },
+              { "color": "orange", "value": 0.5 },
+              { "color": "red", "value": 1.0 }
+            ]
+          }
         }
       },
+      "options": { "graphMode": "area" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p50",
-          "refId": "A"
-        },
-        {
           "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p95",
-          "refId": "B"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p99",
-          "refId": "C"
+          "legendFormat": "",
+          "refId": "A"
         }
       ]
     },
     {
-      "title": "Requests by Status Code",
+      "title": "Traffic & Errors",
+      "description": "Request throughput with error overlay — quickly spot if errors correlate with traffic spikes",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
-          "custom": { "drawStyle": "bars", "fillOpacity": 50, "stacking": { "mode": "normal" }, "lineWidth": 0 }
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "spanNulls": true }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "200" },
-            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }]
+            "matcher": { "id": "byName", "options": "2xx" },
+            "properties": [
+              { "id": "unit", "value": "reqps" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } },
+              { "id": "custom.fillOpacity", "value": 20 }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "302" },
-            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }]
+            "matcher": { "id": "byName", "options": "3xx" },
+            "properties": [
+              { "id": "unit", "value": "reqps" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "404" },
-            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }]
+            "matcher": { "id": "byName", "options": "4xx" },
+            "properties": [
+              { "id": "unit", "value": "reqps" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "500" },
-            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+            "matcher": { "id": "byName", "options": "5xx" },
+            "properties": [
+              { "id": "unit", "value": "reqps" },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } },
+              { "id": "custom.lineWidth", "value": 3 }
+            ]
           }
         ]
       },
       "targets": [
         {
-          "expr": "sum(rate(app_http_requests_total[1m])) by (status_code)",
-          "legendFormat": "{{status_code}}",
+          "expr": "sum(rate(app_http_requests_total{status_code=~\"2..\"}[1m]))",
+          "legendFormat": "2xx",
           "refId": "A"
+        },
+        {
+          "expr": "sum(rate(app_http_requests_total{status_code=~\"3..\"}[1m]))",
+          "legendFormat": "3xx",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(app_http_requests_total{status_code=~\"4..\"}[1m]))",
+          "legendFormat": "4xx",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(rate(app_http_requests_total{status_code=~\"5..\"}[1m]))",
+          "legendFormat": "5xx",
+          "refId": "D"
         }
       ]
     },
     {
-      "title": "Request Duration Heatmap",
+      "title": "Latency Distribution",
+      "description": "Heatmap of request durations — reveals latency patterns that percentile lines miss",
       "type": "heatmap",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "calculate": false,
@@ -447,206 +409,198 @@
       ]
     },
     {
-      "title": "Requests by Route (top 10)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "custom": { "drawStyle": "line", "fillOpacity": 10 }
-        }
-      },
-      "targets": [
+      "title": "Route Performance",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "collapsed": true,
+      "panels": [
         {
-          "expr": "topk(10, sum(rate(app_http_requests_total[1m])) by (route))",
-          "legendFormat": "{{route}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "title": "Slowest Routes (p95)",
-      "type": "bargauge",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.25 },
-              { "color": "orange", "value": 0.5 },
-              { "color": "red", "value": 1.0 }
-            ]
-          }
-        }
-      },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "gradient",
-        "reduceOptions": { "calcs": ["lastNotNull"] }
-      },
-      "targets": [
-        {
-          "expr": "topk(10, histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (route, le)))",
-          "legendFormat": "{{route}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "title": "Route Performance Table",
-      "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 44 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "options": {
-        "sortBy": [{ "displayName": "p95 Duration", "desc": true }]
-      },
-      "fieldConfig": {
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Req/s" },
-            "properties": [{ "id": "unit", "value": "reqps" }, { "id": "decimals", "value": 2 }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "p50 Duration" },
-            "properties": [{ "id": "unit", "value": "s" }, { "id": "decimals", "value": 3 }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "p95 Duration" },
-            "properties": [
-              { "id": "unit", "value": "s" },
-              { "id": "decimals", "value": 3 },
-              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.25 }, { "color": "red", "value": 1.0 }] } },
-              { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "basic" } }
-            ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Error %" },
-            "properties": [
-              { "id": "unit", "value": "percentunit" },
-              { "id": "decimals", "value": 1 },
-              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 }] } },
-              { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "basic" } }
-            ]
-          }
-        ]
-      },
-      "transformations": [
-        { "id": "merge", "options": {} },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": { "Time": true },
-            "renameByName": {
-              "Value #A": "Req/s",
-              "Value #B": "p50 Duration",
-              "Value #C": "p95 Duration",
-              "Value #D": "Error %"
+          "title": "Slowest Routes (p95)",
+          "description": "Top 10 routes by p95 latency — find your bottlenecks at a glance",
+          "type": "bargauge",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 0.25 },
+                  { "color": "orange", "value": 0.5 },
+                  { "color": "red", "value": 1.0 }
+                ]
+              }
             }
-          }
-        }
-      ],
-      "targets": [
-        {
-          "expr": "sum(rate(app_http_requests_total[5m])) by (route)",
-          "legendFormat": "",
-          "refId": "A",
-          "format": "table",
-          "instant": true
+          },
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          },
+          "targets": [
+            {
+              "expr": "topk(10, histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (route, le)))",
+              "legendFormat": "{{route}}",
+              "refId": "A"
+            }
+          ]
         },
         {
-          "expr": "histogram_quantile(0.50, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (route, le))",
-          "legendFormat": "",
-          "refId": "B",
-          "format": "table",
-          "instant": true
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (route, le))",
-          "legendFormat": "",
-          "refId": "C",
-          "format": "table",
-          "instant": true
-        },
-        {
-          "expr": "sum(rate(app_http_requests_total{status_code=~\"[45]..\"}[5m])) by (route) / sum(rate(app_http_requests_total[5m])) by (route)",
-          "legendFormat": "",
-          "refId": "D",
-          "format": "table",
-          "instant": true
+          "title": "Route Detail",
+          "description": "Per-route throughput, latency percentiles, and error rates",
+          "type": "table",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 32 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "options": {
+            "sortBy": [{ "displayName": "p95", "desc": true }]
+          },
+          "fieldConfig": {
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Req/s" },
+                "properties": [{ "id": "unit", "value": "reqps" }, { "id": "decimals", "value": 2 }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "p50" },
+                "properties": [{ "id": "unit", "value": "s" }, { "id": "decimals", "value": 3 }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "p95" },
+                "properties": [
+                  { "id": "unit", "value": "s" },
+                  { "id": "decimals", "value": 3 },
+                  { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.25 }, { "color": "red", "value": 1.0 }] } },
+                  { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "basic" } }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Error %" },
+                "properties": [
+                  { "id": "unit", "value": "percentunit" },
+                  { "id": "decimals", "value": 1 },
+                  { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 }] } },
+                  { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "basic" } }
+                ]
+              }
+            ]
+          },
+          "transformations": [
+            { "id": "merge", "options": {} },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": { "Time": true },
+                "renameByName": {
+                  "Value #A": "Req/s",
+                  "Value #B": "p50",
+                  "Value #C": "p95",
+                  "Value #D": "Error %"
+                }
+              }
+            }
+          ],
+          "targets": [
+            {
+              "expr": "sum(rate(app_http_requests_total[5m])) by (route)",
+              "legendFormat": "",
+              "refId": "A",
+              "format": "table",
+              "instant": true
+            },
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (route, le))",
+              "legendFormat": "",
+              "refId": "B",
+              "format": "table",
+              "instant": true
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (route, le))",
+              "legendFormat": "",
+              "refId": "C",
+              "format": "table",
+              "instant": true
+            },
+            {
+              "expr": "sum(rate(app_http_requests_total{status_code=~\"[45]..\"}[5m])) by (route) / sum(rate(app_http_requests_total[5m])) by (route)",
+              "legendFormat": "",
+              "refId": "D",
+              "format": "table",
+              "instant": true
+            }
+          ]
         }
       ]
     },
     {
       "title": "Caddy Infrastructure",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
-      "collapsed": false,
-      "panels": []
-    },
-    {
-      "title": "Caddy — HTTP Request Duration",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 53 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
-        }
-      },
-      "targets": [
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
+      "collapsed": true,
+      "panels": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(caddy_http_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p50",
-          "refId": "A"
+          "title": "Caddy Request Duration (p50 / p95)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 41 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(caddy_http_request_duration_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(caddy_http_request_duration_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p95",
+              "refId": "B"
+            }
+          ]
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(caddy_http_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "p95",
-          "refId": "B"
-        }
-      ]
-    },
-    {
-      "title": "Caddy — Memory & Goroutines",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 53 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
-        },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Goroutines" },
-            "properties": [
-              { "id": "unit", "value": "short" },
-              { "id": "custom.axisPlacement", "value": "right" }
+          "title": "Caddy Memory & Goroutines",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 41 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2 }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Goroutines" },
+                "properties": [
+                  { "id": "unit", "value": "short" },
+                  { "id": "custom.axisPlacement", "value": "right" }
+                ]
+              }
             ]
-          }
-        ]
-      },
-      "targets": [
-        {
-          "expr": "process_resident_memory_bytes{job=\"caddy\"}",
-          "legendFormat": "Resident memory",
-          "refId": "A"
-        },
-        {
-          "expr": "go_memstats_heap_inuse_bytes{job=\"caddy\"}",
-          "legendFormat": "Heap in use",
-          "refId": "B"
-        },
-        {
-          "expr": "go_goroutines{job=\"caddy\"}",
-          "legendFormat": "Goroutines",
-          "refId": "C"
+          },
+          "targets": [
+            {
+              "expr": "process_resident_memory_bytes{job=\"caddy\"}",
+              "legendFormat": "Resident memory",
+              "refId": "A"
+            },
+            {
+              "expr": "go_memstats_heap_inuse_bytes{job=\"caddy\"}",
+              "legendFormat": "Heap in use",
+              "refId": "B"
+            },
+            {
+              "expr": "go_goroutines{job=\"caddy\"}",
+              "legendFormat": "Goroutines",
+              "refId": "C"
+            }
+          ]
         }
       ]
     }

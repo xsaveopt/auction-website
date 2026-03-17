@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Models\AuctionQuestion;
 use App\Models\Bid;
 use App\Models\User;
 use App\Support\AuctionService;
@@ -48,6 +49,11 @@ class MetricsController extends Controller
             'winning_bid_total',
             'Total value of winning bids on active auctions',
             $winningBidTotal,
+        );
+        $prometheus->registerGauge(
+            'questions_unanswered',
+            'Number of unanswered auction questions',
+            AuctionQuestion::whereNull('answer')->count(),
         );
 
         $output = $prometheus->renderMetrics();
