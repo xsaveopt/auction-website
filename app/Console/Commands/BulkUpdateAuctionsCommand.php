@@ -13,7 +13,7 @@ class BulkUpdateAuctionsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'auction:update
+    protected $signature = 'app:update-auctions
                             {--ids= : Comma-separated list of auction IDs to update}
                             {--all-active : Update all active auctions}
                             {--add-time= : Add time to ends_at (e.g., "+1 hour", "-30 minutes")}

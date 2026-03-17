@@ -13,7 +13,7 @@ class ListAuctionBidsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'auction:bids 
+    protected $signature = 'app:list-bids
                             {id : The ID of the auction}
                             {--limit=20 : Number of bids to show}';
 

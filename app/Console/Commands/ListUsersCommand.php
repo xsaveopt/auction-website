@@ -12,7 +12,7 @@ class ListUsersCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'user:list
+    protected $signature = 'app:list-users
                             {--search= : Filter by username or Microsoft ID}
                             {--admins : Show only administrators}
                             {--limit=20 : Number of users to display}';

@@ -12,7 +12,7 @@ class ShowStatsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'auction:stats';
+    protected $signature = 'app:stats';
 
     /**
      * The console command description.
