@@ -276,6 +276,7 @@ provide("onLogin", onLogin);
 provide("schedule", schedule);
 provide("currencySymbol", currencySymbol);
 provide("heartbeatData", heartbeatData);
+provide("now", now);
 </script>
 
 <template>

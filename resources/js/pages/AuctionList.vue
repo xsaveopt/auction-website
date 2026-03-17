@@ -8,6 +8,7 @@ const loading = ref(true);
 const heartbeatData = inject("heartbeatData");
 const currencySymbol = inject("currencySymbol");
 const user = inject("user");
+const now = inject("now");
 
 const announcement = ref(null);
 const editingAnnouncement = ref(false);
@@ -80,7 +81,7 @@ const bidsMax = computed(() => {
 });
 
 function timeLeft(endsAt) {
-    const diff = new Date(endsAt) - Date.now();
+    const diff = new Date(endsAt) - now.value;
     if (diff <= 0) return "Ended";
     const hours = Math.floor(diff / 3600000);
     const minutes = Math.floor((diff % 3600000) / 60000);

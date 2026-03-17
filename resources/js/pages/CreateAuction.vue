@@ -6,6 +6,7 @@ import { api } from "../api.js";
 const router = useRouter();
 const user = inject("user");
 const currencySymbol = inject("currencySymbol");
+const now = inject("now");
 const priceLabel = computed(() => `Starting Price (${currencySymbol.value})`);
 const title = ref("");
 const description = ref("");
@@ -22,8 +23,10 @@ if (!user.value) {
     router.push("/login");
 }
 
-const d = new Date(Date.now() + 7 * 86400000);
-endsAt.value = d.toISOString().slice(0, 16);
+// Default to 7 days from server time; schedule response will have set now by the time this mounts
+const d = new Date(now.value.getTime() + 7 * 86400000);
+const pad = (n) => String(n).padStart(2, "0");
+endsAt.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
 function onFilesSelected(e) {
     const files = Array.from(e.target.files);

@@ -4,6 +4,7 @@ import { api } from "../api.js";
 
 const user = inject("user");
 const currencySymbol = inject("currencySymbol");
+const now = inject("now");
 const active = ref([]);
 const won = ref([]);
 const lost = ref([]);
@@ -21,7 +22,7 @@ onMounted(async () => {
 });
 
 function timeLeft(endsAt) {
-    const diff = new Date(endsAt) - Date.now();
+    const diff = new Date(endsAt) - now.value;
     if (diff <= 0) return "Ended";
     const hours = Math.floor(diff / 3600000);
     const minutes = Math.floor((diff % 3600000) / 60000);
