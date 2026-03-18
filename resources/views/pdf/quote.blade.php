@@ -61,17 +61,13 @@
 
         {{-- Title --}}
         <div style="font-size: 28px; font-weight: bold; color: #111111; margin-bottom: 20px;">
-            Factuur
+            Leverbon
         </div>
 
-        {{-- Invoice details --}}
+        {{-- Details --}}
         <table style="margin-bottom: 50px;">
             <tr>
-                <td style="width: 180px; padding: 3px 0; font-size: 10px;">Factuurnummer:</td>
-                <td style="padding: 3px 0; font-size: 10px;">{{ $quote_number }}</td>
-            </tr>
-            <tr>
-                <td style="padding: 3px 0; font-size: 10px;">Factuurdatum:</td>
+                <td style="width: 180px; padding: 3px 0; font-size: 10px;">Datum:</td>
                 <td style="padding: 3px 0; font-size: 10px;">{{ $generated_at }}</td>
             </tr>
             <tr>
@@ -140,10 +136,9 @@
             </tr>
         </table>
 
-        {{-- Payment terms --}}
+        {{-- Note --}}
         <div style="margin-top: 50px; font-size: 10px; line-height: 1.6;">
-            Graag verzoeken wij u dit bedrag binnen {{ $payment_days }} dagen na dagtekening van deze nota te betalen
-            (o.v.v. het factuurnummer) door overschrijving naar onze bankrekening: {{ $company['iban_1'] }}
+            Dit document is een leverbon en geldt niet als factuur.
         </div>
 
         <div style="margin-top: 20px; font-size: 10px;">

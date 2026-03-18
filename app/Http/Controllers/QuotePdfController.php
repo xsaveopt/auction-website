@@ -8,6 +8,7 @@ use App\Support\AuctionService;
 use App\Support\BiddingSchedule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class QuotePdfController extends Controller
 {
@@ -39,11 +40,6 @@ class QuotePdfController extends Controller
         $btwAmount = round($total - $subtotal, 2);
 
         $data = [
-            'quote_number' =>
-                'Q-'
-                    . str_pad((string) $auction->id, 4, '0', STR_PAD_LEFT)
-                    . '-'
-                    . str_pad((string) $bid->id, 4, '0', STR_PAD_LEFT),
             'auction' => [
                 'id' => $auction->id,
                 'title' => $auction->title,
@@ -67,7 +63,6 @@ class QuotePdfController extends Controller
             'btw_percentage' => number_format($btwPercentage, 2),
             'btw_amount' => $btwAmount,
             'total' => $total,
-            'payment_days' => config('auction.invoice.payment_days'),
         ];
 
         /** @var \Barryvdh\DomPDF\PDF $pdf */
@@ -78,5 +73,14 @@ class QuotePdfController extends Controller
 
         /** @var Response */
         return $pdf->download($filename);
+    }
+
+    public function downloadStored(string $filename): BinaryFileResponse
+    {
+        $path = storage_path("app/quotes/{$filename}");
+
+        abort_unless(str_ends_with($filename, '.pdf') && !str_contains($filename, '/') && file_exists($path), 404);
+
+        return response()->download($path);
     }
 }

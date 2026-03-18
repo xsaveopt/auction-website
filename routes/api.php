@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 // Auth (public even when SSO is enabled)
 Route::get('/auth/sso/enabled', [SocialiteController::class, 'enabled']);
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
 Route::get('/user', [AuthController::class, 'user']);
 
@@ -39,6 +39,7 @@ Route::middleware('sso')->group(function () {
     Route::get('/my-auctions', [AuctionController::class, 'myAuctions'])->middleware('auth');
     Route::get('/auctions/ended', [AuctionController::class, 'ended'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}/quotes/{bid}', [QuotePdfController::class, 'download'])->middleware(['auth', 'admin']);
+    Route::get('/quotes/{filename}', [QuotePdfController::class, 'downloadStored'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}', [AuctionController::class, 'show']);
     Route::post('/auctions', [AuctionController::class, 'store'])->middleware(['auth', 'admin']);
     Route::put('/auctions/{auction}', [AuctionController::class, 'update'])->middleware(['auth', 'admin']);

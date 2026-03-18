@@ -13,8 +13,23 @@
 }
 
 {$SERVER_NAME:localhost} {
-	log {
-		output stderr
+	log access {
+		output file /data/logs/caddy-access.log {
+			roll_disabled
+		}
+		format console
+	}
+
+	log debug {
+		output file /data/logs/caddy-debug.log {
+			roll_disabled
+		}
+		format json
+	}
+
+	log stdout {
+		output stdout
+		format console
 	}
 
 	root * /app/public

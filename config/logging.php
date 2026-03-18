@@ -128,11 +128,37 @@ return [
         ],
 
         'access' => [
-            'driver' => 'daily',
+            'driver' => 'stack',
+            'channels' => ['access-file', 'access-stdout'],
+            'ignore_exceptions' => false,
+        ],
+
+        'access-file' => [
+            'driver' => 'single',
             'path' => storage_path('logs/access.log'),
             'level' => 'info',
-            'days' => env('LOG_ACCESS_DAYS', 14),
             'replace_placeholders' => true,
+        ],
+
+        'access-stdout' => [
+            'driver' => 'monolog',
+            'level' => 'info',
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => 'php://stdout',
+            ],
+            'processors' => [PsrLogMessageProcessor::class],
+        ],
+
+        'debug' => [
+            'driver' => 'monolog',
+            'level' => 'info',
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => storage_path('logs/debug.log'),
+            ],
+            'formatter' => \Monolog\Formatter\JsonFormatter::class,
+            'processors' => [PsrLogMessageProcessor::class],
         ],
 
     ],
