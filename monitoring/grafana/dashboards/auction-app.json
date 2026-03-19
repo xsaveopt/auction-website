@@ -15,7 +15,7 @@
     {
       "title": "Active Auctions",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 5, "x": 0, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -38,35 +38,9 @@
       ]
     },
     {
-      "title": "Online Users",
-      "type": "stat",
-      "gridPos": { "h": 3, "w": 5, "x": 5, "y": 1 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "text", "value": null },
-              { "color": "blue", "value": 1 },
-              { "color": "green", "value": 5 }
-            ]
-          }
-        }
-      },
-      "options": { "graphMode": "area" },
-      "targets": [
-        {
-          "expr": "app_online_users",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ]
-    },
-    {
       "title": "Total Bids",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 5, "x": 10, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -91,7 +65,7 @@
     {
       "title": "Winning Bid Total",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 5, "x": 15, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -117,7 +91,7 @@
     {
       "title": "Items Up for Grabs",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -140,9 +114,36 @@
       ]
     },
     {
+      "title": "Unanswered Questions",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
+      },
+      "options": { "graphMode": "area" },
+      "targets": [
+        {
+          "expr": "app_questions_unanswered",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
       "title": "Registered Users",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 4 },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -169,7 +170,7 @@
       "title": "Bidding Activity",
       "description": "New bids over time — shows bidding engagement trends",
       "type": "timeseries",
-      "gridPos": { "h": 5, "w": 10, "x": 4, "y": 4 },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 5 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -186,39 +187,52 @@
       ]
     },
     {
-      "title": "Unanswered Questions",
-      "type": "stat",
-      "gridPos": { "h": 3, "w": 4, "x": 14, "y": 4 },
+      "title": "Online Users Over Time",
+      "description": "Historical online user count — see activity patterns without needing to watch in real time",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 5 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "pointSize": 5,
+            "showPoints": "auto"
+          },
+          "color": { "mode": "fixed", "fixedColor": "blue" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 1 },
-              { "color": "orange", "value": 5 },
-              { "color": "red", "value": 10 }
+              { "color": "text", "value": null },
+              { "color": "blue", "value": 1 },
+              { "color": "green", "value": 5 }
             ]
-          }
+          },
+          "min": 0
         }
       },
-      "options": { "graphMode": "area" },
+      "options": {
+        "tooltip": { "mode": "single" }
+      },
       "targets": [
         {
-          "expr": "app_questions_unanswered",
-          "legendFormat": "",
+          "expr": "app_online_users",
+          "legendFormat": "Online users",
           "refId": "A"
         }
       ]
     },
     {
-      "title": "Online Users",
+      "title": "Recently Online",
+      "description": "Users seen in the last hour — catch activity even after they've left",
       "type": "table",
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 9 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
-        "sortBy": [{ "displayName": "Username", "desc": false }]
+        "sortBy": [{ "displayName": "Last Seen", "desc": true }]
       },
       "fieldConfig": {
         "overrides": [
@@ -245,7 +259,7 @@
       ],
       "targets": [
         {
-          "expr": "app_online_user_last_seen",
+          "expr": "max_over_time(app_online_user_last_seen[1h])",
           "legendFormat": "",
           "refId": "A",
           "format": "table",
@@ -256,7 +270,7 @@
     {
       "title": "Recent User Signups",
       "type": "table",
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 9 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "sortBy": [{ "displayName": "Signed Up", "desc": true }]
@@ -296,7 +310,7 @@
     {
       "title": "Bids on Active Listings",
       "type": "table",
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 9 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "sortBy": [{ "displayName": "Last Updated", "desc": true }]
@@ -345,14 +359,14 @@
     {
       "title": "Application Health",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
       "collapsed": false,
       "panels": []
     },
     {
       "title": "Request Rate",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 8, "x": 0, "y": 17 },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 21 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -379,7 +393,7 @@
     {
       "title": "Error Rate",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 8, "x": 8, "y": 17 },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 21 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -407,7 +421,7 @@
     {
       "title": "p95 Latency",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 8, "x": 16, "y": 17 },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 21 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -437,7 +451,7 @@
       "title": "Traffic & Errors",
       "description": "Request throughput with error overlay — quickly spot if errors correlate with traffic spikes",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 25 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -503,7 +517,7 @@
       "title": "Latency Distribution",
       "description": "Heatmap of request durations — reveals latency patterns that percentile lines miss",
       "type": "heatmap",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "calculate": false,
@@ -523,14 +537,14 @@
     {
       "title": "Route Performance",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 33 },
       "collapsed": true,
       "panels": [
         {
           "title": "Slowest Routes (p95)",
           "description": "Top 10 routes by p95 latency — find your bottlenecks at a glance",
           "type": "bargauge",
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 34 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -563,7 +577,7 @@
           "title": "Route Detail",
           "description": "Per-route throughput, latency percentiles, and error rates",
           "type": "table",
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 32 },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 42 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "options": {
             "sortBy": [{ "displayName": "p95", "desc": true }]
@@ -649,13 +663,13 @@
     {
       "title": "Caddy Infrastructure",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 45 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
       "collapsed": true,
       "panels": [
         {
           "title": "Caddy Request Duration (p50 / p95)",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 41 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -679,7 +693,7 @@
         {
           "title": "Caddy Memory & Goroutines",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 41 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
