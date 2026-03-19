@@ -5,6 +5,7 @@ import CreateAuction from "./pages/CreateAuction.vue";
 import EditAuction from "./pages/EditAuction.vue";
 import AdminResults from "./pages/AdminResults.vue";
 import AdminQuestions from "./pages/AdminQuestions.vue";
+import AdminCategories from "./pages/AdminCategories.vue";
 import Login from "./pages/Login.vue";
 import Register from "./pages/Register.vue";
 import MyDashboard from "./pages/MyDashboard.vue";
@@ -24,6 +25,11 @@ const routes = [
     {
         path: "/admin/questions",
         component: AdminQuestions,
+        meta: { requiresAuth: true },
+    },
+    {
+        path: "/admin/categories",
+        component: AdminCategories,
         meta: { requiresAuth: true },
     },
     {

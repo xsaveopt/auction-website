@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Auction;
 use App\Models\Bid;
+use App\Models\SiteSetting;
 use App\Support\BiddingSchedule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,10 @@ class BidController extends Controller
 {
     public function store(Request $request, Auction $auction): JsonResponse
     {
+        if (SiteSetting::isLocked()) {
+            return response()->json(['message' => 'The site is temporarily closed for maintenance.'], 422);
+        }
+
         if (!BiddingSchedule::isBiddingOpen()) {
             return response()->json([
                 'message' =>

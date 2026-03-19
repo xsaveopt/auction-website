@@ -19,8 +19,13 @@ class Presence
 
     private const CLEANUP_INTERVAL_SECONDS = 30;
 
-    public static function heartbeat(string $pageId, string $clientId, string $pageType, ?int $auctionId = null): void
-    {
+    public static function heartbeat(
+        string $pageId,
+        string $clientId,
+        string $pageType,
+        ?int $auctionId = null,
+        ?int $userId = null,
+    ): void {
         $now = now();
 
         if (!apcu_exists('presence_cleanup') || apcu_fetch('presence_cleanup') < time()) {
@@ -33,6 +38,7 @@ class Presence
                 [
                     'page_id' => $pageId,
                     'client_id' => $clientId,
+                    'user_id' => $userId,
                     'page_type' => $pageType,
                     'auction_id' => $auctionId,
                     'last_seen_at' => $now,
@@ -41,7 +47,7 @@ class Presence
                 ],
             ],
             ['page_id'],
-            ['client_id', 'page_type', 'auction_id', 'last_seen_at', 'updated_at'],
+            ['client_id', 'user_id', 'page_type', 'auction_id', 'last_seen_at', 'updated_at'],
         );
     }
 
@@ -82,6 +88,35 @@ class Presence
             ->select('client_id')
             ->distinct()
             ->count('client_id');
+    }
+
+    /**
+     * @return list<array{username: string, page_type: string, last_seen_at: int}>
+     */
+    public static function onlineUserDetails(): array
+    {
+        /** @var list<object{username: string, page_type: string, last_seen_at: string|null}> $rows */
+        $rows = PresenceHeartbeat::query()
+            ->recent()
+            ->whereNotNull('user_id')
+            ->join('users', 'users.id', '=', 'presence_heartbeats.user_id')
+            ->selectRaw(
+                'users.username, presence_heartbeats.page_type, MAX(presence_heartbeats.last_seen_at) as last_seen_at',
+            )
+            ->groupBy('users.username', 'presence_heartbeats.page_type')
+            ->get()
+            ->all();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[] = [
+                'username' => $row->username,
+                'page_type' => $row->page_type,
+                'last_seen_at' => $row->last_seen_at !== null ? (int) (strtotime($row->last_seen_at) * 1000) : 0,
+            ];
+        }
+
+        return $result;
     }
 
     /** @return Builder<PresenceHeartbeat> */

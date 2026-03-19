@@ -9,11 +9,13 @@ const currencySymbol = inject("currencySymbol");
 const priceLabel = computed(() => `Starting Price (${currencySymbol.value})`);
 const props = defineProps({ id: String });
 
+const categories = ref([]);
 const title = ref("");
 const description = ref("");
 const startingPrice = ref("");
 const quantity = ref(1);
 const maxPerBidder = ref(1);
+const categoryId = ref("");
 const endsAt = ref("");
 const errors = ref({});
 const submitting = ref(false);
@@ -25,13 +27,18 @@ onMounted(async () => {
         return;
     }
     try {
-        const data = await api(`/auctions/${props.id}`);
+        const [data, catData] = await Promise.all([
+            api(`/auctions/${props.id}`),
+            api("/categories").catch(() => ({ categories: [] })),
+        ]);
+        categories.value = catData.categories;
         const a = data.auction;
         title.value = a.title;
         description.value = a.description;
         startingPrice.value = Number(a.starting_price).toFixed(2);
         quantity.value = a.quantity;
         maxPerBidder.value = a.max_per_bidder;
+        categoryId.value = a.category_id || "";
         endsAt.value = a.ends_at.slice(0, 16);
     } catch {
         errors.value = { general: ["Failed to load auction."] };
@@ -52,6 +59,7 @@ async function submit() {
                 starting_price: Number(startingPrice.value),
                 quantity: Number(quantity.value),
                 max_per_bidder: Number(maxPerBidder.value),
+                category_id: categoryId.value ? Number(categoryId.value) : null,
                 ends_at: endsAt.value,
             }),
         });
@@ -107,6 +115,21 @@ async function submit() {
                         class="text-red-600 dark:text-red-400 text-sm mt-1"
                     >
                         {{ errors.description[0] }}
+                    </p>
+                </div>
+                <div v-if="categories.length > 0">
+                    <label class="block text-sm font-medium mb-1">Category</label>
+                    <select v-model="categoryId" class="w-full border rounded px-3 py-2">
+                        <option value="">No category</option>
+                        <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                            {{ cat.name }}
+                        </option>
+                    </select>
+                    <p
+                        v-if="errors.category_id"
+                        class="text-red-600 dark:text-red-400 text-sm mt-1"
+                    >
+                        {{ errors.category_id[0] }}
                     </p>
                 </div>
                 <div class="grid grid-cols-2 gap-4">

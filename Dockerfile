@@ -42,15 +42,6 @@ RUN mkdir -p /data /data/caddy_data /data/caddy_config
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-ENV APP_ENV=production
-ENV APP_DEBUG=false
-ENV DB_CONNECTION=sqlite
-ENV DB_DATABASE=/data/database.sqlite
-ENV OCTANE_SERVER=frankenphp
-ENV SERVER_NAME=":80"
-ENV BIDDING_CLOSED_START="09:00"
-ENV BIDDING_CLOSED_END="18:00"
-
 EXPOSE 80 443
 
 VOLUME ["/data"]

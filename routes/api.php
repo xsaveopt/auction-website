@@ -3,6 +3,7 @@
 use App\Support\BiddingSchedule;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuctionController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\AuctionImageController;
 use App\Http\Controllers\AuctionQuestionController;
 use App\Http\Controllers\AuthController;
@@ -10,7 +11,6 @@ use App\Http\Controllers\BidController;
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\QuotePdfController;
 use App\Http\Controllers\SocialiteController;
-use App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;
 
 // Auth (public even when SSO is enabled)
@@ -22,8 +22,6 @@ Route::get('/user', [AuthController::class, 'user']);
 
 // All routes below require authentication when SSO is enabled
 Route::middleware('sso')->group(function () {
-    // Stats
-    Route::get('/stats', [StatsController::class, 'index']);
     Route::post('/presence/heartbeat', [PresenceController::class, 'heartbeat']);
 
     // Bidding schedule
@@ -33,6 +31,12 @@ Route::middleware('sso')->group(function () {
     Route::get('/announcement', [AnnouncementController::class, 'active']);
     Route::post('/announcement', [AnnouncementController::class, 'store'])->middleware(['auth', 'admin']);
     Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->middleware(['auth', 'admin']);
+
+    // Categories
+    Route::get('/categories', [CategoryController::class, 'index']);
+    Route::post('/categories', [CategoryController::class, 'store'])->middleware(['auth', 'admin']);
+    Route::put('/categories/{category}', [CategoryController::class, 'update'])->middleware(['auth', 'admin']);
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->middleware(['auth', 'admin']);
 
     // Auctions
     Route::get('/auctions', [AuctionController::class, 'index']);

@@ -8,11 +8,13 @@ const user = inject("user");
 const currencySymbol = inject("currencySymbol");
 const now = inject("now");
 const priceLabel = computed(() => `Starting Price (${currencySymbol.value})`);
+const categories = ref([]);
 const title = ref("");
 const description = ref("");
 const startingPrice = ref("1.00");
 const quantity = ref(1);
 const maxPerBidder = ref(1);
+const categoryId = ref("");
 const endsAt = ref("");
 const imageFiles = ref([]);
 const imagePreviews = ref([]);
@@ -22,6 +24,12 @@ const submitting = ref(false);
 if (!user.value) {
     router.push("/login");
 }
+
+api("/categories")
+    .then((data) => {
+        categories.value = data.categories;
+    })
+    .catch(() => {});
 
 // Default to 7 days from server time; schedule response will have set now by the time this mounts
 const d = new Date(now.value.getTime() + 7 * 86400000);
@@ -55,6 +63,7 @@ async function submit() {
                 starting_price: Number(startingPrice.value),
                 quantity: Number(quantity.value),
                 max_per_bidder: Number(maxPerBidder.value),
+                category_id: categoryId.value ? Number(categoryId.value) : null,
                 ends_at: endsAt.value,
             }),
         });
@@ -117,6 +126,18 @@ async function submit() {
                 ></textarea>
                 <p v-if="errors.description" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.description[0] }}
+                </p>
+            </div>
+            <div v-if="categories.length > 0">
+                <label class="block text-sm font-medium mb-1">Category</label>
+                <select v-model="categoryId" class="w-full border rounded px-3 py-2">
+                    <option value="">No category</option>
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                        {{ cat.name }}
+                    </option>
+                </select>
+                <p v-if="errors.category_id" class="text-red-600 dark:text-red-400 text-sm mt-1">
+                    {{ errors.category_id[0] }}
                 </p>
             </div>
             <div>

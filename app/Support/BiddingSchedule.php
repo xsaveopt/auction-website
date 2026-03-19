@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\SiteSetting;
 use Illuminate\Support\Carbon;
 
 class BiddingSchedule
@@ -76,10 +77,12 @@ class BiddingSchedule
     }
 
     /**
-     * @return array{enabled: bool, closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, server_time_local: string, currency_symbol: string, anti_sniping: array{enabled: bool, window: int, extension: int}}
+     * @return array{enabled: bool, closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, server_time_local: string, currency_symbol: string, anti_sniping: array{enabled: bool, window: int, extension: int}, site_locked: bool, lock_message: string|null}
      */
     public static function toArray(): array
     {
+        $settings = SiteSetting::instance();
+
         return [
             'enabled' => self::isEnabled(),
             'closed_start' => self::closedStart(),
@@ -90,6 +93,8 @@ class BiddingSchedule
             'server_time_local' => now()->format('H:i:s'),
             'currency_symbol' => self::currencySymbol(),
             'anti_sniping' => self::antiSniping(),
+            'site_locked' => $settings->is_locked,
+            'lock_message' => $settings->lock_message,
         ];
     }
 }

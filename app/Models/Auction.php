@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $quantity
  * @property int $max_per_bidder
  * @property string $status
+ * @property int|null $category_id
  * @property \Illuminate\Support\Carbon $ends_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property-read int $watcher_count
@@ -31,12 +32,19 @@ class Auction extends Model
         'max_per_bidder',
         'ends_at',
         'status',
+        'category_id',
     ];
 
     /** @return BelongsTo<\App\Models\User, $this> */
     public function seller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    /** @return BelongsTo<\App\Models\Category, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     /** @return HasMany<\App\Models\AuctionImage, $this> */

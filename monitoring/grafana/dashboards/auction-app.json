@@ -115,9 +115,80 @@
       ]
     },
     {
-      "title": "Unanswered Questions",
+      "title": "Items Up for Grabs",
       "type": "stat",
       "gridPos": { "h": 3, "w": 4, "x": 20, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": { "graphMode": "area" },
+      "targets": [
+        {
+          "expr": "app_total_items",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Registered Users",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null },
+              { "color": "blue", "value": 1 },
+              { "color": "green", "value": 10 }
+            ]
+          }
+        }
+      },
+      "options": { "graphMode": "area" },
+      "targets": [
+        {
+          "expr": "app_registered_users",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Bidding Activity",
+      "description": "New bids over time — shows bidding engagement trends",
+      "type": "timeseries",
+      "gridPos": { "h": 5, "w": 10, "x": 4, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1, "barAlignment": 0 },
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(app_total_bids[1h])",
+          "legendFormat": "Bids",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Unanswered Questions",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 14, "y": 4 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -142,9 +213,50 @@
       ]
     },
     {
+      "title": "Online Users",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "options": {
+        "sortBy": [{ "displayName": "Username", "desc": false }]
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Last Seen" },
+            "properties": [
+              { "id": "unit", "value": "dateTimeAsSystem" }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true },
+            "renameByName": {
+              "username": "Username",
+              "page_type": "Page",
+              "Value": "Last Seen"
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "expr": "app_online_user_last_seen",
+          "legendFormat": "",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
       "title": "Recent User Signups",
       "type": "table",
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 4 },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 9 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "sortBy": [{ "displayName": "Signed Up", "desc": true }]
@@ -184,7 +296,7 @@
     {
       "title": "Bids on Active Listings",
       "type": "table",
-      "gridPos": { "h": 7, "w": 16, "x": 8, "y": 4 },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 9 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "sortBy": [{ "displayName": "Last Updated", "desc": true }]
@@ -233,14 +345,14 @@
     {
       "title": "Application Health",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 11 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
       "collapsed": false,
       "panels": []
     },
     {
       "title": "Request Rate",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 8, "x": 0, "y": 12 },
+      "gridPos": { "h": 3, "w": 8, "x": 0, "y": 17 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -267,7 +379,7 @@
     {
       "title": "Error Rate",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 8, "x": 8, "y": 12 },
+      "gridPos": { "h": 3, "w": 8, "x": 8, "y": 17 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -295,7 +407,7 @@
     {
       "title": "p95 Latency",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 8, "x": 16, "y": 12 },
+      "gridPos": { "h": 3, "w": 8, "x": 16, "y": 17 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -325,7 +437,7 @@
       "title": "Traffic & Errors",
       "description": "Request throughput with error overlay — quickly spot if errors correlate with traffic spikes",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -391,7 +503,7 @@
       "title": "Latency Distribution",
       "description": "Heatmap of request durations — reveals latency patterns that percentile lines miss",
       "type": "heatmap",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "calculate": false,
@@ -411,7 +523,7 @@
     {
       "title": "Route Performance",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 },
       "collapsed": true,
       "panels": [
         {
@@ -537,7 +649,7 @@
     {
       "title": "Caddy Infrastructure",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 45 },
       "collapsed": true,
       "panels": [
         {

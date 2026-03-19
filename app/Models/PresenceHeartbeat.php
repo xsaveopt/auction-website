@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\User;
 use App\Support\Presence;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -19,10 +20,17 @@ class PresenceHeartbeat extends Model
     protected $fillable = [
         'page_id',
         'client_id',
+        'user_id',
         'page_type',
         'auction_id',
         'last_seen_at',
     ];
+
+    /** @return BelongsTo<\App\Models\User, $this> */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     /** @return BelongsTo<\App\Models\Auction, $this> */
     public function auction(): BelongsTo

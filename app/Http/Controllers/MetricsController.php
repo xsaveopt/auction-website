@@ -18,7 +18,7 @@ class MetricsController extends Controller
     {
         $token = config('services.metrics.token');
 
-        if ($token && request()->bearerToken() !== $token) {
+        if (!$token || request()->bearerToken() !== $token) {
             abort(404);
         }
 
@@ -42,9 +42,14 @@ class MetricsController extends Controller
             }
         }
 
+        $totalItems = (int) Auction::where('status', 'active')->where('ends_at', '>', $now)->sum('quantity');
+        $registeredUsers = User::count();
+
         $prometheus->registerGauge('active_auctions', 'Number of active auctions', $activeAuctions);
         $prometheus->registerGauge('total_bids', 'Total number of bids', $totalBids);
         $prometheus->registerGauge('online_users', 'Number of online users', $onlineUsers);
+        $prometheus->registerGauge('total_items', 'Total items up for grabs on active auctions', $totalItems);
+        $prometheus->registerGauge('registered_users', 'Total registered users', $registeredUsers);
         $prometheus->registerGauge(
             'winning_bid_total',
             'Total value of winning bids on active auctions',
@@ -57,6 +62,16 @@ class MetricsController extends Controller
         );
 
         $output = $prometheus->renderMetrics();
+
+        // Online users (per-user presence)
+        $onlineUserDetails = Presence::onlineUserDetails();
+        $output .= "# HELP app_online_user_last_seen Last-seen timestamp in milliseconds for online users\n";
+        $output .= "# TYPE app_online_user_last_seen gauge\n";
+        foreach ($onlineUserDetails as $detail) {
+            $username = self::escapeLabel($detail['username']);
+            $pageType = self::escapeLabel($detail['page_type']);
+            $output .= "app_online_user_last_seen{username=\"{$username}\",page_type=\"{$pageType}\"} {$detail['last_seen_at']}\n";
+        }
 
         // Recent user signups (last 25)
         $recentUsers = User::orderByDesc('created_at')->limit(25)->get(['username', 'created_at']);

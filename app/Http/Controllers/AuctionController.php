@@ -19,7 +19,7 @@ class AuctionController extends Controller
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
         $auctions = Auction::query()
-            ->with(['seller:id,username', 'bids', 'images'])
+            ->with(['seller:id,username', 'bids', 'images', 'category'])
             ->orderByRaw("CASE WHEN status = 'active' AND ends_at > ? THEN 1 ELSE 0 END DESC", [now()])
             ->orderByDesc('created_at')
             ->get();
@@ -33,7 +33,13 @@ class AuctionController extends Controller
 
     public function show(Auction $auction): JsonResponse
     {
-        $auction->load(['seller:id,username', 'bids.user:id,username', 'images', 'questions.user:id,username']);
+        $auction->load([
+            'seller:id,username',
+            'bids.user:id,username',
+            'images',
+            'questions.user:id,username',
+            'category',
+        ]);
         $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
 
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);
@@ -42,7 +48,12 @@ class AuctionController extends Controller
     public function ended(): JsonResponse
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $allAuctions */
-        $allAuctions = Auction::query()->with(['seller:id,username', 'bids.user:id,username', 'images'])->get();
+        $allAuctions = Auction::query()->with([
+            'seller:id,username',
+            'bids.user:id,username',
+            'images',
+            'category',
+        ])->get();
 
         $this->auctionService->loadWatcherCounts($allAuctions);
 
@@ -124,7 +135,7 @@ class AuctionController extends Controller
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
         $auctions = Auction::query()
-            ->with(['seller:id,username', 'bids.user:id,username', 'images'])
+            ->with(['seller:id,username', 'bids.user:id,username', 'images', 'category'])
             ->whereHas('bids', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
@@ -161,7 +172,7 @@ class AuctionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        /** @var array{title: string, description: string, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string} $validated */
+        /** @var array{title: string, description: string, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string, category_id?: int|null} $validated */
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:2000'],
@@ -169,6 +180,7 @@ class AuctionController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
             'max_per_bidder' => ['required', 'integer', 'min:1'],
             'ends_at' => ['required', 'date', 'after:now'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
         if ($validated['max_per_bidder'] > $validated['quantity']) {
@@ -179,7 +191,7 @@ class AuctionController extends Controller
         $user = $request->user();
 
         $auction = $user->auctions()->create($validated);
-        $auction->load(['seller:id,username', 'images']);
+        $auction->load(['seller:id,username', 'images', 'category']);
         $auction->setAttribute('watcher_count', 0);
 
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction)], 201);
@@ -187,7 +199,7 @@ class AuctionController extends Controller
 
     public function update(Request $request, Auction $auction): JsonResponse
     {
-        /** @var array{title: string, description: string, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string} $validated */
+        /** @var array{title: string, description: string, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string, category_id?: int|null} $validated */
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:2000'],
@@ -195,6 +207,7 @@ class AuctionController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
             'max_per_bidder' => ['required', 'integer', 'min:1'],
             'ends_at' => ['required', 'date', 'after:now'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
         if ($validated['max_per_bidder'] > $validated['quantity']) {
@@ -202,7 +215,7 @@ class AuctionController extends Controller
         }
 
         $auction->update($validated);
-        $auction->load(['seller:id,username', 'bids.user:id,username', 'images']);
+        $auction->load(['seller:id,username', 'bids.user:id,username', 'images', 'category']);
         $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
 
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);

@@ -114,6 +114,13 @@ class AuctionService
                     'url' => "/api/images/{$img->id}",
                 ])
                 ->values(),
+            'category_id' => $auction->category_id,
+            'category' => $auction->relationLoaded('category') && $auction->category
+                ? [
+                    'id' => $auction->category->id,
+                    'name' => $auction->category->name,
+                    'slug' => $auction->category->slug,
+                ] : null,
             'created_at' => $auction->created_at?->format('Y-m-d\TH:i:sP'),
         ];
 

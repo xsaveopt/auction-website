@@ -16,6 +16,8 @@ const ssoEnabled = ref(false);
 const currencySymbol = ref("$");
 const now = ref(new Date());
 const heartbeatData = ref(null);
+const siteLocked = ref(false);
+const lockMessage = ref(null);
 let serverOffsetMs = 0; // server time minus browser time
 const serverClockSeconds = ref(0); // seconds since midnight in server-local time
 
@@ -153,7 +155,7 @@ const serverClock = computed(() => {
     return `${h}:${m}:${s}`;
 });
 
-const shellWidthClass = "max-w-7xl";
+const shellWidthClass = "max-w-[1800px]";
 
 async function fetchUser() {
     try {
@@ -181,6 +183,8 @@ async function fetchSchedule() {
         if (data.schedule?.currency_symbol) {
             currencySymbol.value = data.schedule.currency_symbol;
         }
+        siteLocked.value = !!data.schedule?.site_locked;
+        lockMessage.value = data.schedule?.lock_message || null;
     } catch {
         // ignore
     }
@@ -371,6 +375,12 @@ provide("now", now);
                         >
                         <router-link
                             v-if="user.is_admin"
+                            to="/admin/categories"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
+                            >Categories</router-link
+                        >
+                        <router-link
+                            v-if="user.is_admin"
                             to="/auctions/new"
                             class="text-blue-600 dark:text-blue-400 hover:underline"
                             >Sell Item</router-link
@@ -405,7 +415,46 @@ provide("now", now);
                 </div>
             </div>
         </nav>
-        <main :class="[shellWidthClass, 'mx-auto px-4']">
+        <div
+            v-if="siteLocked && !user?.is_admin"
+            class="border-l-4 border-orange-400 bg-orange-50 dark:bg-orange-900/30 dark:border-orange-600 p-6 text-center"
+            :class="[shellWidthClass, 'mx-auto my-8 rounded-lg']"
+        >
+            <div class="flex flex-col items-center gap-3">
+                <svg
+                    class="w-10 h-10 text-orange-500 dark:text-orange-400"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+                    />
+                </svg>
+                <h2 class="text-xl font-semibold text-orange-800 dark:text-orange-200">
+                    Site Temporarily Closed
+                </h2>
+                <p class="text-orange-700 dark:text-orange-300">
+                    {{
+                        lockMessage ||
+                        "The auction house is temporarily closed for maintenance. Please check back soon!"
+                    }}
+                </p>
+            </div>
+        </div>
+        <div
+            v-if="siteLocked && user?.is_admin"
+            class="border-l-4 border-orange-400 bg-orange-50 dark:bg-orange-900/30 dark:border-orange-600 px-4 py-2 mb-4"
+            :class="[shellWidthClass, 'mx-auto rounded']"
+        >
+            <span class="text-sm text-orange-700 dark:text-orange-300 font-medium"
+                >Site is locked for non-admin users.</span
+            >
+        </div>
+        <main v-if="!siteLocked || user?.is_admin" :class="[shellWidthClass, 'mx-auto px-4']">
             <router-view />
         </main>
     </div>
