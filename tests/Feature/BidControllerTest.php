@@ -211,7 +211,10 @@ class BidControllerTest extends TestCase
                 'quantity' => 2,
             ])
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'New bid must be higher than your current bid ($15.00).');
+            ->assertJsonPath(
+                'message',
+                'New bid must have a higher amount or a higher quantity than your current bid.',
+            );
     }
 
     public function test_anti_sniping_extends_the_auction_when_enabled(): void

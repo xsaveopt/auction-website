@@ -84,7 +84,9 @@ class BidController extends Controller
             }
 
             if ($amount > $existingAmount && $quantity < $existingQuantity) {
-                return response()->json(['message' => 'You cannot lower your bid quantity, even with a higher amount.'], 422);
+                return response()->json([
+                    'message' => 'You cannot lower your bid quantity, even with a higher amount.',
+                ], 422);
             }
         }
 

@@ -186,7 +186,7 @@ class AuctionService
 
             $data['bids'] = $sortedBids->map(function (Bid $bid) use ($allocations, $prices, $currentUser, $isAdmin) {
                 $isOwner = $currentUser && $bid->user_id === $currentUser->id;
-                $username = ($isAdmin || $isOwner) ? $bid->user?->username : "Bidder #{$bid->user_id}";
+                $username = $isAdmin || $isOwner ? $bid->user?->username : "Bidder #{$bid->user_id}";
 
                 return [
                     'id' => $bid->id,
@@ -203,24 +203,24 @@ class AuctionService
             });
 
             if ($auction->relationLoaded('leftoverPurchases')) {
-                $data['leftover_purchases'] = $auction
-                    ->leftoverPurchases
-                    ->map(function (LeftoverPurchase $purchase) use ($currentUser, $isAdmin) {
-                        $isOwner = $currentUser && $purchase->user_id === $currentUser->id;
-                        $username = ($isAdmin || $isOwner) ? $purchase->user?->username : "User #{$purchase->user_id}";
+                $data['leftover_purchases'] = $auction->leftoverPurchases->map(function (LeftoverPurchase $purchase) use (
+                    $currentUser,
+                    $isAdmin,
+                ) {
+                    $isOwner = $currentUser && $purchase->user_id === $currentUser->id;
+                    $username = $isAdmin || $isOwner ? $purchase->user?->username : "User #{$purchase->user_id}";
 
-                        return [
-                            'id' => $purchase->id,
-                            'quantity' => $purchase->quantity,
-                            'price_per_item' => $purchase->price_per_item,
-                            'user' => [
-                                'id' => $purchase->user?->id,
-                                'username' => $username,
-                            ],
-                            'created_at' => $purchase->created_at?->format('Y-m-d\TH:i:sP'),
-                        ];
-                    })
-                    ->values();
+                    return [
+                        'id' => $purchase->id,
+                        'quantity' => $purchase->quantity,
+                        'price_per_item' => $purchase->price_per_item,
+                        'user' => [
+                            'id' => $purchase->user?->id,
+                            'username' => $username,
+                        ],
+                        'created_at' => $purchase->created_at?->format('Y-m-d\TH:i:sP'),
+                    ];
+                })->values();
             }
         }
 
@@ -229,25 +229,25 @@ class AuctionService
             /** @var bool $isAdmin */
             $isAdmin = $currentUser && $currentUser->is_admin;
 
-            $data['questions'] = $auction
-                ->questions
-                ->map(function (\App\Models\AuctionQuestion $question) use ($currentUser, $isAdmin) {
-                    $isOwner = $currentUser && $question->user_id === $currentUser->id;
-                    $username = ($isAdmin || $isOwner) ? $question->user?->username : "User #{$question->user_id}";
+            $data['questions'] = $auction->questions->map(function (\App\Models\AuctionQuestion $question) use (
+                $currentUser,
+                $isAdmin,
+            ) {
+                $isOwner = $currentUser && $question->user_id === $currentUser->id;
+                $username = $isAdmin || $isOwner ? $question->user?->username : "User #{$question->user_id}";
 
-                    return [
-                        'id' => $question->id,
-                        'question' => $question->question,
-                        'answer' => $question->answer,
-                        'answered_at' => $question->answered_at?->format('Y-m-d\TH:i:sP'),
-                        'user' => [
-                            'id' => $question->user?->id,
-                            'username' => $username,
-                        ],
-                        'created_at' => $question->created_at?->format('Y-m-d\TH:i:sP'),
-                    ];
-                })
-                ->values();
+                return [
+                    'id' => $question->id,
+                    'question' => $question->question,
+                    'answer' => $question->answer,
+                    'answered_at' => $question->answered_at?->format('Y-m-d\TH:i:sP'),
+                    'user' => [
+                        'id' => $question->user?->id,
+                        'username' => $username,
+                    ],
+                    'created_at' => $question->created_at?->format('Y-m-d\TH:i:sP'),
+                ];
+            })->values();
         }
 
         return $data;

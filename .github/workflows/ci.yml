@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -14,7 +16,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: '8.5'
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -36,7 +38,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: '8.5'
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -58,8 +60,9 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
-          extensions: pdo_sqlite
+          php-version: '8.5'
+          extensions: pdo_sqlite, apcu
+          ini-values: apc.enable_cli=1
 
       - run: composer install --no-interaction
       - run: cp .env.example .env
