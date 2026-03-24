@@ -1,13 +1,20 @@
 <script setup>
 import { ref, inject, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { api } from "../api.js";
 
+const router = useRouter();
 const user = inject("user");
+
+if (!user.value) {
+    router.push("/login");
+}
 const currencySymbol = inject("currencySymbol");
 const now = inject("now");
 const active = ref([]);
 const won = ref([]);
 const lost = ref([]);
+const purchased = ref([]);
 const loading = ref(true);
 
 onMounted(async () => {
@@ -16,10 +23,15 @@ onMounted(async () => {
         active.value = data.active;
         won.value = data.won;
         lost.value = data.lost;
+        purchased.value = data.purchased ?? [];
     } finally {
         loading.value = false;
     }
 });
+
+function myLeftoverPurchase(auction) {
+    return auction.leftover_purchases?.find((p) => p.user.id === user.value?.id);
+}
 
 function timeLeft(endsAt) {
     const diff = new Date(endsAt) - now.value;
@@ -42,6 +54,52 @@ function myBid(auction) {
         <div v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</div>
 
         <template v-else>
+            <!-- Leftover Purchases -->
+            <section v-if="purchased.length > 0" class="mb-10">
+                <h2 class="text-xl font-semibold mb-4 text-blue-700 dark:text-blue-400">
+                    Purchased (Leftover)
+                </h2>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <router-link
+                        v-for="auction in purchased"
+                        :key="auction.id"
+                        :to="`/auctions/${auction.id}`"
+                        class="block bg-white dark:bg-gray-800 rounded shadow border-l-4 border-blue-500 overflow-hidden hover:shadow-md transition-shadow"
+                    >
+                        <div class="flex">
+                            <img
+                                v-if="auction.images.length"
+                                :src="auction.images[0].url"
+                                class="w-24 h-24 object-cover shrink-0"
+                            />
+                            <div class="p-4 min-w-0">
+                                <h3 class="font-bold truncate">{{ auction.title }}</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    Bought {{ myLeftoverPurchase(auction)?.quantity }} item{{
+                                        myLeftoverPurchase(auction)?.quantity !== 1 ? "s" : ""
+                                    }}
+                                    @ {{ currencySymbol
+                                    }}{{
+                                        Number(myLeftoverPurchase(auction)?.price_per_item).toFixed(
+                                            2,
+                                        )
+                                    }}
+                                </p>
+                                <p class="mt-1 font-bold text-blue-700 dark:text-blue-400">
+                                    Total: {{ currencySymbol
+                                    }}{{
+                                        (
+                                            (myLeftoverPurchase(auction)?.quantity ?? 0) *
+                                            Number(myLeftoverPurchase(auction)?.price_per_item)
+                                        ).toFixed(2)
+                                    }}
+                                </p>
+                            </div>
+                        </div>
+                    </router-link>
+                </div>
+            </section>
+
             <!-- Won Auctions -->
             <section v-if="won.length > 0" class="mb-10">
                 <h2 class="text-xl font-semibold mb-4 text-green-700 dark:text-green-400">

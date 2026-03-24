@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Models\LeftoverPurchase;
 use App\Support\AuctionService;
 use App\Support\Presence;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +20,7 @@ class AuctionController extends Controller
     {
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
         $auctions = Auction::query()
-            ->with(['seller:id,username', 'bids', 'images', 'category'])
+            ->with(['seller:id,username', 'bids', 'images', 'category', 'leftoverPurchases'])
             ->orderByRaw("CASE WHEN status = 'active' AND ends_at > ? THEN 1 ELSE 0 END DESC", [now()])
             ->orderByDesc('created_at')
             ->get();
@@ -38,6 +39,7 @@ class AuctionController extends Controller
             'bids.user:id,username',
             'images',
             'questions.user:id,username',
+            'leftoverPurchases.user:id,username',
             'category',
         ]);
         $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
@@ -53,6 +55,7 @@ class AuctionController extends Controller
             'bids.user:id,username',
             'images',
             'category',
+            'leftoverPurchases.user:id,username',
         ])->get();
 
         $this->auctionService->loadWatcherCounts($allAuctions);
@@ -89,16 +92,30 @@ class AuctionController extends Controller
                 $soldQuantity = array_sum($allocations);
                 $soldItems += $soldQuantity;
 
-                if ($soldQuantity > 0) {
-                    $auctionsWithSales++;
-                    $auctionRevenue = 0.0;
+                $leftoverItemsSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+                $soldItems += $leftoverItemsSold;
 
-                    foreach ($allocations as $bidId => $wonQuantity) {
-                        $winnerTotal = round($wonQuantity * ($prices[$bidId] ?? 0.0), 2);
-                        $auctionRevenue += $winnerTotal;
-                        $revenueBeforeTax += round($winnerTotal / $taxMultiplier, 2);
+                if ($soldQuantity > 0 || $leftoverItemsSold > 0) {
+                    $auctionsWithSales++;
+
+                    if ($soldQuantity > 0) {
+                        $auctionRevenue = 0.0;
+                        foreach ($allocations as $bidId => $wonQuantity) {
+                            $winnerTotal = round($wonQuantity * ($prices[$bidId] ?? 0.0), 2);
+                            $auctionRevenue += $winnerTotal;
+                            $revenueBeforeTax += round($winnerTotal / $taxMultiplier, 2);
+                        }
+                        $revenueAfterTax += $auctionRevenue;
                     }
-                    $revenueAfterTax += $auctionRevenue;
+
+                    if ($leftoverItemsSold > 0) {
+                        $leftoverRevenue = 0.0;
+                        foreach ($auction->leftoverPurchases as $purchase) {
+                            $leftoverRevenue += round($purchase->quantity * (float) $purchase->price_per_item, 2);
+                        }
+                        $revenueAfterTax += $leftoverRevenue;
+                        $revenueBeforeTax += round($leftoverRevenue / $taxMultiplier, 2);
+                    }
                 }
 
                 $auctionResponses[] = $this->auctionService->auctionResponseFromAllocation(
@@ -135,7 +152,13 @@ class AuctionController extends Controller
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
         $auctions = Auction::query()
-            ->with(['seller:id,username', 'bids.user:id,username', 'images', 'category'])
+            ->with([
+                'seller:id,username',
+                'bids.user:id,username',
+                'images',
+                'category',
+                'leftoverPurchases.user:id,username',
+            ])
             ->whereHas('bids', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
@@ -163,10 +186,32 @@ class AuctionController extends Controller
             }
         }
 
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $purchasedAuctions */
+        $purchasedAuctions = Auction::query()
+            ->with([
+                'seller:id,username',
+                'bids.user:id,username',
+                'images',
+                'category',
+                'leftoverPurchases.user:id,username',
+            ])
+            ->whereHas('leftoverPurchases', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->get();
+
+        $this->auctionService->loadWatcherCounts($purchasedAuctions);
+
+        $purchased = [];
+        foreach ($purchasedAuctions as $auction) {
+            $purchased[] = $this->auctionService->auctionResponse($auction, withBids: true);
+        }
+
         return response()->json([
             'active' => $active,
             'won' => $won,
             'lost' => $lost,
+            'purchased' => $purchased,
         ]);
     }
 

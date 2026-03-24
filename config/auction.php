@@ -12,6 +12,9 @@ return [
     'anti_sniping_extension' => (int) env('ANTI_SNIPING_EXTENSION', 300),
     'mcp_api_key' => env('MCP_API_KEY'),
 
+    'leftover_sales_enabled' => (bool) env('LEFTOVER_SALES_ENABLED', false),
+    'leftover_price_factor' => (float) env('LEFTOVER_PRICE_FACTOR', 0.75),
+
     'company' => [
         'name' => env('COMPANY_NAME', ''),
         'street' => env('COMPANY_STREET', ''),

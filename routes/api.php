@@ -1,6 +1,8 @@
 <?php
 
 use App\Support\BiddingSchedule;
+use App\Http\Controllers\AdminAuctionController;
+use App\Http\Controllers\AdminBidController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\CategoryController;
@@ -8,6 +10,7 @@ use App\Http\Controllers\AuctionImageController;
 use App\Http\Controllers\AuctionQuestionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BidController;
+use App\Http\Controllers\LeftoverPurchaseController;
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\QuotePdfController;
 use App\Http\Controllers\SocialiteController;
@@ -57,9 +60,26 @@ Route::middleware('sso')->group(function () {
     // Bids
     Route::post('/auctions/{auction}/bids', [BidController::class, 'store'])->middleware('auth');
 
+    // Leftover purchases
+    Route::post('/auctions/{auction}/leftover-purchases', [LeftoverPurchaseController::class, 'store'])->middleware('auth');
+
     // Auction questions
     Route::get('/questions', [AuctionQuestionController::class, 'index'])->middleware(['auth', 'admin']);
     Route::post('/auctions/{auction}/questions', [AuctionQuestionController::class, 'store'])->middleware('auth');
     Route::put('/questions/{question}', [AuctionQuestionController::class, 'update'])->middleware('auth');
     Route::delete('/questions/{question}', [AuctionQuestionController::class, 'destroy'])->middleware('auth');
+
+    // Admin management
+    Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
+        Route::get('/users', [AdminBidController::class, 'users']);
+        Route::post('/auctions/{auction}/end', [AdminAuctionController::class, 'end']);
+        Route::post('/auctions/{auction}/cancel', [AdminAuctionController::class, 'cancel']);
+        Route::post('/auctions/{auction}/reactivate', [AdminAuctionController::class, 'reactivate']);
+        Route::post('/auctions/{auction}/extend', [AdminAuctionController::class, 'extend']);
+        Route::post('/auctions/{auction}/bids', [AdminBidController::class, 'store']);
+        Route::put('/bids/{bid}', [AdminBidController::class, 'update']);
+        Route::delete('/bids/{bid}', [AdminBidController::class, 'destroy']);
+        Route::post('/auctions/{auction}/leftover-purchases', [LeftoverPurchaseController::class, 'adminStore']);
+        Route::delete('/leftover-purchases/{leftoverPurchase}', [LeftoverPurchaseController::class, 'destroy']);
+    });
 });

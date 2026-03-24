@@ -12,37 +12,12 @@ import MyDashboard from "./pages/MyDashboard.vue";
 
 const routes = [
     { path: "/", component: AuctionList },
-    {
-        path: "/dashboard",
-        component: MyDashboard,
-        meta: { requiresAuth: true },
-    },
-    {
-        path: "/admin/results",
-        component: AdminResults,
-        meta: { requiresAuth: true },
-    },
-    {
-        path: "/admin/questions",
-        component: AdminQuestions,
-        meta: { requiresAuth: true },
-    },
-    {
-        path: "/admin/categories",
-        component: AdminCategories,
-        meta: { requiresAuth: true },
-    },
-    {
-        path: "/auctions/new",
-        component: CreateAuction,
-        meta: { requiresAuth: true },
-    },
-    {
-        path: "/auctions/:id/edit",
-        component: EditAuction,
-        meta: { requiresAuth: true },
-        props: true,
-    },
+    { path: "/dashboard", component: MyDashboard },
+    { path: "/admin/results", component: AdminResults },
+    { path: "/admin/questions", component: AdminQuestions },
+    { path: "/admin/categories", component: AdminCategories },
+    { path: "/auctions/new", component: CreateAuction },
+    { path: "/auctions/:id/edit", component: EditAuction, props: true },
     { path: "/auctions/:id", component: AuctionDetail, props: true },
     { path: "/login", component: Login },
     { path: "/register", component: Register },

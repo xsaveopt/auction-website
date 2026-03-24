@@ -305,16 +305,39 @@ function timeLeft(endsAt) {
                                         >{{ currencySymbol
                                         }}{{ Number(auction.current_price).toFixed(2) }}</span
                                     >
-                                    <span
-                                        :class="
-                                            auction.is_active
-                                                ? 'text-gray-600 dark:text-gray-300'
-                                                : 'text-gray-400 dark:text-gray-500'
-                                        "
-                                    >
-                                        {{
-                                            auction.is_active ? timeLeft(auction.ends_at) : "Ended"
-                                        }}
+                                    <span>
+                                        <template v-if="auction.is_active">
+                                            <span class="text-gray-600 dark:text-gray-300">{{
+                                                timeLeft(auction.ends_at)
+                                            }}</span>
+                                        </template>
+                                        <template
+                                            v-else-if="
+                                                auction.leftover_enabled &&
+                                                auction.leftover_quantity === 0
+                                            "
+                                        >
+                                            <span
+                                                class="font-medium text-gray-500 dark:text-gray-400"
+                                                >Sold out</span
+                                            >
+                                        </template>
+                                        <template
+                                            v-else-if="
+                                                auction.leftover_enabled &&
+                                                auction.leftover_quantity > 0
+                                            "
+                                        >
+                                            <span
+                                                class="font-medium text-green-600 dark:text-green-400"
+                                                >{{ auction.leftover_quantity }} left</span
+                                            >
+                                        </template>
+                                        <template v-else>
+                                            <span class="text-gray-400 dark:text-gray-500"
+                                                >Ended</span
+                                            >
+                                        </template>
                                     </span>
                                 </div>
                                 <div class="mt-1 text-xs text-gray-400 dark:text-gray-500">

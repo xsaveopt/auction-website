@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Auction;
 use App\Models\Bid;
+use App\Models\LeftoverPurchase;
 use App\Support\Presence;
 
 class AuctionService
@@ -91,6 +92,18 @@ class AuctionService
         $clearingPrice = $result['clearing_price'];
         $prices = $result['prices'];
 
+        $itemsAllocated = array_sum($allocations);
+        if ($auction->relationLoaded('leftoverPurchases')) {
+            $leftoverSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+        } else {
+            /** @var int $leftoverSold */
+            $leftoverSold = $auction->leftoverPurchases()->sum('quantity');
+        }
+        $leftoverQuantity = max(0, (int) $auction->quantity - $itemsAllocated - $leftoverSold);
+        /** @var float $leftoverPriceFactor */
+        $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
+        $leftoverPrice = round((float) $auction->starting_price * $leftoverPriceFactor, 2);
+
         $data = [
             'id' => $auction->id,
             'title' => $auction->title,
@@ -109,7 +122,10 @@ class AuctionService
                 ] : null,
             'bid_count' => $auction->bids->unique('user_id')->count(),
             'watcher_count' => $auction->watcher_count,
-            'items_allocated' => array_sum($allocations),
+            'items_allocated' => $itemsAllocated,
+            'leftover_enabled' => (bool) config('auction.leftover_sales_enabled'),
+            'leftover_quantity' => $leftoverQuantity,
+            'leftover_price' => number_format($leftoverPrice, 2, '.', ''),
             'images' => $auction
                 ->images
                 ->map(fn($img) => [
@@ -150,6 +166,22 @@ class AuctionService
                 ],
                 'created_at' => $bid->created_at?->format('Y-m-d\TH:i:sP'),
             ]);
+
+            if ($auction->relationLoaded('leftoverPurchases')) {
+                $data['leftover_purchases'] = $auction
+                    ->leftoverPurchases
+                    ->map(fn(LeftoverPurchase $purchase) => [
+                        'id' => $purchase->id,
+                        'quantity' => $purchase->quantity,
+                        'price_per_item' => $purchase->price_per_item,
+                        'user' => [
+                            'id' => $purchase->user?->id,
+                            'username' => $purchase->user?->username,
+                        ],
+                        'created_at' => $purchase->created_at?->format('Y-m-d\TH:i:sP'),
+                    ])
+                    ->values();
+            }
         }
 
         if ($auction->relationLoaded('questions')) {
@@ -170,6 +202,26 @@ class AuctionService
         }
 
         return $data;
+    }
+
+    /**
+     * Load all relations on an auction and return a full bid-included response.
+     *
+     * @return array<string, mixed>
+     */
+    public function freshAuctionResponse(Auction $auction): array
+    {
+        $auction->load([
+            'seller:id,username',
+            'bids.user:id,username',
+            'images',
+            'questions.user:id,username',
+            'leftoverPurchases.user:id,username',
+            'category',
+        ]);
+        $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
+
+        return $this->auctionResponse($auction, withBids: true);
     }
 
     /**

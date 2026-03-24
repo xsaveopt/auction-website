@@ -59,6 +59,12 @@ class Auction extends Model
         return $this->hasMany(Bid::class);
     }
 
+    /** @return HasMany<\App\Models\LeftoverPurchase, $this> */
+    public function leftoverPurchases(): HasMany
+    {
+        return $this->hasMany(LeftoverPurchase::class);
+    }
+
     /** @return HasMany<\App\Models\AuctionQuestion, $this> */
     public function questions(): HasMany
     {

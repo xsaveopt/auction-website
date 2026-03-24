@@ -21,8 +21,8 @@ const imagePreviews = ref([]);
 const errors = ref({});
 const submitting = ref(false);
 
-if (!user.value) {
-    router.push("/login");
+if (!user.value?.is_admin) {
+    router.push("/");
 }
 
 api("/categories")
