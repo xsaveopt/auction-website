@@ -46,8 +46,6 @@ class BidController extends Controller
             'quantity' => ['required', 'integer', 'min:1', 'max:' . $maxQty],
         ]);
 
-        $bid = Bid::where('auction_id', $auction->id)->where('user_id', $user->id)->first();
-
         /** @var string $amountInput */
         $amountInput = $request->input('amount');
         /** @var string $quantityInput */
@@ -55,25 +53,27 @@ class BidController extends Controller
         $amount = floatval($amountInput);
         $quantity = intval($quantityInput);
 
-        if ($bid) {
-            if ($amount <= floatval($bid->amount) && $quantity === $bid->quantity) {
-                return response()->json([
-                    'message' => 'New bid must be higher than your current bid ($' . $bid->amount . ').',
-                ], 422);
-            }
-            if ($amount < floatval($bid->amount)) {
+        $existingBid = Bid::where('auction_id', $auction->id)
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($existingBid) {
+            if ($amount < floatval($existingBid->amount)) {
                 return response()->json(['message' => 'You cannot lower your bid amount.'], 422);
             }
-            $bid->amount = number_format($amount, 2, '.', '');
-            $bid->quantity = $quantity;
-            $bid->save();
-        } else {
-            $bid = new Bid();
-            $bid->user_id = $user->id;
-            $bid->amount = number_format($amount, 2, '.', '');
-            $bid->quantity = $quantity;
-            $auction->bids()->save($bid);
+            if ($amount <= floatval($existingBid->amount) && $quantity === $existingBid->quantity) {
+                return response()->json([
+                    'message' => 'New bid must be higher than your current bid ($' . $existingBid->amount . ').',
+                ], 422);
+            }
         }
+
+        $bid = new Bid();
+        $bid->user_id = $user->id;
+        $bid->amount = number_format($amount, 2, '.', '');
+        $bid->quantity = $quantity;
+        $auction->bids()->save($bid);
 
         // Anti-sniping: extend auction if bid placed near the end
         $antiSnipingEnabled = boolval(config('auction.anti_sniping_enabled', true));

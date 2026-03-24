@@ -179,7 +179,7 @@ class AuctionController extends Controller
             'starting_price' => ['required', 'numeric', 'min:0.01'],
             'quantity' => ['required', 'integer', 'min:1'],
             'max_per_bidder' => ['required', 'integer', 'min:1'],
-            'ends_at' => ['required', 'date', 'after:now'],
+            'ends_at' => ['required', 'date'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
@@ -206,7 +206,7 @@ class AuctionController extends Controller
             'starting_price' => ['required', 'numeric', 'min:0.01'],
             'quantity' => ['required', 'integer', 'min:1'],
             'max_per_bidder' => ['required', 'integer', 'min:1'],
-            'ends_at' => ['required', 'date', 'after:now'],
+            'ends_at' => ['required', 'date'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 

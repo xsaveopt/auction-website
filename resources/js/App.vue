@@ -4,8 +4,11 @@ import { useRoute, useRouter } from "vue-router";
 import { api } from "./api.js";
 import { HEARTBEAT_INTERVAL_MS, presencePayload } from "./presence.js";
 import { useTheme } from "./useTheme.js";
+import { useNotifications } from "./useNotifications.js";
+import NotificationToast from "./NotificationToast.vue";
 
 const { isDark, toggleTheme } = useTheme();
+const { notify } = useNotifications();
 
 const route = useRoute();
 const router = useRouter();
@@ -211,6 +214,58 @@ async function sendPresenceHeartbeat() {
     }
 }
 
+// Cross-page bid state tracking for notifications
+const trackedAuctionStates = ref({});
+let myAuctionsInterval;
+
+async function pollMyAuctions() {
+    if (!user.value || user.value.is_admin) return;
+    // Skip notifications for the auction currently open in AuctionDetail
+    const viewingAuctionId = route.params.id ? String(route.params.id) : null;
+    try {
+        const data = await api("/my-auctions");
+        /** @type {Record<string, {title: string, in_active: boolean, won_quantity?: number, won?: boolean}>} */
+        const newStates = {};
+        for (const auction of data.active ?? []) {
+            const myBid = auction.bids?.find((b) => b.user.id === user.value.id);
+            newStates[String(auction.id)] = {
+                title: auction.title,
+                in_active: true,
+                won_quantity: myBid?.won_quantity ?? 0,
+            };
+        }
+        for (const auction of data.won ?? []) {
+            newStates[String(auction.id)] = { title: auction.title, in_active: false, won: true };
+        }
+        for (const auction of data.lost ?? []) {
+            newStates[String(auction.id)] = { title: auction.title, in_active: false, won: false };
+        }
+
+        if (Object.keys(trackedAuctionStates.value).length > 0) {
+            for (const [id, prev] of Object.entries(trackedAuctionStates.value)) {
+                if (id === viewingAuctionId) continue;
+                const curr = newStates[id];
+                if (!curr) continue;
+                if (prev.in_active && !curr.in_active) {
+                    if (curr.won) {
+                        notify(`You won "${prev.title}"!`, "success", 10000);
+                    } else {
+                        notify(`Auction "${prev.title}" has ended — you didn't win.`, "info", 8000);
+                    }
+                } else if (prev.in_active && curr.in_active) {
+                    if ((prev.won_quantity ?? 0) > 0 && (curr.won_quantity ?? 0) === 0) {
+                        notify(`You've been overbid on "${prev.title}"!`, "warning", 8000);
+                    }
+                }
+            }
+        }
+
+        trackedAuctionStates.value = newStates;
+    } catch {
+        // ignore
+    }
+}
+
 // Poll schedule every 60s to keep is_open in sync
 let scheduleInterval;
 let presenceInterval;
@@ -247,6 +302,16 @@ onMounted(() => {
     }, 1000);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 });
+
+watch(user, (newUser) => {
+    clearInterval(myAuctionsInterval);
+    myAuctionsInterval = undefined;
+    trackedAuctionStates.value = {};
+    if (newUser && !newUser.is_admin) {
+        pollMyAuctions();
+        myAuctionsInterval = setInterval(pollMyAuctions, 30000);
+    }
+});
 watch(
     () => route.fullPath,
     () => {
@@ -257,6 +322,7 @@ onUnmounted(() => {
     clearInterval(scheduleInterval);
     stopHeartbeat();
     clearInterval(clockInterval);
+    clearInterval(myAuctionsInterval);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
 });
 
@@ -281,6 +347,7 @@ provide("schedule", schedule);
 provide("currencySymbol", currencySymbol);
 provide("heartbeatData", heartbeatData);
 provide("now", now);
+provide("notify", notify);
 </script>
 
 <template>
@@ -458,4 +525,5 @@ provide("now", now);
             <router-view />
         </main>
     </div>
+    <NotificationToast />
 </template>

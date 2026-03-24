@@ -1,5 +1,5 @@
 <script setup>
-import { ref, inject, computed, onMounted, watch } from "vue";
+import { ref, inject, computed, onMounted, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../api.js";
 
@@ -10,6 +10,7 @@ const user = inject("user");
 const schedule = inject("schedule");
 const currencySymbol = inject("currencySymbol");
 const heartbeatData = inject("heartbeatData");
+const notify = inject("notify", null);
 const auction = ref(null);
 const bidAmount = ref("");
 const bidQuantity = ref(1);
@@ -24,6 +25,7 @@ const askingQuestion = ref(false);
 const savingAnswerId = ref(null);
 const deletingQuestionId = ref(null);
 const highlightedBids = ref(new Set());
+const endingSoonNotified = ref(false);
 
 const isSeller = computed(() => {
     if (!user.value || !auction.value) return false;
@@ -76,6 +78,52 @@ function updateAuction(newAuction, resetForm = false) {
         }
     }
 
+    // Overbid detection
+    if (notify && user.value && auction.value?.bids) {
+        const oldMyBid = auction.value.bids.find((b) => b.user.id === user.value.id);
+        const newMyBid = newAuction.bids.find((b) => b.user.id === user.value.id);
+        if (
+            oldMyBid &&
+            (oldMyBid.won_quantity ?? 0) > 0 &&
+            newMyBid &&
+            (newMyBid.won_quantity ?? 0) === 0
+        ) {
+            notify(`You've been overbid on "${newAuction.title}"!`, "warning");
+        }
+    }
+
+    // Auction ended detection
+    if (notify && auction.value?.is_active && !newAuction.is_active) {
+        if (user.value) {
+            const myBid = newAuction.bids.find((b) => b.user.id === user.value.id);
+            if (myBid && (myBid.won_quantity ?? 0) > 0) {
+                notify(`You won "${newAuction.title}"!`, "success", 10000);
+            } else if (myBid) {
+                notify(`Auction "${newAuction.title}" has ended — you didn't win.`, "info", 8000);
+            } else {
+                notify(`"${newAuction.title}" has ended.`, "info");
+            }
+        } else {
+            notify(`"${newAuction.title}" has ended.`, "info");
+        }
+        endingSoonNotified.value = true;
+    }
+
+    // Question answered detection
+    if (notify && user.value && auction.value?.questions) {
+        const prevAnswered = new Set(
+            auction.value.questions
+                .filter((q) => q.user.id === user.value.id && q.answer)
+                .map((q) => q.id),
+        );
+        const newlyAnswered = (newAuction.questions ?? []).filter(
+            (q) => q.user.id === user.value.id && q.answer && !prevAnswered.has(q.id),
+        );
+        if (newlyAnswered.length > 0) {
+            notify("Your question has been answered!", "info");
+        }
+    }
+
     auction.value = newAuction;
     activeImage.value = Math.min(activeImage.value, Math.max(newAuction.images.length - 1, 0));
     if (resetForm) {
@@ -115,6 +163,7 @@ async function placeBid() {
             }),
         });
         await load(false, true);
+        notify?.("Bid placed successfully!", "success");
     } catch (e) {
         error.value =
             e.data?.message ||
@@ -240,9 +289,29 @@ watch(
     () => props.id,
     async () => {
         activeImage.value = 0;
+        endingSoonNotified.value = false;
         await load(true, true);
     },
 );
+
+// Ending-soon alert: fires once when < 5 minutes remain for an auction the user has bid on
+watchEffect(() => {
+    if (
+        !notify ||
+        !user.value ||
+        !auction.value?.is_active ||
+        !auction.value?.ends_at ||
+        endingSoonNotified.value ||
+        isSeller.value
+    )
+        return;
+    if (!myBid.value) return;
+    const timeLeft = new Date(auction.value.ends_at) - now.value;
+    if (timeLeft > 0 && timeLeft <= 5 * 60 * 1000) {
+        endingSoonNotified.value = true;
+        notify(`"${auction.value.title}" ends in less than 5 minutes!`, "warning");
+    }
+});
 </script>
 
 <template>

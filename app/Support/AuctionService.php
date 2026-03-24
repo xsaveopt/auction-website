@@ -20,13 +20,16 @@ class AuctionService
      */
     public function allocate(Auction $auction): array
     {
-        $sortedBids = $auction
+        /** @var \Illuminate\Support\Collection<int, Bid> $latestBids */
+        $latestBids = $auction
             ->bids
-            ->sortBy([
-                ['amount', 'desc'],
-                ['quantity', 'desc'],
-            ])
+            ->groupBy('user_id')
+            ->map(fn($userBids) => $userBids->sortByDesc('id')->first())
             ->values();
+        $sortedBids = $latestBids->sortBy([
+            ['amount', 'desc'],
+            ['quantity', 'desc'],
+        ])->values();
         $remaining = (int) $auction->quantity;
         /** @var array<int, int> $allocations */
         $allocations = [];
@@ -104,7 +107,7 @@ class AuctionService
                     'id' => $auction->seller->id,
                     'username' => $auction->seller->username,
                 ] : null,
-            'bid_count' => $auction->bids->count(),
+            'bid_count' => $auction->bids->unique('user_id')->count(),
             'watcher_count' => $auction->watcher_count,
             'items_allocated' => array_sum($allocations),
             'images' => $auction
@@ -125,13 +128,16 @@ class AuctionService
         ];
 
         if ($withBids) {
-            $sortedBids = $auction
+            /** @var \Illuminate\Support\Collection<int, Bid> $latestBids */
+            $latestBids = $auction
                 ->bids
-                ->sortBy([
-                    ['amount', 'desc'],
-                    ['quantity', 'desc'],
-                ])
+                ->groupBy('user_id')
+                ->map(fn($userBids) => $userBids->sortByDesc('id')->first())
                 ->values();
+            $sortedBids = $latestBids->sortBy([
+                ['amount', 'desc'],
+                ['quantity', 'desc'],
+            ])->values();
             $data['bids'] = $sortedBids->map(fn(Bid $bid) => [
                 'id' => $bid->id,
                 'amount' => $bid->amount,

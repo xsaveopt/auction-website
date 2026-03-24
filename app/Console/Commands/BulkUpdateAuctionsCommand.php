@@ -18,14 +18,16 @@ class BulkUpdateAuctionsCommand extends Command
                             {--all-active : Update all active auctions}
                             {--add-time= : Add time to ends_at (e.g., "+1 hour", "-30 minutes")}
                             {--set-end= : Set specific end time (Y-m-d H:i:s)}
-                            {--status= : Update status (active, closed, draft)}';
+                            {--status= : Update status (active, closed, draft)}
+                            {--append-description= : Text to append to each description (supports \n for newlines)}
+                            {--prepend-description= : Text to prepend to each description (supports \n for newlines)}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Bulk update auctions (end time, status)';
+    protected $description = 'Bulk update auctions (end time, status, description)';
 
     /**
      * Execute the console command.
@@ -62,10 +64,23 @@ class BulkUpdateAuctionsCommand extends Command
         $addTime = $this->option('add-time');
         $setEnd = $this->option('set-end');
         $status = $this->option('status');
+        $appendDesc = $this->option('append-description') !== null
+            ? str_replace('\n', "\n", $this->option('append-description'))
+            : null;
+        $prependDesc = $this->option('prepend-description') !== null
+            ? str_replace('\n', "\n", $this->option('prepend-description'))
+            : null;
 
         $updatedCount = 0;
 
-        $query->chunkById(100, function ($auctions) use ($addTime, $setEnd, $status, &$updatedCount) {
+        $query->chunkById(100, function ($auctions) use (
+            $addTime,
+            $setEnd,
+            $status,
+            $appendDesc,
+            $prependDesc,
+            &$updatedCount,
+        ) {
             foreach ($auctions as $auction) {
                 $updated = false;
 
@@ -96,6 +111,16 @@ class BulkUpdateAuctionsCommand extends Command
 
                 if ($status) {
                     $auction->status = $status;
+                    $updated = true;
+                }
+
+                if ($appendDesc !== null) {
+                    $auction->description .= $appendDesc;
+                    $updated = true;
+                }
+
+                if ($prependDesc !== null) {
+                    $auction->description = $prependDesc . $auction->description;
                     $updated = true;
                 }
 
