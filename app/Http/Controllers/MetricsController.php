@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Auction;
 use App\Models\AuctionQuestion;
 use App\Models\Bid;
+use App\Models\LeftoverPurchase;
 use App\Models\User;
 use App\Support\AuctionService;
 use App\Support\Presence;
@@ -24,10 +25,12 @@ class MetricsController extends Controller
 
         $now = now();
 
-        $activeAuctionsList = Auction::where('status', 'active')
-            ->where('ends_at', '>', $now)
-            ->with('bids.user:id,username')
-            ->get();
+        // Load all non-cancelled auctions with bids; filter active ones in memory
+        $allAuctionsWithBids = Auction::whereIn('status', ['active', 'ended'])->with('bids.user:id,username')->get();
+
+        $activeAuctionsList = $allAuctionsWithBids
+            ->filter(fn($a) => $a->status === 'active' && $a->ends_at > $now)
+            ->values();
 
         $activeAuctions = $activeAuctionsList->count();
         $totalBids = Bid::count();
@@ -83,10 +86,10 @@ class MetricsController extends Controller
             $output .= "app_user_signup_timestamp{username=\"{$username}\"} {$ts}\n";
         }
 
-        // All bids on active listings
-        $output .= "# HELP app_auction_bid_info Active auction bid timestamp in milliseconds\n";
+        // Bids (all non-cancelled auctions) and instant buys
+        $output .= "# HELP app_auction_bid_info Bid and instant buy info, value is timestamp in milliseconds\n";
         $output .= "# TYPE app_auction_bid_info gauge\n";
-        foreach ($activeAuctionsList as $auction) {
+        foreach ($allAuctionsWithBids as $auction) {
             $auctionTitle = self::escapeLabel($auction->title);
             foreach ($auction->bids->sortByDesc('amount') as $bid) {
                 /** @var User $bidUser */
@@ -95,8 +98,22 @@ class MetricsController extends Controller
                 $amount = number_format((float) $bid->amount, 2, '.', '');
                 $qty = $bid->quantity;
                 $ts = ($bid->updated_at?->getTimestamp() ?? 0) * 1000;
-                $output .= "app_auction_bid_info{auction=\"{$auctionTitle}\",username=\"{$username}\",amount=\"{$amount}\",quantity=\"{$qty}\"} {$ts}\n";
+                $output .= "app_auction_bid_info{auction=\"{$auctionTitle}\",username=\"{$username}\",amount=\"{$amount}\",quantity=\"{$qty}\",type=\"bid\"} {$ts}\n";
             }
+        }
+
+        $allPurchases = LeftoverPurchase::with(['auction:id,title', 'user:id,username'])->get();
+        foreach ($allPurchases as $purchase) {
+            /** @var Auction $purchaseAuction */
+            $purchaseAuction = $purchase->auction;
+            /** @var User $purchaseUser */
+            $purchaseUser = $purchase->user;
+            $auctionTitle = self::escapeLabel($purchaseAuction->title);
+            $username = self::escapeLabel($purchaseUser->username);
+            $amount = number_format((float) $purchase->price_per_item, 2, '.', '');
+            $qty = $purchase->quantity;
+            $ts = ($purchase->created_at?->getTimestamp() ?? 0) * 1000;
+            $output .= "app_auction_bid_info{auction=\"{$auctionTitle}\",username=\"{$username}\",amount=\"{$amount}\",quantity=\"{$qty}\",type=\"buy\"} {$ts}\n";
         }
 
         return new Response($output, 200, ['Content-Type' => RenderTextFormat::MIME_TYPE]);

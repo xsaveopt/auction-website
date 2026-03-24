@@ -308,7 +308,7 @@
       ]
     },
     {
-      "title": "Bids on Active Listings",
+      "title": "Bids & Instant Buys",
       "type": "table",
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
@@ -336,11 +336,13 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true, "quantity": true },
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true },
             "renameByName": {
               "auction": "Auction",
-              "username": "Bidder",
+              "username": "User",
               "amount": "Amount",
+              "quantity": "Qty",
+              "type": "Type",
               "Value": "Last Updated"
             }
           }
