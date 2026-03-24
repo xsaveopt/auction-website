@@ -27,7 +27,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
 
         if (config('database.default') === 'sqlite') {
-            $database = (string) config('database.connections.sqlite.database');
+            $database = config()->string('database.connections.sqlite.database');
             // Skip if the file hasn't been created yet (CI before first migration,
             // fresh installs). PRAGMAs are performance-only; missing them on a
             // non-existent DB is harmless — they'll apply on the next boot.
