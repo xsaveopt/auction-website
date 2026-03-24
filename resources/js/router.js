@@ -5,6 +5,7 @@ import CreateAuction from "./pages/CreateAuction.vue";
 import EditAuction from "./pages/EditAuction.vue";
 import AdminResults from "./pages/AdminResults.vue";
 import AdminQuestions from "./pages/AdminQuestions.vue";
+import AdminAuditLog from "./pages/AdminAuditLog.vue";
 import AdminCategories from "./pages/AdminCategories.vue";
 import Login from "./pages/Login.vue";
 import Register from "./pages/Register.vue";
@@ -16,6 +17,7 @@ const routes = [
     { path: "/admin/results", component: AdminResults },
     { path: "/admin/questions", component: AdminQuestions },
     { path: "/admin/categories", component: AdminCategories },
+    { path: "/admin/audit-log", component: AdminAuditLog },
     { path: "/auctions/new", component: CreateAuction },
     { path: "/auctions/:id/edit", component: EditAuction, props: true },
     { path: "/auctions/:id", component: AuctionDetail, props: true },

@@ -3,10 +3,17 @@
 namespace App\Console\Commands;
 
 use App\Models\Auction;
+use App\Support\AuctionFinalizationService;
 use Illuminate\Console\Command;
 
 class EndAuctionCommand extends Command
 {
+    public function __construct(
+        protected AuctionFinalizationService $auctionFinalizationService,
+    ) {
+        parent::__construct();
+    }
+
     /**
      * The name and signature of the console command.
      *
@@ -49,9 +56,11 @@ class EndAuctionCommand extends Command
             return;
         }
 
-        $auction->status = $newStatus;
-        $auction->ends_at = now();
-        $auction->save();
+        if ($newStatus === 'cancelled') {
+            $this->auctionFinalizationService->cancel($auction);
+        } else {
+            $this->auctionFinalizationService->end($auction);
+        }
 
         $this->info("Auction #{$auction->id} is now \"{$newStatus}\".");
     }

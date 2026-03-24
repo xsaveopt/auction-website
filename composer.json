@@ -9,13 +9,14 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "~8.5.0",
         "barryvdh/laravel-dompdf": "^3.1",
         "laravel/framework": "^12.0",
         "laravel/octane": "^2.14",
-        "promphp/prometheus_client_php": "^2.0",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^2.10.1",
+        "minishlink/web-push": "^10.0",
+        "promphp/prometheus_client_php": "^2.0",
         "socialiteproviders/microsoft": "^4.8"
     },
     "require-dev": {
@@ -53,13 +54,16 @@
             "@php artisan octane:start --watch"
         ],
         "format": [
-            "composer exec mago -- format app/"
+            "@php vendor/bin/mago format"
         ],
         "format:check": [
-            "composer exec mago -- format --check app/"
+            "@php vendor/bin/mago format --check"
         ],
         "lint": [
             "@php vendor/bin/phpstan analyse --no-progress"
+        ],
+        "test": [
+            "@php vendor/bin/phpunit"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
@@ -87,6 +91,9 @@
     },
     "config": {
         "optimize-autoloader": true,
+        "platform": {
+            "php": "8.5.0"
+        },
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
@@ -12,9 +13,12 @@ use Illuminate\Support\Str;
  * @property string $slug
  * @property int $sort_order
  * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class Category extends Model
 {
+    use SoftDeletes;
+
     /** @var list<string> */
     protected $fillable = [
         'name',

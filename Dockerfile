@@ -6,12 +6,12 @@ COPY vite.config.js ./
 COPY resources/ resources/
 RUN npm run build
 
-FROM dunglas/frankenphp:1-php8
+FROM dunglas/frankenphp:1-php8.5
 
 RUN apt-get update && apt-get install -y --no-install-recommends unzip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN install-php-extensions pdo_sqlite bcmath opcache pcntl apcu redis \
+RUN install-php-extensions pdo_sqlite bcmath opcache pcntl apcu redis mbstring \
     && echo "apc.enable_cli=1" >> /usr/local/etc/php/conf.d/docker-php-ext-apcu.ini \
     && { \
         echo "opcache.enable=1"; \

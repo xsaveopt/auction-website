@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\BiddingSchedule;
+use App\Http\Controllers\AdminAuditLogController;
 use App\Http\Controllers\AdminAuctionController;
 use App\Http\Controllers\AdminBidController;
 use App\Http\Controllers\AnnouncementController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BidController;
 use App\Http\Controllers\LeftoverPurchaseController;
 use App\Http\Controllers\PresenceController;
+use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\QuotePdfController;
 use App\Http\Controllers\SocialiteController;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +28,9 @@ Route::get('/user', [AuthController::class, 'user']);
 // All routes below require authentication when SSO is enabled
 Route::middleware('sso')->group(function () {
     Route::post('/presence/heartbeat', [PresenceController::class, 'heartbeat']);
+    Route::get('/push/config', [PushSubscriptionController::class, 'config'])->middleware('auth');
+    Route::put('/push/subscription', [PushSubscriptionController::class, 'store'])->middleware('auth');
+    Route::delete('/push/subscription', [PushSubscriptionController::class, 'destroy'])->middleware('auth');
 
     // Bidding schedule
     Route::get('/schedule', fn () => response()->json(['schedule' => BiddingSchedule::toArray()]));
@@ -81,5 +86,6 @@ Route::middleware('sso')->group(function () {
         Route::delete('/bids/{bid}', [AdminBidController::class, 'destroy']);
         Route::post('/auctions/{auction}/leftover-purchases', [LeftoverPurchaseController::class, 'adminStore']);
         Route::delete('/leftover-purchases/{leftoverPurchase}', [LeftoverPurchaseController::class, 'destroy']);
+        Route::get('/audit-log', [AdminAuditLogController::class, 'index']);
     });
 });

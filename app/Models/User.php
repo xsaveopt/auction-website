@@ -43,6 +43,12 @@ class User extends Authenticatable
         return $this->hasMany(Bid::class);
     }
 
+    /** @return HasMany<\App\Models\PushSubscription, $this> */
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

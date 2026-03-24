@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Models\AuditLog;
 use App\Models\LeftoverPurchase;
 use App\Models\User;
 use App\Support\AuctionService;
@@ -112,8 +113,9 @@ class LeftoverPurchaseController extends Controller
 
         if ($existing) {
             $existing->update(['quantity' => $existing->quantity + $validated['quantity']]);
+            $purchase = $existing;
         } else {
-            $auction
+            $purchase = $auction
                 ->leftoverPurchases()
                 ->create([
                     'user_id' => $buyer->id,
@@ -122,13 +124,35 @@ class LeftoverPurchaseController extends Controller
                 ]);
         }
 
+        /** @var \App\Models\User $admin */
+        $admin = $request->user();
+        AuditLog::record($admin, 'leftover_purchase.create', $purchase, [
+            'auction_id' => $auction->id,
+            'auction_title' => $auction->title,
+            'buyer' => $buyer->username,
+            'quantity' => $validated['quantity'],
+            'price_per_item' => $pricePerItem,
+        ]);
+
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)], 201);
     }
 
     public function destroy(LeftoverPurchase $leftoverPurchase): JsonResponse
     {
+        $leftoverPurchase->load('user:id,username', 'auction:id,title');
         /** @var \App\Models\Auction $auction */
         $auction = $leftoverPurchase->auction()->firstOrFail();
+
+        /** @var \App\Models\User $admin */
+        $admin = auth()->user();
+        AuditLog::record($admin, 'leftover_purchase.delete', $leftoverPurchase, [
+            'auction_id' => $leftoverPurchase->auction_id,
+            'auction_title' => $leftoverPurchase->auction?->title,
+            'buyer' => $leftoverPurchase->user?->username,
+            'quantity' => $leftoverPurchase->quantity,
+            'price_per_item' => $leftoverPurchase->price_per_item,
+        ]);
+
         $leftoverPurchase->delete();
 
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Models\AuditLog;
 use App\Models\Bid;
 use App\Models\User;
 use App\Support\AuctionService;
@@ -41,6 +42,16 @@ class AdminBidController extends Controller
         $bid->quantity = $validated['quantity'];
         $bid->save();
 
+        /** @var \App\Models\User $admin */
+        $admin = $request->user();
+        AuditLog::record($admin, 'bid.create', $bid, [
+            'auction_id' => $auction->id,
+            'auction_title' => $auction->title,
+            'bidder' => $user->username,
+            'amount' => $bid->amount,
+            'quantity' => $bid->quantity,
+        ]);
+
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
     }
 
@@ -52,14 +63,28 @@ class AdminBidController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
         ]);
 
+        $bid->load('user:id,username', 'auction');
+        $oldAmount = $bid->amount;
+        $oldQuantity = $bid->quantity;
+
         $bid->amount = $validated['amount'];
         $bid->quantity = $validated['quantity'];
         $bid->save();
 
-        $bid->load('auction');
-
         /** @var Auction $auction */
         $auction = $bid->auction;
+
+        /** @var \App\Models\User $admin */
+        $admin = $request->user();
+        AuditLog::record($admin, 'bid.update', $bid, [
+            'auction_id' => $bid->auction_id,
+            'auction_title' => $auction->title,
+            'bidder' => $bid->user?->username,
+            'old_amount' => $oldAmount,
+            'old_quantity' => $oldQuantity,
+            'new_amount' => $bid->amount,
+            'new_quantity' => $bid->quantity,
+        ]);
 
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
     }
@@ -67,6 +92,18 @@ class AdminBidController extends Controller
     public function destroy(Bid $bid): JsonResponse
     {
         $auctionId = $bid->auction_id;
+        $bid->load('user:id,username', 'auction:id,title');
+
+        /** @var \App\Models\User $admin */
+        $admin = auth()->user();
+        AuditLog::record($admin, 'bid.delete', $bid, [
+            'auction_id' => $bid->auction_id,
+            'auction_title' => $bid->auction?->title,
+            'bidder' => $bid->user?->username,
+            'amount' => $bid->amount,
+            'quantity' => $bid->quantity,
+        ]);
+
         $bid->delete();
 
         /** @var Auction $auction */

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Models\AuditLog;
 use App\Models\LeftoverPurchase;
+use App\Support\AuctionFinalizationService;
 use App\Support\AuctionService;
 use App\Support\Presence;
 use Illuminate\Http\JsonResponse;
@@ -14,10 +16,13 @@ class AuctionController extends Controller
 {
     public function __construct(
         protected AuctionService $auctionService,
+        protected AuctionFinalizationService $auctionFinalizationService,
     ) {}
 
     public function index(): JsonResponse
     {
+        $this->auctionFinalizationService->finalizeExpiredAuctions();
+
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
         $auctions = Auction::query()
             ->with(['seller:id,username', 'bids', 'images', 'category', 'leftoverPurchases'])
@@ -34,6 +39,8 @@ class AuctionController extends Controller
 
     public function show(Auction $auction): JsonResponse
     {
+        $this->auctionFinalizationService->finalizeExpiredAuctions();
+
         $auction->load([
             'seller:id,username',
             'bids.user:id,username',
@@ -49,6 +56,8 @@ class AuctionController extends Controller
 
     public function ended(): JsonResponse
     {
+        $this->auctionFinalizationService->finalizeExpiredAuctions();
+
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $allAuctions */
         $allAuctions = Auction::query()->with([
             'seller:id,username',
@@ -147,6 +156,8 @@ class AuctionController extends Controller
 
     public function myAuctions(Request $request): JsonResponse
     {
+        $this->auctionFinalizationService->finalizeExpiredAuctions();
+
         /** @var \App\Models\User $user */
         $user = $request->user();
 
@@ -239,6 +250,13 @@ class AuctionController extends Controller
         $auction->load(['seller:id,username', 'images', 'category']);
         $auction->setAttribute('watcher_count', 0);
 
+        AuditLog::record($user, 'auction.create', $auction, [
+            'title' => $auction->title,
+            'starting_price' => $auction->starting_price,
+            'quantity' => $auction->quantity,
+            'ends_at' => $auction->ends_at->toISOString(),
+        ]);
+
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction)], 201);
     }
 
@@ -263,14 +281,28 @@ class AuctionController extends Controller
         $auction->load(['seller:id,username', 'bids.user:id,username', 'images', 'category']);
         $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
 
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        AuditLog::record($user, 'auction.update', $auction, [
+            'title' => $auction->title,
+            'starting_price' => $auction->starting_price,
+            'quantity' => $auction->quantity,
+            'ends_at' => $auction->ends_at->toISOString(),
+        ]);
+
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);
     }
 
-    public function destroy(Auction $auction): JsonResponse
+    public function destroy(Request $request, Auction $auction): JsonResponse
     {
         foreach ($auction->images as $image) {
             Storage::disk('public')->delete($image->path);
+            $image->delete();
         }
+
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        AuditLog::record($user, 'auction.delete', $auction, ['title' => $auction->title]);
 
         $auction->delete();
 

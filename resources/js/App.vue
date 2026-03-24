@@ -3,17 +3,36 @@ import { computed, ref, onMounted, onUnmounted, provide, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api } from "./api.js";
 import { HEARTBEAT_INTERVAL_MS, presencePayload } from "./presence.js";
+import { usePushNotifications } from "./pushNotifications.js";
 import { useTheme } from "./useTheme.js";
 import { useNotifications } from "./useNotifications.js";
 import NotificationToast from "./NotificationToast.vue";
 
 const { isDark, toggleTheme } = useTheme();
-const { notify, browserPermission, requestBrowserPermission } = useNotifications();
-const notificationsSupported = typeof Notification !== "undefined";
+const { notify } = useNotifications();
+const {
+    pushSupported,
+    pushEnabled,
+    browserPermission,
+    registerPushServiceWorker,
+    refreshPushSubscriptionState,
+    syncPushSubscription,
+    enablePushNotifications,
+    clearPushSubscription,
+} = usePushNotifications();
+const notificationsSupported = pushSupported;
 
 async function handleNotificationBell() {
-    if (browserPermission.value !== "default") return;
-    await requestBrowserPermission();
+    try {
+        const enabled = await enablePushNotifications();
+        if (enabled) {
+            notify("Browser notifications enabled.", "success");
+        } else if (browserPermission.value === "denied") {
+            notify("Notifications are blocked in your browser settings.", "warning", 8000);
+        }
+    } catch (error) {
+        notify(error.message ?? "Couldn't enable browser notifications.", "error", 8000);
+    }
 }
 
 const route = useRoute();
@@ -254,20 +273,13 @@ async function pollMyAuctions() {
                 if (!curr) continue;
                 if (prev.in_active && !curr.in_active) {
                     if (curr.won) {
-                        notify(`You won "${prev.title}"!`, "success", 10000, { browser: true });
+                        notify(`You won "${prev.title}"!`, "success", 10000);
                     } else {
-                        notify(
-                            `Auction "${prev.title}" has ended — you didn't win.`,
-                            "info",
-                            8000,
-                            { browser: true },
-                        );
+                        notify(`Auction "${prev.title}" has ended — you didn't win.`, "info", 8000);
                     }
                 } else if (prev.in_active && curr.in_active) {
                     if ((prev.won_quantity ?? 0) > 0 && (curr.won_quantity ?? 0) === 0) {
-                        notify(`You've been overbid on "${prev.title}"!`, "warning", 8000, {
-                            browser: true,
-                        });
+                        notify(`You've been overbid on "${prev.title}"!`, "warning", 8000);
                     }
                 }
             }
@@ -314,15 +326,49 @@ onMounted(() => {
         serverClockSeconds.value++;
     }, 1000);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    if (pushSupported.value) {
+        registerPushServiceWorker()
+            .then(() => refreshPushSubscriptionState())
+            .catch((error) => {
+                notify(
+                    error.message ?? "Couldn't start background notifications on this device.",
+                    "error",
+                    8000,
+                );
+            });
+    }
 });
 
-watch(user, (newUser) => {
+watch(user, async (newUser) => {
     clearInterval(myAuctionsInterval);
     myAuctionsInterval = undefined;
     trackedAuctionStates.value = {};
     if (newUser && !newUser.is_admin) {
         pollMyAuctions();
         myAuctionsInterval = setInterval(pollMyAuctions, 30000);
+
+        if (browserPermission.value === "granted") {
+            try {
+                await syncPushSubscription();
+            } catch (error) {
+                notify(
+                    error.message ?? "Couldn't sync background notifications for this browser.",
+                    "error",
+                    8000,
+                );
+            }
+        }
+    } else if (newUser?.is_admin && browserPermission.value === "granted") {
+        try {
+            await clearPushSubscription();
+        } catch (error) {
+            notify(
+                error.message ?? "Couldn't disable bidder notifications on this browser.",
+                "warning",
+                8000,
+            );
+        }
     }
 });
 watch(
@@ -340,6 +386,18 @@ onUnmounted(() => {
 });
 
 async function logout() {
+    if (browserPermission.value === "granted") {
+        try {
+            await clearPushSubscription();
+        } catch (error) {
+            notify(
+                error.message ?? "Couldn't disable browser notifications on this device.",
+                "warning",
+                8000,
+            );
+        }
+    }
+
     await api("/logout", { method: "POST" });
     user.value = null;
     if (ssoEnabled.value) {
@@ -361,8 +419,6 @@ provide("currencySymbol", currencySymbol);
 provide("heartbeatData", heartbeatData);
 provide("now", now);
 provide("notify", notify);
-provide("browserPermission", browserPermission);
-provide("requestBrowserPermission", requestBrowserPermission);
 </script>
 
 <template>
@@ -407,19 +463,21 @@ provide("requestBrowserPermission", requestBrowserPermission);
                     <button
                         v-if="notificationsSupported && user && !user.is_admin"
                         @click="handleNotificationBell"
-                        :disabled="browserPermission !== 'default'"
+                        :disabled="browserPermission === 'denied'"
                         class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:cursor-default"
                         :class="
-                            browserPermission === 'granted'
+                            pushEnabled
                                 ? 'text-green-500 dark:text-green-400'
                                 : 'text-gray-500 dark:text-gray-400'
                         "
                         :title="
-                            browserPermission === 'granted'
+                            pushEnabled
                                 ? 'Browser notifications enabled'
                                 : browserPermission === 'denied'
                                   ? 'Notifications blocked — enable in browser settings'
-                                  : 'Enable browser notifications'
+                                  : browserPermission === 'granted'
+                                    ? 'Finish enabling browser notifications'
+                                    : 'Enable browser notifications'
                         "
                     >
                         <svg
@@ -508,6 +566,12 @@ provide("requestBrowserPermission", requestBrowserPermission);
                             to="/admin/categories"
                             class="text-blue-600 dark:text-blue-400 hover:underline"
                             >Categories</router-link
+                        >
+                        <router-link
+                            v-if="user.is_admin"
+                            to="/admin/audit-log"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
+                            >Audit Log</router-link
                         >
                         <router-link
                             v-if="user.is_admin"

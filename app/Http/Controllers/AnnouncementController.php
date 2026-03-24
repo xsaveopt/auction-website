@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Announcement;
+use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -54,6 +55,10 @@ class AnnouncementController extends Controller
         /** @var \App\Models\User $author */
         $author = $announcement->author;
 
+        AuditLog::record($user, 'announcement.create', $announcement, [
+            'message' => $announcement->message,
+        ]);
+
         return response()->json([
             'announcement' => [
                 'id' => $announcement->id,
@@ -64,8 +69,14 @@ class AnnouncementController extends Controller
         ], 201);
     }
 
-    public function destroy(Announcement $announcement): JsonResponse
+    public function destroy(Request $request, Announcement $announcement): JsonResponse
     {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        AuditLog::record($user, 'announcement.delete', $announcement, [
+            'message' => $announcement->message,
+        ]);
+
         $announcement->update(['is_active' => false]);
 
         return response()->json(['message' => 'Announcement removed.']);

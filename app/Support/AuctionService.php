@@ -6,9 +6,26 @@ use App\Models\Auction;
 use App\Models\Bid;
 use App\Models\LeftoverPurchase;
 use App\Support\Presence;
+use Illuminate\Support\Collection;
 
 class AuctionService
 {
+    /**
+     * @return Collection<int, Bid>
+     */
+    public function latestBids(Auction $auction): Collection
+    {
+        /** @var Collection<int, Bid> $latestBids */
+        $latestBids = $auction
+            ->bids
+            ->groupBy('user_id')
+            ->map(fn($userBids) => $userBids->sortByDesc('id')->first())
+            ->filter(fn($bid) => $bid instanceof Bid)
+            ->values();
+
+        return $latestBids;
+    }
+
     /**
      * Allocate items to bids, sorted by amount descending.
      * Returns a map of bid ID => number of items won.
@@ -21,15 +38,11 @@ class AuctionService
      */
     public function allocate(Auction $auction): array
     {
-        /** @var \Illuminate\Support\Collection<int, Bid> $latestBids */
-        $latestBids = $auction
-            ->bids
-            ->groupBy('user_id')
-            ->map(fn($userBids) => $userBids->sortByDesc('id')->first())
-            ->values();
+        $latestBids = $this->latestBids($auction);
         $sortedBids = $latestBids->sortBy([
             ['amount', 'desc'],
             ['quantity', 'desc'],
+            ['id', 'asc'],
         ])->values();
         $remaining = (int) $auction->quantity;
         /** @var array<int, int> $allocations */
@@ -72,6 +85,22 @@ class AuctionService
             'clearing_price' => $clearingPrice,
             'prices' => $prices,
         ];
+    }
+
+    /**
+     * @param array{allocations: array<int, int>, clearing_price: float, prices: array<int, float>}|null $result
+     * @return array<int, int>
+     */
+    public function allocationByUser(Auction $auction, ?array $result = null): array
+    {
+        $result ??= $this->allocate($auction);
+        $userAllocations = [];
+
+        foreach ($this->latestBids($auction) as $bid) {
+            $userAllocations[$bid->user_id] = $result['allocations'][$bid->id] ?? 0;
+        }
+
+        return $userAllocations;
     }
 
     /**
@@ -144,60 +173,80 @@ class AuctionService
         ];
 
         if ($withBids) {
-            /** @var \Illuminate\Support\Collection<int, Bid> $latestBids */
-            $latestBids = $auction
-                ->bids
-                ->groupBy('user_id')
-                ->map(fn($userBids) => $userBids->sortByDesc('id')->first())
-                ->values();
+            $latestBids = $this->latestBids($auction);
             $sortedBids = $latestBids->sortBy([
                 ['amount', 'desc'],
                 ['quantity', 'desc'],
+                ['id', 'asc'],
             ])->values();
-            $data['bids'] = $sortedBids->map(fn(Bid $bid) => [
-                'id' => $bid->id,
-                'amount' => $bid->amount,
-                'quantity' => $bid->quantity,
-                'won_quantity' => $allocations[$bid->id] ?? 0,
-                'price' => isset($prices[$bid->id]) ? number_format($prices[$bid->id], 2, '.', '') : null,
-                'user' => [
-                    'id' => $bid->user?->id,
-                    'username' => $bid->user?->username,
-                ],
-                'created_at' => $bid->created_at?->format('Y-m-d\TH:i:sP'),
-            ]);
+
+            $currentUser = auth()->user();
+            /** @var bool $isAdmin */
+            $isAdmin = $currentUser && $currentUser->is_admin;
+
+            $data['bids'] = $sortedBids->map(function (Bid $bid) use ($allocations, $prices, $currentUser, $isAdmin) {
+                $isOwner = $currentUser && $bid->user_id === $currentUser->id;
+                $username = ($isAdmin || $isOwner) ? $bid->user?->username : "Bidder #{$bid->user_id}";
+
+                return [
+                    'id' => $bid->id,
+                    'amount' => $bid->amount,
+                    'quantity' => $bid->quantity,
+                    'won_quantity' => $allocations[$bid->id] ?? 0,
+                    'price' => isset($prices[$bid->id]) ? number_format($prices[$bid->id], 2, '.', '') : null,
+                    'user' => [
+                        'id' => $bid->user?->id,
+                        'username' => $username,
+                    ],
+                    'created_at' => $bid->created_at?->format('Y-m-d\TH:i:sP'),
+                ];
+            });
 
             if ($auction->relationLoaded('leftoverPurchases')) {
                 $data['leftover_purchases'] = $auction
                     ->leftoverPurchases
-                    ->map(fn(LeftoverPurchase $purchase) => [
-                        'id' => $purchase->id,
-                        'quantity' => $purchase->quantity,
-                        'price_per_item' => $purchase->price_per_item,
-                        'user' => [
-                            'id' => $purchase->user?->id,
-                            'username' => $purchase->user?->username,
-                        ],
-                        'created_at' => $purchase->created_at?->format('Y-m-d\TH:i:sP'),
-                    ])
+                    ->map(function (LeftoverPurchase $purchase) use ($currentUser, $isAdmin) {
+                        $isOwner = $currentUser && $purchase->user_id === $currentUser->id;
+                        $username = ($isAdmin || $isOwner) ? $purchase->user?->username : "User #{$purchase->user_id}";
+
+                        return [
+                            'id' => $purchase->id,
+                            'quantity' => $purchase->quantity,
+                            'price_per_item' => $purchase->price_per_item,
+                            'user' => [
+                                'id' => $purchase->user?->id,
+                                'username' => $username,
+                            ],
+                            'created_at' => $purchase->created_at?->format('Y-m-d\TH:i:sP'),
+                        ];
+                    })
                     ->values();
             }
         }
 
         if ($auction->relationLoaded('questions')) {
+            $currentUser = auth()->user();
+            /** @var bool $isAdmin */
+            $isAdmin = $currentUser && $currentUser->is_admin;
+
             $data['questions'] = $auction
                 ->questions
-                ->map(fn(\App\Models\AuctionQuestion $question) => [
-                    'id' => $question->id,
-                    'question' => $question->question,
-                    'answer' => $question->answer,
-                    'answered_at' => $question->answered_at?->format('Y-m-d\TH:i:sP'),
-                    'user' => [
-                        'id' => $question->user?->id,
-                        'username' => $question->user?->username,
-                    ],
-                    'created_at' => $question->created_at?->format('Y-m-d\TH:i:sP'),
-                ])
+                ->map(function (\App\Models\AuctionQuestion $question) use ($currentUser, $isAdmin) {
+                    $isOwner = $currentUser && $question->user_id === $currentUser->id;
+                    $username = ($isAdmin || $isOwner) ? $question->user?->username : "User #{$question->user_id}";
+
+                    return [
+                        'id' => $question->id,
+                        'question' => $question->question,
+                        'answer' => $question->answer,
+                        'answered_at' => $question->answered_at?->format('Y-m-d\TH:i:sP'),
+                        'user' => [
+                            'id' => $question->user?->id,
+                            'username' => $username,
+                        ],
+                        'created_at' => $question->created_at?->format('Y-m-d\TH:i:sP'),
+                    ];
+                })
                 ->values();
         }
 

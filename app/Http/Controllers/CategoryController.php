@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Category;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,6 +45,10 @@ class CategoryController extends Controller
             'sort_order' => $validated['sort_order'] ?? 0,
         ]);
 
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        AuditLog::record($user, 'category.create', $category, ['name' => $category->name]);
+
         return response()->json([
             'category' => [
                 'id' => $category->id,
@@ -69,10 +74,18 @@ class CategoryController extends Controller
             $slug = $original . '-' . $counter++;
         }
 
+        $oldName = $category->name;
         $category->update([
             'name' => $validated['name'],
             'slug' => $slug,
             'sort_order' => $validated['sort_order'] ?? $category->sort_order,
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        AuditLog::record($user, 'category.update', $category, [
+            'old_name' => $oldName,
+            'name' => $category->name,
         ]);
 
         return response()->json([
@@ -85,8 +98,12 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function destroy(Category $category): JsonResponse
+    public function destroy(Request $request, Category $category): JsonResponse
     {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        AuditLog::record($user, 'category.delete', $category, ['name' => $category->name]);
+
         $category->delete();
 
         return response()->json(['message' => 'Category deleted.']);

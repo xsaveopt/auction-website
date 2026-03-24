@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property int $id
@@ -13,9 +14,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $price_per_item
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class LeftoverPurchase extends Model
 {
+    use SoftDeletes;
+
     /** @var list<string> */
     protected $fillable = ['auction_id', 'user_id', 'quantity', 'price_per_item'];
 

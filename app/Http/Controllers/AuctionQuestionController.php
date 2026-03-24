@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Auction;
 use App\Models\AuctionQuestion;
+use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -80,6 +81,15 @@ class AuctionQuestionController extends Controller
             'answered_at' => now(),
         ]);
 
+        if ($user->is_admin) {
+            AuditLog::record($user, 'question.answer', $question, [
+                'auction_id' => $question->auction_id,
+                'auction_title' => $auction->title,
+                'asked_by' => $question->user?->username,
+                'question' => mb_substr($question->question, 0, 200),
+            ]);
+        }
+
         /** @var AuctionQuestion $fresh */
         $fresh = $question->fresh(['user:id,username']);
 
@@ -100,6 +110,15 @@ class AuctionQuestionController extends Controller
 
         if ($auction->seller_id !== $user->id && !$user->is_admin) {
             return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        if ($user->is_admin) {
+            AuditLog::record($user, 'question.delete', $question, [
+                'auction_id' => $question->auction_id,
+                'auction_title' => $auction->title,
+                'asked_by' => $question->user?->username,
+                'question' => mb_substr($question->question, 0, 200),
+            ]);
         }
 
         $question->delete();

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Models\AuditLog;
+use App\Support\AuctionFinalizationService;
 use App\Support\AuctionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,22 +14,27 @@ class AdminAuctionController extends Controller
 {
     public function __construct(
         protected AuctionService $auctionService,
+        protected AuctionFinalizationService $auctionFinalizationService,
     ) {}
 
     public function end(Auction $auction): JsonResponse
     {
-        $auction->status = 'ended';
-        $auction->ends_at = now();
-        $auction->save();
+        $this->auctionFinalizationService->end($auction);
+
+        /** @var \App\Models\User $admin */
+        $admin = auth()->user();
+        AuditLog::record($admin, 'auction.end', $auction, ['title' => $auction->title]);
 
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
     }
 
     public function cancel(Auction $auction): JsonResponse
     {
-        $auction->status = 'cancelled';
-        $auction->ends_at = now();
-        $auction->save();
+        $this->auctionFinalizationService->cancel($auction);
+
+        /** @var \App\Models\User $admin */
+        $admin = auth()->user();
+        AuditLog::record($admin, 'auction.cancel', $auction, ['title' => $auction->title]);
 
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
     }
@@ -43,6 +50,13 @@ class AdminAuctionController extends Controller
         $auction->ends_at = Carbon::parse($validated['ends_at']);
         $auction->save();
 
+        /** @var \App\Models\User $admin */
+        $admin = $request->user();
+        AuditLog::record($admin, 'auction.reactivate', $auction, [
+            'title' => $auction->title,
+            'ends_at' => $auction->ends_at->toISOString(),
+        ]);
+
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
     }
 
@@ -55,6 +69,13 @@ class AdminAuctionController extends Controller
 
         $auction->ends_at = Carbon::parse($validated['ends_at']);
         $auction->save();
+
+        /** @var \App\Models\User $admin */
+        $admin = $request->user();
+        AuditLog::record($admin, 'auction.extend', $auction, [
+            'title' => $auction->title,
+            'ends_at' => $auction->ends_at->toISOString(),
+        ]);
 
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
     }

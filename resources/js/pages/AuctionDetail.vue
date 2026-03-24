@@ -99,6 +99,12 @@ function bidKey(bid) {
     return `${bid.id}:${bid.amount}:${bid.quantity}`;
 }
 
+function clampBidQuantity(quantity, maxPerBidder) {
+    const max = Math.max(1, Number(maxPerBidder || 1));
+    const normalized = Math.trunc(Number(quantity || 1));
+    return Math.min(Math.max(normalized || 1, 1), max);
+}
+
 function updateAuction(newAuction, resetForm = false) {
     if (!newAuction) return;
 
@@ -126,9 +132,7 @@ function updateAuction(newAuction, resetForm = false) {
             newMyBid &&
             (newMyBid.won_quantity ?? 0) === 0
         ) {
-            notify(`You've been overbid on "${newAuction.title}"!`, "warning", 6000, {
-                browser: true,
-            });
+            notify(`You've been overbid on "${newAuction.title}"!`, "warning", 6000);
         }
     }
 
@@ -137,11 +141,9 @@ function updateAuction(newAuction, resetForm = false) {
         if (user.value) {
             const myBid = newAuction.bids.find((b) => b.user.id === user.value.id);
             if (myBid && (myBid.won_quantity ?? 0) > 0) {
-                notify(`You won "${newAuction.title}"!`, "success", 10000, { browser: true });
+                notify(`You won "${newAuction.title}"!`, "success", 10000);
             } else if (myBid) {
-                notify(`Auction "${newAuction.title}" has ended — you didn't win.`, "info", 8000, {
-                    browser: true,
-                });
+                notify(`Auction "${newAuction.title}" has ended — you didn't win.`, "info", 8000);
             } else {
                 notify(`"${newAuction.title}" has ended.`, "info");
             }
@@ -162,7 +164,7 @@ function updateAuction(newAuction, resetForm = false) {
             (q) => q.user.id === user.value.id && q.answer && !prevAnswered.has(q.id),
         );
         if (newlyAnswered.length > 0) {
-            notify("Your question has been answered!", "info", 6000, { browser: true });
+            notify("Your question has been answered!", "info", 6000);
         }
     }
 
@@ -173,7 +175,9 @@ function updateAuction(newAuction, resetForm = false) {
         bidAmount.value = my
             ? (Number(my.amount) + 1).toFixed(2)
             : Number(newAuction.starting_price).toFixed(2);
-        bidQuantity.value = my ? my.quantity : 1;
+        bidQuantity.value = my ? clampBidQuantity(my.quantity, newAuction.max_per_bidder) : 1;
+    } else {
+        bidQuantity.value = clampBidQuantity(bidQuantity.value, newAuction.max_per_bidder);
     }
 }
 
@@ -215,11 +219,18 @@ async function buyLeftover() {
 async function placeBid() {
     error.value = "";
     try {
+        const quantity =
+            auction.value?.max_per_bidder > 1
+                ? clampBidQuantity(bidQuantity.value, auction.value.max_per_bidder)
+                : 1;
+
+        bidQuantity.value = quantity;
+
         await api(`/auctions/${props.id}/bids`, {
             method: "POST",
             body: JSON.stringify({
                 amount: Number(bidAmount.value),
-                quantity: Number(bidQuantity.value),
+                quantity,
             }),
         });
         await load(false, true);
@@ -552,9 +563,7 @@ watchEffect(() => {
     const timeLeft = new Date(auction.value.ends_at) - now.value;
     if (timeLeft > 0 && timeLeft <= 5 * 60 * 1000) {
         endingSoonNotified.value = true;
-        notify(`"${auction.value.title}" ends in less than 5 minutes!`, "warning", 6000, {
-            browser: true,
-        });
+        notify(`"${auction.value.title}" ends in less than 5 minutes!`, "warning", 6000);
     }
 });
 </script>

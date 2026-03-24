@@ -32,6 +32,9 @@ php artisan config:cache
 # Run migrations
 php artisan migrate --force
 
+# Run the scheduler so time-based auction notifications still fire when no tab is open
+php artisan schedule:work >> /app/storage/logs/scheduler.log 2>&1 &
+
 # Serve with Octane (FrankenPHP)
 WORKERS=${OCTANE_WORKERS:-auto}
 exec php artisan octane:frankenphp --host=0.0.0.0 --port=443 --workers="$WORKERS" --caddyfile /app/Caddyfile
