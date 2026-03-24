@@ -859,15 +859,15 @@ watchEffect(() => {
                                         class="border rounded px-3 py-2 w-20"
                                     />
                                 </div>
-                                <div
-                                    v-if="auction.leftover_quantity > 1"
-                                    class="basis-full text-sm text-gray-500 dark:text-gray-400"
-                                >
+                                <div class="basis-full text-sm text-gray-500 dark:text-gray-400">
                                     Total: {{ currencySymbol
                                     }}{{
                                         (
-                                            Number(leftoverQuantity) *
-                                            Number(auction.leftover_price)
+                                            Number(
+                                                auction.leftover_quantity > 1
+                                                    ? leftoverQuantity
+                                                    : 1,
+                                            ) * Number(auction.leftover_price)
                                         ).toFixed(2)
                                     }}
                                 </div>
