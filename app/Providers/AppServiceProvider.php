@@ -27,6 +27,14 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
 
         if (config('database.default') === 'sqlite') {
+            $database = (string) config('database.connections.sqlite.database');
+            // Skip if the file hasn't been created yet (CI before first migration,
+            // fresh installs). PRAGMAs are performance-only; missing them on a
+            // non-existent DB is harmless — they'll apply on the next boot.
+            if ($database !== ':memory:' && !is_file($database)) {
+                return;
+            }
+
             $pdo = DB::connection()->getPdo();
             $pdo->exec('PRAGMA cache_size = -64000');
             $pdo->exec('PRAGMA temp_store = MEMORY');
