@@ -151,6 +151,7 @@ return [
             'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-database-'),
             'persistent' => env('REDIS_PERSISTENT', false),
             'serializer' => defined('Redis::SERIALIZER_IGBINARY') ? Redis::SERIALIZER_IGBINARY : 0,
+            'compression' => defined('Redis::COMPRESSION_ZSTD') ? Redis::COMPRESSION_ZSTD : 0,
         ],
 
         'default' => [

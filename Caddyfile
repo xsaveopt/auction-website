@@ -9,7 +9,16 @@
 		{$FRANKENPHP_CONFIG}
 	}
 
-	servers
+	servers {
+		protocols h1 h2 h3
+		timeouts {
+			read_body   10s
+			read_header 5s
+			write       30s
+			idle        2m
+		}
+		max_header_size 8kb
+	}
 }
 
 {$SERVER_NAME:localhost} {

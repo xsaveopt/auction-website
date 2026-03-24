@@ -37,4 +37,7 @@ php artisan schedule:work >> /app/storage/logs/scheduler.log 2>&1 &
 
 # Serve with Octane (FrankenPHP)
 WORKERS=${OCTANE_WORKERS:-auto}
-exec php artisan octane:frankenphp --host=0.0.0.0 --port=443 --workers="$WORKERS" --caddyfile /app/Caddyfile
+# Recycle workers after N requests to prevent slow memory leaks from accumulating
+# indefinitely. FrankenPHP respawns the worker transparently with no dropped requests.
+MAX_REQUESTS=${OCTANE_MAX_REQUESTS:-500}
+exec php artisan octane:frankenphp --host=0.0.0.0 --port=443 --workers="$WORKERS" --max-requests="$MAX_REQUESTS" --caddyfile /app/Caddyfile
