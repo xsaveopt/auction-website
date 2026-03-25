@@ -43,7 +43,10 @@ class PushNotificationService
         }
 
         /** @var \Illuminate\Support\Collection<int, int> $userIds */
-        $userIds = collect($users)->pluck('id')->filter(fn(mixed $id) => is_int($id))->values();
+        $userIds = collect($users)
+            ->pluck('id')
+            ->filter(fn(mixed $id) => is_int($id))
+            ->values();
 
         if ($userIds->isEmpty()) {
             return;

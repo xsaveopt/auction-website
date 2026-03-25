@@ -47,7 +47,10 @@ class AdminControllersTest extends TestCase
             ->assertOk()
             ->assertJsonPath('auction.bids.0.amount', '35.00');
 
-        $this->actingAs($admin)->deleteJson("/api/admin/bids/{$bid->id}")->assertOk();
+        $this
+            ->actingAs($admin)
+            ->deleteJson("/api/admin/bids/{$bid->id}")
+            ->assertOk();
 
         $this->assertSoftDeleted('bids', ['id' => $bid->id]);
     }

@@ -87,6 +87,14 @@ onMounted(async () => {
     await load();
 });
 
+const showSoldOut = ref(false);
+
+function shouldHideEnded(auction) {
+    return !auction.is_active && !(auction.leftover_enabled && auction.leftover_quantity > 0);
+}
+
+const hiddenEndedCount = computed(() => auctions.value.filter((a) => shouldHideEnded(a)).length);
+
 const groupedAuctions = computed(() => {
     const groups = [];
     const categoryMap = new Map();
@@ -105,6 +113,7 @@ const groupedAuctions = computed(() => {
     const uncategorized = [];
 
     for (const auction of auctions.value) {
+        if (!showSoldOut.value && shouldHideEnded(auction)) continue;
         if (auction.category_id && categoryMap.has(auction.category_id)) {
             categoryMap.get(auction.category_id).auctions.push(auction);
         } else {
@@ -244,9 +253,17 @@ function timeLeft(endsAt) {
                 </div>
             </div>
 
-            <!-- Admin: Add announcement button (when none exists) -->
-            <div v-if="!announcement && !editingAnnouncement && user?.is_admin" class="mb-6">
+            <!-- Toolbar: admin announcement link (left) + ended toggle (right) -->
+            <div
+                v-if="
+                    (!announcement && !editingAnnouncement && user?.is_admin) ||
+                    hiddenEndedCount > 0 ||
+                    showSoldOut
+                "
+                class="mb-4 flex items-center justify-between"
+            >
                 <button
+                    v-if="!announcement && !editingAnnouncement && user?.is_admin"
                     @click="startEditAnnouncement"
                     class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1"
                 >
@@ -259,6 +276,16 @@ function timeLeft(endsAt) {
                         />
                     </svg>
                     Add announcement
+                </button>
+                <span v-else />
+
+                <button
+                    v-if="hiddenEndedCount > 0 || showSoldOut"
+                    @click="showSoldOut = !showSoldOut"
+                    class="ml-auto text-sm font-medium border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                    <span v-if="!showSoldOut">Show {{ hiddenEndedCount }} ended</span>
+                    <span v-else>Hide ended</span>
                 </button>
             </div>
 

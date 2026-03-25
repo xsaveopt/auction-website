@@ -28,9 +28,12 @@ class QuotePdfControllerTest extends TestCase
 
         $pdf = Mockery::mock(\Barryvdh\DomPDF\PDF::class);
         $pdf->shouldReceive('setPaper')->once();
-        $pdf->shouldReceive('download')->once()->andReturn(response('pdf-binary', 200, [
-            'Content-Type' => 'application/pdf',
-        ]));
+        $pdf
+            ->shouldReceive('download')
+            ->once()
+            ->andReturn(response('pdf-binary', 200, [
+                'Content-Type' => 'application/pdf',
+            ]));
 
         Pdf::shouldReceive('loadView')
             ->once()
@@ -104,8 +107,17 @@ class QuotePdfControllerTest extends TestCase
             'quantity' => 1,
         ]);
 
-        $this->actingAs($admin)->get("/api/auctions/{$auction->id}/quotes/{$otherBid->id}")->assertNotFound();
-        $this->actingAs($admin)->get("/api/auctions/{$auction->id}/quotes/{$losingBid->id}")->assertNotFound();
-        $this->actingAs($admin)->get("/api/auctions/{$auction->id}/quotes/{$winningBid->id}")->assertOk();
+        $this
+            ->actingAs($admin)
+            ->get("/api/auctions/{$auction->id}/quotes/{$otherBid->id}")
+            ->assertNotFound();
+        $this
+            ->actingAs($admin)
+            ->get("/api/auctions/{$auction->id}/quotes/{$losingBid->id}")
+            ->assertNotFound();
+        $this
+            ->actingAs($admin)
+            ->get("/api/auctions/{$auction->id}/quotes/{$winningBid->id}")
+            ->assertOk();
     }
 }

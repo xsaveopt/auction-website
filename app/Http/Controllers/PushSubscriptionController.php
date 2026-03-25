@@ -68,6 +68,6 @@ class PushSubscriptionController extends Controller
             ->where('endpoint', $validated['endpoint'])
             ->delete();
 
-        return response()->json([], 204);
+        return response()->json(['message' => 'Push subscription removed.']);
     }
 }

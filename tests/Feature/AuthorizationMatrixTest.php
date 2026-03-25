@@ -107,7 +107,10 @@ class AuthorizationMatrixTest extends TestCase
 
         $this->actingAs($user)->getJson('/api/announcement')->assertOk();
         $this->actingAs($user)->getJson('/api/categories')->assertOk();
-        $this->actingAs($user)->getJson("/api/auctions/{$auction->id}")->assertOk();
+        $this
+            ->actingAs($user)
+            ->getJson("/api/auctions/{$auction->id}")
+            ->assertOk();
         $this->actingAs($user)->getJson('/api/auctions')->assertOk();
         $this
             ->actingAs($user)

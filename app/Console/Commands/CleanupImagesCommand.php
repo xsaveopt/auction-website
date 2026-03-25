@@ -43,10 +43,9 @@ class CleanupImagesCommand extends Command
         });
 
         // Find files on disk not referenced by any DB record
-        $dbPaths = AuctionImage::pluck('path')->toArray();
-        $allFiles = $disk->allFiles('auctions');
-        /** @var string[] $orphanedFiles */
-        $orphanedFiles = array_values(array_diff($allFiles, $dbPaths));
+        $dbPaths = AuctionImage::pluck('path');
+        $allDiskFiles = array_filter($disk->allFiles('auctions'), 'is_string');
+        $orphanedFiles = array_values(array_filter($allDiskFiles, fn(string $file) => !$dbPaths->contains($file)));
 
         if ($missingFiles === [] && $orphanedFiles === []) {
             $this->info('No orphaned images found. Everything is clean.');

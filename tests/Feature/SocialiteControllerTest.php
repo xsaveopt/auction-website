@@ -103,7 +103,10 @@ class SocialiteControllerTest extends TestCase
         ]);
 
         $provider = Mockery::mock();
-        $provider->shouldReceive('user')->once()->andThrow(new \Exception('boom'));
+        $provider
+            ->shouldReceive('user')
+            ->once()
+            ->andThrow(new \Exception('boom'));
 
         Socialite::shouldReceive('driver')
             ->once()

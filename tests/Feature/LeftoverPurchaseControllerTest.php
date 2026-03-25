@@ -84,7 +84,10 @@ class LeftoverPurchaseControllerTest extends TestCase
         $this->assertSame(3, $purchase->quantity);
         $this->assertSame(15.0, (float) $purchase->price_per_item);
 
-        $this->actingAs($admin)->deleteJson("/api/admin/leftover-purchases/{$purchase->id}")->assertOk();
+        $this
+            ->actingAs($admin)
+            ->deleteJson("/api/admin/leftover-purchases/{$purchase->id}")
+            ->assertOk();
 
         $this->assertSoftDeleted('leftover_purchases', ['id' => $purchase->id]);
     }

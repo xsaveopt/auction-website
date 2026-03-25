@@ -55,7 +55,7 @@ class PushSubscriptionControllerTest extends TestCase
             ->deleteJson('/api/push/subscription', [
                 'endpoint' => $endpoint,
             ])
-            ->assertNoContent();
+            ->assertOk();
 
         $this->assertDatabaseMissing('push_subscriptions', [
             'user_id' => $user->id,

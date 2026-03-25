@@ -36,7 +36,10 @@ class ListAuctionsCommand extends Command
             $query->where('title', 'like', "%{$search}%");
         }
 
-        $auctions = $query->latest()->limit((int) $this->option('limit'))->get();
+        $auctions = $query
+            ->latest()
+            ->limit((int) $this->option('limit'))
+            ->get();
 
         if ($auctions->isEmpty()) {
             $this->info('No auctions found.');
