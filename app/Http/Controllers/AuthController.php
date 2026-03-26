@@ -6,11 +6,17 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
+    private const LOGIN_MAX_ATTEMPTS = 5;
+
+    private const LOGIN_DECAY_SECONDS = 60;
+
     public function register(Request $request): JsonResponse
     {
         if ($this->ssoEnabled()) {
@@ -46,10 +52,17 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        if ($response = $this->loginThrottleResponse($request)) {
+            return $response;
+        }
+
         if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+            RateLimiter::hit($this->loginThrottleKey($request), self::LOGIN_DECAY_SECONDS);
+
             return response()->json(['message' => 'Invalid credentials.'], 401);
         }
 
+        RateLimiter::clear($this->loginThrottleKey($request));
         $request->session()->regenerate();
 
         /** @var User $user */
@@ -91,5 +104,28 @@ class AuthController extends Controller
     private function ssoEnabled(): bool
     {
         return filled(config('services.microsoft.client_id')) && filled(config('services.microsoft.client_secret'));
+    }
+
+    private function loginThrottleResponse(Request $request): ?JsonResponse
+    {
+        $key = $this->loginThrottleKey($request);
+
+        if (!RateLimiter::tooManyAttempts($key, self::LOGIN_MAX_ATTEMPTS)) {
+            return null;
+        }
+
+        $retryAfter = RateLimiter::availableIn($key);
+
+        return response()
+            ->json([
+                'message' => 'Too many login attempts. Please try again later.',
+                'retry_after' => $retryAfter,
+            ], Response::HTTP_TOO_MANY_REQUESTS)
+            ->header('Retry-After', (string) $retryAfter);
+    }
+
+    private function loginThrottleKey(Request $request): string
+    {
+        return Str::transliterate(Str::lower($request->string('username')->toString()) . '|' . ($request->ip() ?? ''));
     }
 }

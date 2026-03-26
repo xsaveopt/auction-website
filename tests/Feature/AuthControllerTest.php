@@ -87,6 +87,66 @@ class AuthControllerTest extends TestCase
             ->assertJsonPath('message', 'Invalid credentials.');
     }
 
+    public function test_login_is_rate_limited_after_too_many_failed_attempts(): void
+    {
+        $user = $this->createUser([
+            'username' => 'limited-user',
+            'password' => 'password',
+        ]);
+
+        foreach (range(1, 5) as $_) {
+            $this
+                ->postJson('/api/login', [
+                    'username' => $user->username,
+                    'password' => 'wrong-password',
+                ])
+                ->assertUnauthorized()
+                ->assertJsonPath('message', 'Invalid credentials.');
+        }
+
+        $this
+            ->postJson('/api/login', [
+                'username' => $user->username,
+                'password' => 'wrong-password',
+            ])
+            ->assertTooManyRequests()
+            ->assertJsonPath('message', 'Too many login attempts. Please try again later.')
+            ->assertHeader('Retry-After');
+    }
+
+    public function test_successful_login_clears_failed_login_attempts(): void
+    {
+        $user = $this->createUser([
+            'username' => 'reset-user',
+            'password' => 'password',
+        ]);
+
+        foreach (range(1, 4) as $_) {
+            $this->postJson('/api/login', [
+                'username' => $user->username,
+                'password' => 'wrong-password',
+            ])->assertUnauthorized();
+        }
+
+        $this
+            ->postJson('/api/login', [
+                'username' => $user->username,
+                'password' => 'password',
+            ])
+            ->assertOk()
+            ->assertJsonPath('user.username', $user->username);
+
+        $this->postJson('/api/logout')->assertOk();
+
+        $this
+            ->postJson('/api/login', [
+                'username' => $user->username,
+                'password' => 'wrong-password',
+            ])
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Invalid credentials.');
+    }
+
     public function test_registration_rejects_duplicate_usernames(): void
     {
         $this->createUser(['username' => 'duplicate-user']);
