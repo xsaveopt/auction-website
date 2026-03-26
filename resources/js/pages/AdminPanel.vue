@@ -1,11 +1,12 @@
 <script setup>
-import { ref, watch, inject } from "vue";
+import { ref, watch, inject, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import AdminResults from "./AdminResults.vue";
 import AdminQuestions from "./AdminQuestions.vue";
 import AdminPriceOffers from "./AdminPriceOffers.vue";
 import AdminCategories from "./AdminCategories.vue";
 import AdminAuditLog from "./AdminAuditLog.vue";
+import CreateAuction from "./CreateAuction.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -15,20 +16,23 @@ if (!user.value?.is_admin) {
     router.push("/");
 }
 
-const validTabs = ["results", "questions", "priceOffers", "categories", "auditLog"];
+const validTabs = ["results", "questions", "priceOffers", "categories", "auditLog", "sell"];
 const activeTab = ref(validTabs.includes(route.query.tab) ? route.query.tab : "results");
 
-const tabMounted = ref(Object.fromEntries(validTabs.map((t) => [t, t === activeTab.value])));
+// Tracks which tabs have been opened at least once (lazy mount, keeps alive)
+// Sell is excluded — it always remounts to give a fresh form
+const lazyTabs = ["results", "questions", "priceOffers", "categories", "auditLog"];
+const tabMounted = ref(Object.fromEntries(lazyTabs.map((t) => [t, t === activeTab.value])));
+
+onMounted(() => {
+    // Ensure ?tab= is always explicit in the URL, including the default
+    router.replace({ path: "/admin", query: { tab: activeTab.value } });
+});
 
 watch(activeTab, (tab) => {
     tabMounted.value[tab] = true;
-    const query = { ...route.query };
-    if (tab === "results") {
-        delete query.tab;
-    } else {
-        query.tab = tab;
-    }
-    router.replace({ path: "/admin", query });
+    // Reset to only { tab } — each section re-asserts its own params when it becomes active
+    router.replace({ path: "/admin", query: { tab } });
 });
 
 watch(
@@ -178,12 +182,15 @@ watch(
                         </svg>
                         Audit Log
                     </button>
-                </nav>
 
-                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <router-link
-                        to="/auctions/new"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                    <button
+                        @click="activeTab = 'sell'"
+                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                        :class="
+                            activeTab === 'sell'
+                                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200'
+                        "
                     >
                         <svg
                             class="w-4 h-4 shrink-0"
@@ -199,8 +206,8 @@ watch(
                             />
                         </svg>
                         Sell Item
-                    </router-link>
-                </div>
+                    </button>
+                </nav>
             </div>
         </aside>
 
@@ -209,11 +216,21 @@ watch(
 
         <!-- Content area -->
         <div class="flex-1 min-w-0 pl-2">
-            <AdminResults v-if="tabMounted.results" v-show="activeTab === 'results'" />
+            <AdminResults
+                v-if="tabMounted.results"
+                v-show="activeTab === 'results'"
+                :active="activeTab === 'results'"
+            />
             <AdminQuestions v-if="tabMounted.questions" v-show="activeTab === 'questions'" />
             <AdminPriceOffers v-if="tabMounted.priceOffers" v-show="activeTab === 'priceOffers'" />
             <AdminCategories v-if="tabMounted.categories" v-show="activeTab === 'categories'" />
-            <AdminAuditLog v-if="tabMounted.auditLog" v-show="activeTab === 'auditLog'" />
+            <AdminAuditLog
+                v-if="tabMounted.auditLog"
+                v-show="activeTab === 'auditLog'"
+                :active="activeTab === 'auditLog'"
+            />
+            <!-- Sell remounts each time for a fresh form -->
+            <CreateAuction v-if="activeTab === 'sell'" />
         </div>
     </div>
 </template>

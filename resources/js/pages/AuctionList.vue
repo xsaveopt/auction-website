@@ -1,6 +1,11 @@
 <script setup>
 import { ref, computed, onMounted, inject, watch } from "vue";
 import { api } from "../api.js";
+import {
+    getItemLabel,
+    getLeftoverDiscountPercent,
+    hasAvailableLeftovers,
+} from "../auctionPresentation.js";
 
 const auctions = ref([]);
 const categories = ref([]);
@@ -81,6 +86,36 @@ watch(heartbeatData, (data) => {
 
 function watchingText(count) {
     return `${count} currently watching`;
+}
+
+function isLeftoverSale(auction) {
+    return !auction.is_active && hasAvailableLeftovers(auction);
+}
+
+function priceLabel(auction) {
+    if (isLeftoverSale(auction)) return "Buy now";
+    if (auction.is_active) return "Current price";
+    if (auction.bid_count > 0) return "Final price";
+
+    return "Starting price";
+}
+
+function priceValue(auction) {
+    return isLeftoverSale(auction) ? auction.leftover_price : auction.current_price;
+}
+
+function leftoverDiscountText(auction) {
+    const discountPercent = getLeftoverDiscountPercent(auction);
+
+    return discountPercent > 0 ? `${discountPercent}% off` : null;
+}
+
+function statusText(auction) {
+    if (auction.is_active) return "Live";
+    if (isLeftoverSale(auction)) return "Leftover sale";
+    if (auction.leftover_enabled && auction.leftover_quantity === 0) return "Sold out";
+
+    return "Ended";
 }
 
 onMounted(async () => {
@@ -314,9 +349,26 @@ function timeLeft(endsAt) {
                                 class="w-full h-36 object-cover"
                             />
                             <div class="p-3">
-                                <h3 class="font-semibold truncate">
-                                    {{ auction.title }}
-                                </h3>
+                                <div class="flex items-start justify-between gap-3">
+                                    <h3 class="font-semibold truncate">
+                                        {{ auction.title }}
+                                    </h3>
+                                    <span
+                                        class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                                        :class="
+                                            auction.is_active
+                                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                : isLeftoverSale(auction)
+                                                  ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                                  : auction.leftover_enabled &&
+                                                      auction.leftover_quantity === 0
+                                                    ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+                                                    : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                        "
+                                    >
+                                        {{ statusText(auction) }}
+                                    </span>
+                                </div>
                                 <p
                                     class="text-gray-600 dark:text-gray-400 text-sm mt-1 line-clamp-2"
                                 >
@@ -327,47 +379,63 @@ function timeLeft(endsAt) {
                                 >
                                     {{ watchingText(auction.watcher_count) }}
                                 </div>
-                                <div class="mt-2 flex items-center justify-between text-sm">
-                                    <span class="font-bold text-gray-800 dark:text-gray-100"
-                                        >{{ currencySymbol
-                                        }}{{ Number(auction.current_price).toFixed(2) }}</span
+                                <div
+                                    class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+                                >
+                                    <div>
+                                        <p
+                                            class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
+                                        >
+                                            {{ priceLabel(auction) }}
+                                        </p>
+                                        <p class="mt-1 font-bold text-gray-800 dark:text-gray-100">
+                                            {{ currencySymbol
+                                            }}{{ Number(priceValue(auction)).toFixed(2) }}
+                                            <span
+                                                class="text-sm font-medium text-gray-500 dark:text-gray-400"
+                                            >
+                                                / item
+                                            </span>
+                                        </p>
+                                        <p
+                                            v-if="isLeftoverSale(auction)"
+                                            class="mt-1 text-xs text-green-700 dark:text-green-300"
+                                        >
+                                            <span class="font-semibold">
+                                                {{ getItemLabel(auction.leftover_quantity) }} left
+                                            </span>
+                                            <span v-if="leftoverDiscountText(auction)">
+                                                · {{ leftoverDiscountText(auction) }} off the
+                                                original price
+                                            </span>
+                                        </p>
+                                        <p
+                                            v-else-if="auction.bid_count === 0"
+                                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                                        >
+                                            Starts at {{ currencySymbol
+                                            }}{{ Number(auction.starting_price).toFixed(2) }} per
+                                            item
+                                        </p>
+                                    </div>
+                                    <span
+                                        v-if="auction.is_active || isLeftoverSale(auction)"
+                                        class="text-sm"
                                     >
-                                    <span>
                                         <template v-if="auction.is_active">
                                             <span class="text-gray-600 dark:text-gray-300">{{
                                                 timeLeft(auction.ends_at)
                                             }}</span>
                                         </template>
-                                        <template
-                                            v-else-if="
-                                                auction.leftover_enabled &&
-                                                auction.leftover_quantity === 0
-                                            "
-                                        >
-                                            <span
-                                                class="font-medium text-gray-500 dark:text-gray-400"
-                                                >Sold out</span
-                                            >
-                                        </template>
-                                        <template
-                                            v-else-if="
-                                                auction.leftover_enabled &&
-                                                auction.leftover_quantity > 0
-                                            "
-                                        >
+                                        <template v-else>
                                             <span
                                                 class="font-medium text-green-600 dark:text-green-400"
-                                                >{{ auction.leftover_quantity }} left</span
-                                            >
-                                        </template>
-                                        <template v-else>
-                                            <span class="text-gray-400 dark:text-gray-500"
-                                                >Ended</span
+                                                >Buy now available</span
                                             >
                                         </template>
                                     </span>
                                 </div>
-                                <div class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                                <div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
                                     <span
                                         v-if="auction.quantity > 1"
                                         class="text-gray-500 dark:text-gray-400 font-medium"

@@ -2,6 +2,11 @@
 import { ref, inject, computed, onMounted, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../api.js";
+import {
+    getItemLabel,
+    getLeftoverDiscountPercent,
+    hasAvailableLeftovers,
+} from "../auctionPresentation.js";
 
 const router = useRouter();
 
@@ -92,11 +97,104 @@ const pendingOffers = computed(() => {
     return auction.value.leftover_price_offers.filter((o) => o.status === "pending");
 });
 
+const hasLeftoversAvailable = computed(() => hasAvailableLeftovers(auction.value));
+
 const leftoverSold = computed(() => {
     if (!auction.value) return 0;
     return Math.max(
         0,
         auction.value.quantity - auction.value.items_allocated - auction.value.leftover_quantity,
+    );
+});
+
+const leftoverDiscountPercent = computed(() => getLeftoverDiscountPercent(auction.value));
+
+const leftoverSavingsPerItem = computed(() => {
+    if (!auction.value) return 0;
+
+    return Math.max(0, Number(auction.value.starting_price) - Number(auction.value.leftover_price));
+});
+
+const priceOfferLimit = computed(() => {
+    const limit = Number(auction.value?.leftover_price) - 0.01;
+
+    return limit > 0 ? limit.toFixed(2) : "0.01";
+});
+
+const leftoverBuyTotal = computed(() => {
+    if (!auction.value) return 0;
+
+    const quantity =
+        Number(auction.value.leftover_quantity) > 1 ? Number(leftoverQuantity.value || 1) : 1;
+
+    return quantity * Number(auction.value.leftover_price);
+});
+
+const offerTotal = computed(() => {
+    const quantity =
+        Number(auction.value?.leftover_quantity) > 1 ? Number(offerQuantity.value || 1) : 1;
+
+    return quantity * Number(offerPrice.value || 0);
+});
+
+const auctionStatus = computed(() => {
+    if (!auction.value) return null;
+    if (auction.value.is_active) {
+        return {
+            label: "Live auction",
+            tone: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+            summary: `Bidding closes ${formatDate(auction.value.ends_at)}.`,
+        };
+    }
+    if (hasLeftoversAvailable.value) {
+        return {
+            label: "Leftover sale",
+            tone: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+            summary: `${getItemLabel(auction.value.leftover_quantity)} still available at ${currencySymbol.value}${formatMoney(auction.value.leftover_price)} each.`,
+        };
+    }
+    if (auction.value.leftover_enabled && auction.value.leftover_quantity === 0) {
+        return {
+            label: "Sold out",
+            tone: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200",
+            summary: "All available and leftover items have already been claimed.",
+        };
+    }
+
+    return {
+        label: "Ended",
+        tone: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+        summary: "Bidding has closed for this auction.",
+    };
+});
+
+const primaryPriceLabel = computed(() => {
+    if (!auction.value) return "";
+    if (auction.value.is_active) return "Current clearing price";
+    if (hasLeftoversAvailable.value) return "Buy now price";
+    if (auction.value.bid_count > 0) return "Final clearing price";
+
+    return "Starting price";
+});
+
+const primaryPriceValue = computed(() => {
+    if (!auction.value) return 0;
+
+    return hasLeftoversAvailable.value && !auction.value.is_active
+        ? auction.value.leftover_price
+        : auction.value.current_price;
+});
+
+const shouldShowLeftoverSection = computed(() => {
+    if (!auction.value?.leftover_enabled) return false;
+
+    return Boolean(
+        hasLeftoversAvailable.value ||
+        auction.value.leftover_purchases?.length ||
+        pendingOffers.value.length ||
+        user.value?.is_admin ||
+        myLeftoverPurchase.value ||
+        myPriceOffer.value,
     );
 });
 
@@ -619,6 +717,19 @@ watch(
     },
 );
 
+watch(
+    () => auction.value?.leftover_quantity,
+    (quantity) => {
+        const maxQuantity = Math.max(1, Number(quantity || 1));
+
+        leftoverQuantity.value = Math.min(
+            Math.max(Number(leftoverQuantity.value) || 1, 1),
+            maxQuantity,
+        );
+        offerQuantity.value = Math.min(Math.max(Number(offerQuantity.value) || 1, 1), maxQuantity);
+    },
+);
+
 // Ending-soon alert: fires once when < 5 minutes remain for an auction the user has bid on
 watchEffect(() => {
     if (
@@ -647,16 +758,33 @@ watchEffect(() => {
     >
         <div class="space-y-6">
             <div class="bg-white dark:bg-gray-800 rounded shadow p-6">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <h1 class="text-2xl font-bold">{{ auction.title }}</h1>
-                        <p
-                            class="mt-2 inline-flex rounded-full bg-amber-50 dark:bg-amber-900/30 px-3 py-1 text-sm font-medium text-amber-700 dark:text-amber-400"
-                        >
-                            {{ watchingText(auction.watcher_count) }}
+                <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span
+                                class="rounded-full px-3 py-1 text-xs font-semibold"
+                                :class="auctionStatus.tone"
+                            >
+                                {{ auctionStatus.label }}
+                            </span>
+                            <span
+                                class="rounded-full bg-amber-50 dark:bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400"
+                            >
+                                {{ watchingText(auction.watcher_count) }}
+                            </span>
+                            <span
+                                v-if="auction.category"
+                                class="rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200"
+                            >
+                                {{ auction.category.name }}
+                            </span>
+                        </div>
+                        <h1 class="mt-3 text-2xl font-bold break-words">{{ auction.title }}</h1>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            {{ auctionStatus.summary }}
                         </p>
                     </div>
-                    <div v-if="user?.is_admin" class="flex gap-2">
+                    <div v-if="user?.is_admin" class="flex gap-2 shrink-0">
                         <router-link
                             :to="`/auctions/${auction.id}/edit`"
                             class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-700 rounded px-3 py-1"
@@ -698,81 +826,96 @@ watchEffect(() => {
                 <p class="mt-4 text-gray-700 dark:text-gray-300 whitespace-pre-line">
                     {{ auction.description }}
                 </p>
-                <div class="mt-4 flex flex-wrap items-center gap-6 text-sm">
-                    <div>
-                        <span class="text-gray-500 dark:text-gray-400">Starting price:</span>
-                        <span class="ml-1"
-                            >{{ currencySymbol }}{{ Number(auction.starting_price).toFixed(2) }} /
-                            item</span
+                <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <p
+                            class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
                         >
+                            {{ primaryPriceLabel }}
+                        </p>
+                        <p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {{ currencySymbol }}{{ formatMoney(primaryPriceValue) }}
+                            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                / item
+                            </span>
+                        </p>
                     </div>
-                    <div v-if="auction.quantity > 1">
-                        <span class="text-gray-500 dark:text-gray-400">Available:</span>
-                        <span class="ml-1 font-semibold text-purple-700 dark:text-purple-400"
-                            >{{ auction.quantity }} items</span
+
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <p
+                            class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
                         >
-                        <span class="text-gray-400 dark:text-gray-500 ml-1"
-                            >(max {{ auction.max_per_bidder }} per person)</span
+                            Starting price
+                        </p>
+                        <p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {{ currencySymbol }}{{ formatMoney(auction.starting_price) }}
+                            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                / item
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <p
+                            class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
                         >
+                            Availability
+                        </p>
+                        <p class="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {{ getItemLabel(auction.quantity) }}
+                        </p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Max {{ getItemLabel(auction.max_per_bidder) }} per bidder
+                        </p>
+                        <p
+                            v-if="auction.quantity > 1 || leftoverSold > 0"
+                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                        >
+                            {{ auction.items_allocated }} allocated
+                            <span v-if="leftoverSold > 0">
+                                · {{ getItemLabel(leftoverSold) }} sold later
+                            </span>
+                        </p>
                     </div>
-                    <div>
-                        <span class="text-gray-500 dark:text-gray-400">Ends:</span>
-                        <span class="ml-1">{{ formatDate(auction.ends_at) }}</span>
-                    </div>
-                    <div v-if="auction.location">
-                        <span class="text-gray-500 dark:text-gray-400">Pickup:</span>
-                        <span class="ml-1">{{ auction.location }}</span>
+
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <p
+                            class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
+                        >
+                            Timing
+                        </p>
+                        <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {{ auction.is_active ? "Ends" : "Ended" }}
+                            {{ formatDate(auction.ends_at) }}
+                        </p>
+                        <p
+                            v-if="auction.location"
+                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                        >
+                            Pickup: {{ auction.location }}
+                        </p>
                     </div>
                 </div>
-                <div
-                    v-if="auction.quantity > 1"
-                    class="mt-3 text-sm text-gray-500 dark:text-gray-400"
-                >
-                    <p>
-                        Items allocated top-down by bid price. When all winners receive their full
-                        quantity, everyone pays the lowest winning bid. When demand exceeds supply,
-                        each winner pays their own bid.
-                    </p>
-                    <p class="mt-1">
-                        Your bid amount is per item. Entering
-                        {{ currencySymbol }}10.00 for 4 items means a total commitment of
-                        {{ currencySymbol }}40.00.
-                    </p>
-                    <p v-if="auction.max_per_bidder > 1" class="mt-1">
-                        You can bid for up to
-                        {{ auction.max_per_bidder }} items. Bids may be partially filled if stock
-                        runs out.
-                    </p>
-                    <p
-                        v-if="auction.bid_count > 0 || leftoverSold > 0"
-                        class="mt-2 font-medium text-green-700 dark:text-green-400"
-                    >
-                        <template v-if="auction.bid_count > 0">
-                            Clearing price: {{ currencySymbol
-                            }}{{ formatMoney(auction.current_price) }} / item ·
-                            {{ auction.items_allocated }} /
-                            {{ auction.quantity }} allocated<template
-                                v-if="auction.leftover_enabled && leftoverSold > 0"
-                            >
-                                · {{ leftoverSold }} sold (buy now)</template
-                            >
-                        </template>
-                        <template v-else-if="auction.leftover_enabled && leftoverSold > 0">
-                            {{ leftoverSold }} / {{ auction.quantity }} sold (buy now)
-                        </template>
-                        <template
-                            v-if="
-                                auction.leftover_enabled &&
-                                !auction.is_active &&
-                                auction.leftover_quantity > 0
-                            "
-                        >
-                            <span class="text-blue-600 dark:text-blue-400">
-                                · {{ auction.leftover_quantity }} available at {{ currencySymbol
-                                }}{{ auction.leftover_price }}</span
-                            >
-                        </template>
-                    </p>
+
+                <div class="mt-6 rounded-lg bg-gray-50 dark:bg-gray-700/60 p-4">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                Details
+                            </h2>
+                        </div>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">
+                            {{ auction.bid_count }} bid{{ auction.bid_count !== 1 ? "s" : "" }}
+                        </span>
+                    </div>
+
+                    <ul class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                        <li>Prices shown are per item.</li>
+                        <li v-if="auction.quantity > 1">
+                            Higher bids fill first, and partial fills are possible if stock runs
+                            out.
+                        </li>
+                    </ul>
                 </div>
             </div>
 
@@ -888,209 +1031,334 @@ watchEffect(() => {
                 </div>
 
                 <div
-                    v-if="
-                        auction.leftover_enabled &&
-                        (auction.leftover_quantity > 0 ||
-                            (auction.leftover_purchases && auction.leftover_purchases.length > 0))
-                    "
+                    v-if="shouldShowLeftoverSection"
                     class="bg-white dark:bg-gray-800 rounded shadow p-6"
                 >
-                    <h2 class="text-lg font-semibold mb-4">Buy Now</h2>
-
-                    <!-- Buy form: only for eligible logged-in users with items still available -->
-                    <template
-                        v-if="auction.leftover_quantity > 0 && user && !isSeller && !user.is_admin"
-                    >
-                        <div
-                            v-if="myLeftoverPurchase"
-                            class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded p-4 text-green-800 dark:text-green-300 mb-4"
-                        >
-                            You purchased {{ myLeftoverPurchase.quantity }} item{{
-                                myLeftoverPurchase.quantity !== 1 ? "s" : ""
-                            }}
-                            at {{ currencySymbol
-                            }}{{ Number(myLeftoverPurchase.price_per_item).toFixed(2) }} each
-                            (total: {{ currencySymbol
-                            }}{{
-                                (
-                                    myLeftoverPurchase.quantity *
-                                    Number(myLeftoverPurchase.price_per_item)
-                                ).toFixed(2)
-                            }}).
+                    <div class="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-semibold">Leftover sale</h2>
                         </div>
-                        <template v-else>
-                            <div
-                                v-if="leftoverError"
-                                class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded mb-3"
-                            >
-                                {{ leftoverError }}
-                            </div>
-                            <form
-                                @submit.prevent="buyLeftover"
-                                class="flex flex-wrap gap-3 items-end mb-4"
-                            >
-                                <div v-if="auction.leftover_quantity > 1">
-                                    <label
-                                        class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
-                                        >Quantity</label
-                                    >
-                                    <input
-                                        v-model="leftoverQuantity"
-                                        type="number"
-                                        min="1"
-                                        :max="auction.leftover_quantity"
-                                        required
-                                        class="border rounded px-3 py-2 w-20"
-                                    />
-                                </div>
-                                <div class="basis-full text-sm text-gray-500 dark:text-gray-400">
-                                    Total: {{ currencySymbol
-                                    }}{{
-                                        (
-                                            Number(
-                                                auction.leftover_quantity > 1
-                                                    ? leftoverQuantity
-                                                    : 1,
-                                            ) * Number(auction.leftover_price)
-                                        ).toFixed(2)
-                                    }}
-                                </div>
-                                <button
-                                    type="submit"
-                                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-60"
-                                    :disabled="buyingLeftover"
-                                >
-                                    {{ buyingLeftover ? "Buying..." : "Buy Now" }}
-                                </button>
-                            </form>
+                        <span
+                            class="rounded-full px-3 py-1 text-xs font-semibold"
+                            :class="
+                                hasLeftoversAvailable
+                                    ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+                            "
+                        >
+                            {{
+                                hasLeftoversAvailable
+                                    ? `${getItemLabel(auction.leftover_quantity)} left`
+                                    : "No leftovers left"
+                            }}
+                        </span>
+                    </div>
 
-                            <!-- Name your price -->
-                            <div v-if="!myPriceOffer" class="border-t dark:border-gray-700 pt-4">
-                                <button
-                                    @click="
-                                        showOfferForm = !showOfferForm;
-                                        offerError = '';
-                                    "
-                                    class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                    {{ showOfferForm ? "Cancel offer" : "Name your price…" }}
-                                </button>
-                                <div v-if="showOfferForm" class="mt-3">
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                                        Propose a lower price. An admin will review and accept or
-                                        decline.
-                                    </p>
-                                    <div
-                                        v-if="offerError"
-                                        class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-2 rounded text-sm mb-2"
-                                    >
-                                        {{ offerError }}
-                                    </div>
-                                    <form
-                                        @submit.prevent="submitPriceOffer"
-                                        class="flex flex-wrap gap-3 items-end"
-                                    >
-                                        <div v-if="auction.leftover_quantity > 1">
-                                            <label
-                                                class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
-                                                >Quantity</label
-                                            >
-                                            <input
-                                                v-model="offerQuantity"
-                                                type="number"
-                                                min="1"
-                                                :max="auction.leftover_quantity"
-                                                required
-                                                class="border rounded px-3 py-2 w-20"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label
-                                                class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
-                                            >
-                                                Price per item (max {{ currencySymbol
-                                                }}{{
-                                                    (Number(auction.leftover_price) - 0.01).toFixed(
-                                                        2,
-                                                    )
-                                                }})
-                                            </label>
-                                            <input
-                                                v-model="offerPrice"
-                                                type="number"
-                                                step="0.01"
-                                                min="0.01"
-                                                :max="
-                                                    (Number(auction.leftover_price) - 0.01).toFixed(
-                                                        2,
-                                                    )
-                                                "
-                                                required
-                                                class="border rounded px-3 py-2 w-28"
-                                            />
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            :disabled="submittingOffer"
-                                            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60 text-sm"
-                                        >
-                                            {{ submittingOffer ? "Submitting…" : "Submit Offer" }}
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            <!-- Existing pending/rejected offer status -->
-                            <div v-else class="border-t dark:border-gray-700 pt-4">
-                                <p class="text-sm text-gray-500 dark:text-gray-400">
-                                    Your offer:
-                                    <span class="font-medium text-gray-800 dark:text-gray-100">
-                                        {{ myPriceOffer.quantity }} × {{ currencySymbol
-                                        }}{{
-                                            Number(myPriceOffer.offered_price_per_item).toFixed(2)
-                                        }}
-                                    </span>
-                                    <span
-                                        :class="{
-                                            'text-yellow-600 dark:text-yellow-400':
-                                                myPriceOffer.status === 'pending',
-                                            'text-green-600 dark:text-green-400':
-                                                myPriceOffer.status === 'accepted',
-                                            'text-red-600 dark:text-red-400':
-                                                myPriceOffer.status === 'rejected',
-                                        }"
-                                        class="ml-2 font-semibold capitalize"
-                                        >{{ myPriceOffer.status }}</span
-                                    >
-                                </p>
-                            </div>
-                        </template>
-                    </template>
-
-                    <!-- Purchase list: visible to all viewers -->
                     <div
-                        v-if="auction.leftover_purchases && auction.leftover_purchases.length > 0"
+                        class="mt-4 rounded-lg border p-4"
                         :class="
-                            auction.leftover_quantity > 0 && user && !isSeller && !user.is_admin
-                                ? 'border-t dark:border-gray-700 pt-4'
-                                : ''
+                            hasLeftoversAvailable
+                                ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+                                : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-700/60'
                         "
                     >
-                        <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
-                            Purchases ({{ auction.leftover_purchases.length }})
-                        </h3>
+                        <div class="flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                                <p
+                                    class="font-semibold"
+                                    :class="
+                                        hasLeftoversAvailable
+                                            ? 'text-green-800 dark:text-green-300'
+                                            : 'text-gray-900 dark:text-gray-100'
+                                    "
+                                >
+                                    {{ currencySymbol
+                                    }}{{ formatMoney(auction.leftover_price) }} per item
+                                </p>
+                                <p
+                                    class="mt-1 text-sm"
+                                    :class="
+                                        hasLeftoversAvailable
+                                            ? 'text-green-700 dark:text-green-400'
+                                            : 'text-gray-500 dark:text-gray-400'
+                                    "
+                                >
+                                    <span v-if="leftoverDiscountPercent > 0">
+                                        {{ leftoverDiscountPercent }}% off the original
+                                        {{ currencySymbol
+                                        }}{{ formatMoney(auction.starting_price) }} price.
+                                    </span>
+                                    <span v-else> Configured leftover price. </span>
+                                </p>
+                            </div>
+                            <div class="text-right text-sm">
+                                <p class="font-medium text-gray-900 dark:text-gray-100">
+                                    {{ getItemLabel(auction.leftover_quantity) }} available
+                                </p>
+                                <p class="mt-1 text-gray-500 dark:text-gray-400">
+                                    {{ getItemLabel(leftoverSold) }} sold after the auction
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <template v-if="hasLeftoversAvailable && user && !isSeller && !user.is_admin">
+                        <div
+                            v-if="myLeftoverPurchase"
+                            class="mt-4 rounded-lg border border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/20 p-4 text-green-800 dark:text-green-300"
+                        >
+                            <p class="font-semibold">Purchase confirmed</p>
+                            <p class="mt-1 text-sm">
+                                You purchased {{ getItemLabel(myLeftoverPurchase.quantity) }} at
+                                {{ currencySymbol
+                                }}{{ formatMoney(myLeftoverPurchase.price_per_item) }} each.
+                            </p>
+                            <p class="mt-1 text-xs text-green-700 dark:text-green-400">
+                                Total: {{ currencySymbol
+                                }}{{
+                                    formatMoney(
+                                        myLeftoverPurchase.quantity *
+                                            Number(myLeftoverPurchase.price_per_item),
+                                    )
+                                }}
+                            </p>
+                        </div>
+                        <div v-else class="mt-4 grid gap-4 lg:grid-cols-2">
+                            <div
+                                class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4"
+                            >
+                                <div>
+                                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">
+                                        Buy now
+                                    </h3>
+                                </div>
+
+                                <div
+                                    v-if="leftoverError"
+                                    class="rounded bg-red-100 dark:bg-red-900/30 p-3 text-sm text-red-700 dark:text-red-400"
+                                >
+                                    {{ leftoverError }}
+                                </div>
+
+                                <form @submit.prevent="buyLeftover" class="space-y-4">
+                                    <div>
+                                        <label
+                                            class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                        >
+                                            Quantity
+                                        </label>
+                                        <input
+                                            v-model="leftoverQuantity"
+                                            type="number"
+                                            min="1"
+                                            :max="auction.leftover_quantity"
+                                            required
+                                            class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
+                                        />
+                                    </div>
+                                    <div
+                                        class="rounded-lg bg-gray-50 dark:bg-gray-700/60 p-4 text-sm text-gray-600 dark:text-gray-300"
+                                    >
+                                        <p
+                                            class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500"
+                                        >
+                                            Buy now total
+                                        </p>
+                                        <p
+                                            class="mt-1 font-semibold text-gray-900 dark:text-gray-100"
+                                        >
+                                            {{ currencySymbol }}{{ formatMoney(leftoverBuyTotal) }}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-60"
+                                        :disabled="buyingLeftover"
+                                    >
+                                        {{ buyingLeftover ? "Buying..." : "Buy now" }}
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                                <template v-if="!myPriceOffer">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h3
+                                                class="font-semibold text-gray-900 dark:text-gray-100"
+                                            >
+                                                Offer a lower price
+                                            </h3>
+                                        </div>
+                                        <button
+                                            @click="
+                                                showOfferForm = !showOfferForm;
+                                                offerError = '';
+                                            "
+                                            class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                                        >
+                                            {{ showOfferForm ? "Cancel" : "Make offer" }}
+                                        </button>
+                                    </div>
+
+                                    <div v-if="showOfferForm" class="mt-4 space-y-4">
+                                        <div
+                                            v-if="offerError"
+                                            class="rounded bg-red-100 dark:bg-red-900/30 p-3 text-sm text-red-700 dark:text-red-400"
+                                        >
+                                            {{ offerError }}
+                                        </div>
+                                        <form @submit.prevent="submitPriceOffer" class="space-y-4">
+                                            <div class="grid gap-3 sm:grid-cols-2">
+                                                <div>
+                                                    <label
+                                                        class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                                    >
+                                                        Quantity
+                                                    </label>
+                                                    <input
+                                                        v-model="offerQuantity"
+                                                        type="number"
+                                                        min="1"
+                                                        :max="auction.leftover_quantity"
+                                                        required
+                                                        class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                                    >
+                                                        Price per item (max {{ currencySymbol
+                                                        }}{{ priceOfferLimit }})
+                                                    </label>
+                                                    <input
+                                                        v-model="offerPrice"
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0.01"
+                                                        :max="priceOfferLimit"
+                                                        required
+                                                        class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div
+                                                class="rounded-lg bg-gray-50 dark:bg-gray-700/60 p-4 text-sm text-gray-600 dark:text-gray-300"
+                                            >
+                                                <p
+                                                    class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500"
+                                                >
+                                                    Offer total
+                                                </p>
+                                                <p
+                                                    class="mt-1 font-semibold text-gray-900 dark:text-gray-100"
+                                                >
+                                                    {{ currencySymbol
+                                                    }}{{ formatMoney(offerTotal) }}
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                :disabled="submittingOffer"
+                                                class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60 text-sm"
+                                            >
+                                                {{
+                                                    submittingOffer
+                                                        ? "Submitting..."
+                                                        : "Submit offer"
+                                                }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </template>
+
+                                <div v-else class="space-y-3">
+                                    <div>
+                                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">
+                                            Your offer
+                                        </h3>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                            {{ getItemLabel(myPriceOffer.quantity) }} at
+                                            {{ currencySymbol
+                                            }}{{ formatMoney(myPriceOffer.offered_price_per_item) }}
+                                            each
+                                        </p>
+                                    </div>
+                                    <span
+                                        class="inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize"
+                                        :class="{
+                                            'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300':
+                                                myPriceOffer.status === 'pending',
+                                            'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300':
+                                                myPriceOffer.status === 'accepted',
+                                            'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300':
+                                                myPriceOffer.status === 'rejected',
+                                        }"
+                                    >
+                                        {{ myPriceOffer.status }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div
+                        v-else-if="hasLeftoversAvailable && isSeller"
+                        class="mt-4 rounded-lg bg-gray-50 dark:bg-gray-700/60 p-4 text-sm text-gray-500 dark:text-gray-400"
+                    >
+                        You cannot purchase leftovers from your own auction.
+                    </div>
+                    <div
+                        v-else-if="hasLeftoversAvailable && user?.is_admin"
+                        class="mt-4 rounded-lg bg-gray-50 dark:bg-gray-700/60 p-4 text-sm text-gray-500 dark:text-gray-400"
+                    >
+                        Review offers or add purchases below.
+                    </div>
+                    <div
+                        v-else-if="hasLeftoversAvailable"
+                        class="mt-4 rounded-lg bg-gray-50 dark:bg-gray-700/60 p-4 text-sm text-gray-500 dark:text-gray-400"
+                    >
+                        <router-link
+                            to="/login"
+                            class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        >
+                            Log in
+                        </router-link>
+                        to buy leftovers or send a lower offer.
+                    </div>
+
+                    <div
+                        v-if="auction.leftover_purchases && auction.leftover_purchases.length > 0"
+                        class="mt-6 border-t dark:border-gray-700 pt-6"
+                    >
+                        <div class="flex items-center justify-between gap-4 mb-2">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                Purchases
+                            </h3>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                                {{ auction.leftover_purchases.length }} total
+                            </span>
+                        </div>
                         <ul class="divide-y dark:divide-gray-700">
                             <li
                                 v-for="purchase in auction.leftover_purchases"
                                 :key="purchase.id"
                                 class="py-2 flex items-center justify-between"
                             >
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 flex-wrap">
                                     <span class="font-medium">{{ purchase.user.username }}</span>
                                     <span
                                         v-if="purchase.user.id === user?.id"
                                         class="text-xs text-blue-600 dark:text-blue-400"
                                         >(you)</span
                                     >
+                                    <span
+                                        v-if="purchase.from_price_offer"
+                                        class="rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300"
+                                    >
+                                        Accepted offer
+                                    </span>
                                     <span class="text-xs text-gray-400 dark:text-gray-500">{{
                                         formatDate(purchase.created_at)
                                     }}</span>
@@ -1128,18 +1396,18 @@ watchEffect(() => {
                     <!-- Admin: pending price offers -->
                     <div
                         v-if="user?.is_admin && pendingOffers.length > 0"
-                        class="border-t dark:border-gray-700 pt-4 mt-4"
+                        class="border-t dark:border-gray-700 pt-6 mt-6"
                     >
                         <p
                             class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2"
                         >
-                            Price Offers ({{ pendingOffers.length }} pending)
+                            Price offers ({{ pendingOffers.length }} pending)
                         </p>
                         <ul class="divide-y dark:divide-gray-700">
                             <li
                                 v-for="offer in pendingOffers"
                                 :key="offer.id"
-                                class="py-2 flex items-center justify-between gap-2"
+                                class="py-3 flex items-center justify-between gap-2"
                             >
                                 <div class="flex items-center gap-2 text-sm">
                                     <span class="font-medium">{{ offer.user.username }}</span>
@@ -1174,13 +1442,13 @@ watchEffect(() => {
                     <!-- Admin: add purchase for another user -->
                     <div
                         v-if="user?.is_admin && auction.leftover_quantity > 0"
-                        class="border-t dark:border-gray-700 pt-4 mt-4"
+                        class="border-t dark:border-gray-700 pt-6 mt-6"
                     >
                         <div class="flex items-center justify-between mb-2">
                             <p
                                 class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
                             >
-                                Admin — Add Purchase
+                                Admin — Add purchase
                             </p>
                             <button
                                 @click="
