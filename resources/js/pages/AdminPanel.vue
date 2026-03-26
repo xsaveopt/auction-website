@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, inject, onMounted } from "vue";
+import { computed, ref, watch, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import AdminResults from "./AdminResults.vue";
 import AdminQuestions from "./AdminQuestions.vue";
@@ -16,34 +16,80 @@ if (!user.value?.is_admin) {
     router.push("/");
 }
 
-const validTabs = ["results", "questions", "priceOffers", "categories", "auditLog", "sell"];
-const activeTab = ref(validTabs.includes(route.query.tab) ? route.query.tab : "results");
+const tabDefinitions = [
+    {
+        key: "results",
+        label: "Results",
+        to: "/admin/results",
+        activeClasses: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        iconPath:
+            "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+    },
+    {
+        key: "questions",
+        label: "Questions",
+        to: "/admin/questions",
+        activeClasses: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        iconPath:
+            "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z",
+    },
+    {
+        key: "priceOffers",
+        label: "Price Offers",
+        to: "/admin/price-offers",
+        activeClasses: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        iconPath:
+            "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z",
+    },
+    {
+        key: "categories",
+        label: "Categories",
+        to: "/admin/categories",
+        activeClasses: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        iconPath:
+            "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10",
+    },
+    {
+        key: "auditLog",
+        label: "Audit Log",
+        to: "/admin/audit-log",
+        activeClasses: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        iconPath:
+            "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01",
+    },
+    {
+        key: "sell",
+        label: "Sell Item",
+        to: "/admin/sell",
+        activeClasses: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+        iconPath: "M12 4v16m8-8H4",
+    },
+];
+const tabByRouteName = {
+    "admin-results": "results",
+    "admin-questions": "questions",
+    "admin-price-offers": "priceOffers",
+    "admin-categories": "categories",
+    "admin-audit-log": "auditLog",
+    "admin-sell": "sell",
+};
+const inactiveTabClasses =
+    "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200";
+const activeTab = computed(() => tabByRouteName[route.name] ?? "results");
 
 // Tracks which tabs have been opened at least once (lazy mount, keeps alive)
 // Sell is excluded — it always remounts to give a fresh form
 const lazyTabs = ["results", "questions", "priceOffers", "categories", "auditLog"];
-const tabMounted = ref(Object.fromEntries(lazyTabs.map((t) => [t, t === activeTab.value])));
-
-onMounted(() => {
-    // Ensure ?tab= is always explicit in the URL, including the default
-    router.replace({ path: "/admin", query: { tab: activeTab.value } });
-});
-
-watch(activeTab, (tab) => {
-    tabMounted.value[tab] = true;
-    // Reset to only { tab } — each section re-asserts its own params when it becomes active
-    router.replace({ path: "/admin", query: { tab } });
-});
+const tabMounted = ref(Object.fromEntries(lazyTabs.map((tab) => [tab, false])));
 
 watch(
-    () => route.query.tab,
+    activeTab,
     (tab) => {
-        if (validTabs.includes(tab)) {
-            activeTab.value = tab;
-        } else if (!tab) {
-            activeTab.value = "results";
+        if (lazyTabs.includes(tab)) {
+            tabMounted.value[tab] = true;
         }
     },
+    { immediate: true },
 );
 </script>
 
@@ -58,14 +104,12 @@ watch(
                     Admin
                 </p>
                 <nav class="space-y-0.5">
-                    <button
-                        @click="activeTab = 'results'"
+                    <router-link
+                        v-for="tab in tabDefinitions"
+                        :key="tab.key"
+                        :to="tab.to"
                         class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                        :class="
-                            activeTab === 'results'
-                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200'
-                        "
+                        :class="activeTab === tab.key ? tab.activeClasses : inactiveTabClasses"
                     >
                         <svg
                             class="w-4 h-4 shrink-0"
@@ -77,136 +121,11 @@ watch(
                             <path
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
-                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                                :d="tab.iconPath"
                             />
                         </svg>
-                        Results
-                    </button>
-
-                    <button
-                        @click="activeTab = 'questions'"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                        :class="
-                            activeTab === 'questions'
-                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200'
-                        "
-                    >
-                        <svg
-                            class="w-4 h-4 shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                            />
-                        </svg>
-                        Questions
-                    </button>
-
-                    <button
-                        @click="activeTab = 'priceOffers'"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                        :class="
-                            activeTab === 'priceOffers'
-                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200'
-                        "
-                    >
-                        <svg
-                            class="w-4 h-4 shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                            />
-                        </svg>
-                        Price Offers
-                    </button>
-
-                    <button
-                        @click="activeTab = 'categories'"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                        :class="
-                            activeTab === 'categories'
-                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200'
-                        "
-                    >
-                        <svg
-                            class="w-4 h-4 shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                            />
-                        </svg>
-                        Categories
-                    </button>
-
-                    <button
-                        @click="activeTab = 'auditLog'"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                        :class="
-                            activeTab === 'auditLog'
-                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200'
-                        "
-                    >
-                        <svg
-                            class="w-4 h-4 shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                            />
-                        </svg>
-                        Audit Log
-                    </button>
-
-                    <button
-                        @click="activeTab = 'sell'"
-                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                        :class="
-                            activeTab === 'sell'
-                                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200'
-                        "
-                    >
-                        <svg
-                            class="w-4 h-4 shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M12 4v16m8-8H4"
-                            />
-                        </svg>
-                        Sell Item
-                    </button>
+                        {{ tab.label }}
+                    </router-link>
                 </nav>
             </div>
         </aside>

@@ -3,6 +3,12 @@ import { computed, ref, inject, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api } from "../api.js";
 
+const props = defineProps({
+    active: {
+        type: Boolean,
+        default: false,
+    },
+});
 const router = useRouter();
 const route = useRoute();
 const user = inject("user");
@@ -14,20 +20,31 @@ const expanded = ref({});
 const view = ref(route.query.view === "users" ? "users" : "auctions");
 const expandedUsers = ref({});
 
-watch(view, (v) => {
-    const query = { ...route.query };
-    if (v === "auctions") {
-        delete query.view;
-    } else {
-        query.view = v;
+function syncViewQuery(v) {
+    if (!props.active) {
+        return;
     }
-    router.replace({ path: "/admin", query });
-});
+
+    const query = { ...route.query };
+    query.view = v;
+    router.replace({ path: route.path, query });
+}
+
+watch(view, syncViewQuery, { immediate: true });
 
 watch(
     () => route.query.view,
     (v) => {
         view.value = v === "users" ? "users" : "auctions";
+    },
+);
+
+watch(
+    () => props.active,
+    (isActive) => {
+        if (isActive) {
+            syncViewQuery(view.value);
+        }
     },
 );
 

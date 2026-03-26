@@ -3,6 +3,12 @@ import { ref, inject, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api } from "../api.js";
 
+const props = defineProps({
+    active: {
+        type: Boolean,
+        default: false,
+    },
+});
 const router = useRouter();
 const route = useRoute();
 const user = inject("user");
@@ -36,7 +42,9 @@ async function loadLogs(page = 1) {
         } else {
             delete query.page;
         }
-        router.replace({ path: "/admin", query });
+        if (props.active) {
+            router.replace({ path: route.path, query });
+        }
     } catch (e) {
         error.value = "Failed to load audit log.";
     } finally {
@@ -52,8 +60,26 @@ async function goToPage(page) {
 watch(
     () => route.query.page,
     (newPage) => {
+        if (!props.active) {
+            return;
+        }
+
         const page = parseInt(newPage) || 1;
         if (page !== currentPage.value) {
+            loadLogs(page);
+        }
+    },
+);
+
+watch(
+    () => props.active,
+    (isActive) => {
+        if (!isActive) {
+            return;
+        }
+
+        const page = parseInt(route.query.page) || 1;
+        if (!logs.value.length || page !== currentPage.value) {
             loadLogs(page);
         }
     },

@@ -551,15 +551,9 @@ provide("notify", notify);
                         >
                         <router-link
                             v-if="user.is_admin"
-                            to="/admin"
+                            to="/admin/results"
                             class="text-blue-600 dark:text-blue-400 hover:underline"
                             >Admin</router-link
-                        >
-                        <router-link
-                            v-if="user.is_admin"
-                            to="/auctions/new"
-                            class="text-blue-600 dark:text-blue-400 hover:underline"
-                            >Sell Item</router-link
                         >
                         <button
                             @click="logout"
