@@ -93,6 +93,50 @@ class LeftoverPurchaseControllerTest extends TestCase
         $this->assertSoftDeleted('leftover_purchases', ['id' => $purchase->id]);
     }
 
+    public function test_user_can_buy_again_after_a_soft_deleted_purchase(): void
+    {
+        config(['auction.leftover_sales_enabled' => true]);
+
+        $seller = $this->createUser();
+        $buyer = $this->createUser();
+        $auction = $this->createAuction($seller, [
+            'starting_price' => '10.00',
+            'quantity' => 2,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+
+        $oldPurchase = $this->createLeftoverPurchase($auction, $buyer, [
+            'quantity' => 1,
+            'price_per_item' => '7.50',
+        ]);
+        $oldPurchase->delete();
+
+        $this
+            ->actingAs($buyer)
+            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+                'quantity' => 1,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('auction.leftover_purchases.0.user.username', $buyer->username);
+
+        $this->assertSoftDeleted('leftover_purchases', ['id' => $oldPurchase->id]);
+        $this->assertDatabaseHas('leftover_purchases', [
+            'auction_id' => $auction->id,
+            'user_id' => $buyer->id,
+            'quantity' => 1,
+            'price_per_item' => '7.50',
+            'deleted_at' => null,
+        ]);
+        $this->assertSame(
+            2,
+            LeftoverPurchase::withTrashed()
+                ->where('auction_id', $auction->id)
+                ->where('user_id', $buyer->id)
+                ->count(),
+        );
+    }
+
     public function test_leftover_purchases_are_rejected_when_sales_are_disabled_or_the_auction_is_still_active(): void
     {
         $seller = $this->createUser();
