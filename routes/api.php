@@ -90,6 +90,7 @@ Route::middleware('sso')->group(function () {
         Route::delete('/bids/{bid}', [AdminBidController::class, 'destroy']);
         Route::post('/auctions/{auction}/leftover-purchases', [LeftoverPurchaseController::class, 'adminStore']);
         Route::delete('/leftover-purchases/{leftoverPurchase}', [LeftoverPurchaseController::class, 'destroy']);
+        Route::get('/leftover-price-offers', [LeftoverPriceOfferController::class, 'index']);
         Route::post('/leftover-price-offers/{leftoverPriceOffer}/accept', [LeftoverPriceOfferController::class, 'accept']);
         Route::post('/leftover-price-offers/{leftoverPriceOffer}/reject', [LeftoverPriceOfferController::class, 'reject']);
         Route::get('/audit-log', [AdminAuditLogController::class, 'index']);

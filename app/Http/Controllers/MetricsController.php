@@ -113,7 +113,8 @@ class MetricsController extends Controller
             $amount = number_format((float) $purchase->price_per_item, 2, '.', '');
             $qty = $purchase->quantity;
             $ts = ($purchase->created_at?->getTimestamp() ?? 0) * 1000;
-            $output .= "app_auction_bid_info{auction=\"{$auctionTitle}\",username=\"{$username}\",amount=\"{$amount}\",quantity=\"{$qty}\",type=\"buy\"} {$ts}\n";
+            $type = $purchase->leftover_price_offer_id !== null ? 'price_offer' : 'buy';
+            $output .= "app_auction_bid_info{auction=\"{$auctionTitle}\",username=\"{$username}\",amount=\"{$amount}\",quantity=\"{$qty}\",type=\"{$type}\"} {$ts}\n";
         }
 
         return new Response($output, 200, ['Content-Type' => RenderTextFormat::MIME_TYPE]);

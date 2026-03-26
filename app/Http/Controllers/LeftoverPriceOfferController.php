@@ -16,6 +16,48 @@ class LeftoverPriceOfferController extends Controller
         protected AuctionService $auctionService,
     ) {}
 
+    public function index(): JsonResponse
+    {
+        /** @var float $leftoverPriceFactor */
+        $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
+
+        $offers = LeftoverPriceOffer::with(['auction.images', 'user:id,username'])
+            ->where('status', 'pending')
+            ->orderBy('created_at')
+            ->get();
+
+        return response()->json([
+            'offers' => $offers->map(fn(LeftoverPriceOffer $offer) => [
+                'id' => $offer->id,
+                'quantity' => $offer->quantity,
+                'offered_price_per_item' => $offer->offered_price_per_item,
+                'status' => $offer->status,
+                'created_at' => $offer->created_at?->format('Y-m-d\TH:i:sP'),
+                'user' => [
+                    'id' => $offer->user?->id,
+                    'username' => $offer->user?->username,
+                ],
+                'auction' => [
+                    'id' => $offer->auction?->id,
+                    'title' => $offer->auction?->title,
+                    'leftover_price' => $offer->auction
+                        ? number_format(
+                            round((float) $offer->auction->starting_price * $leftoverPriceFactor, 2),
+                            2,
+                            '.',
+                            '',
+                        )
+                        : null,
+                    'images' => $offer
+                        ->auction
+                        ?->images
+                        ->map(fn($img) => ['id' => $img->id, 'url' => "/api/images/{$img->id}"])
+                        ->values(),
+                ],
+            ]),
+        ]);
+    }
+
     public function store(Request $request, Auction $auction): JsonResponse
     {
         if (!(bool) config('auction.leftover_sales_enabled')) {
@@ -118,6 +160,7 @@ class LeftoverPriceOfferController extends Controller
             ->leftoverPurchases()
             ->create([
                 'user_id' => $leftoverPriceOffer->user_id,
+                'leftover_price_offer_id' => $leftoverPriceOffer->id,
                 'quantity' => $leftoverPriceOffer->quantity,
                 'price_per_item' => $leftoverPriceOffer->offered_price_per_item,
             ]);

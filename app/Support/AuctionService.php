@@ -216,6 +216,7 @@ class AuctionService
                         'id' => $purchase->id,
                         'quantity' => $purchase->quantity,
                         'price_per_item' => $purchase->price_per_item,
+                        'from_price_offer' => $purchase->leftover_price_offer_id !== null,
                         'user' => [
                             'id' => $purchase->user?->id,
                             'username' => $username,

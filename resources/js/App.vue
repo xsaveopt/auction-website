@@ -563,6 +563,12 @@ provide("notify", notify);
                         >
                         <router-link
                             v-if="user.is_admin"
+                            to="/admin/price-offers"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
+                            >Price Offers</router-link
+                        >
+                        <router-link
+                            v-if="user.is_admin"
                             to="/admin/categories"
                             class="text-blue-600 dark:text-blue-400 hover:underline"
                             >Categories</router-link

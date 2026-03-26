@@ -66,7 +66,6 @@ class AuctionController extends Controller
             'images',
             'category',
             'leftoverPurchases.user:id,username',
-            'leftoverPriceOffers.user:id,username',
         ])->get();
 
         $this->auctionService->loadWatcherCounts($allAuctions);
