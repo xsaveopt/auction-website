@@ -15,6 +15,7 @@ const startingPrice = ref("1.00");
 const quantity = ref(1);
 const maxPerBidder = ref(1);
 const categoryId = ref("");
+const location = ref("");
 const endsAt = ref("");
 const imageFiles = ref([]);
 const imagePreviews = ref([]);
@@ -64,6 +65,7 @@ async function submit() {
                 quantity: Number(quantity.value),
                 max_per_bidder: Number(maxPerBidder.value),
                 category_id: categoryId.value ? Number(categoryId.value) : null,
+                location: location.value || null,
                 ends_at: endsAt.value,
             }),
         });
@@ -126,6 +128,18 @@ async function submit() {
                 ></textarea>
                 <p v-if="errors.description" class="text-red-600 dark:text-red-400 text-sm mt-1">
                     {{ errors.description[0] }}
+                </p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Pickup Location</label>
+                <input
+                    v-model="location"
+                    type="text"
+                    placeholder="e.g. Warehouse A, 123 Main St"
+                    class="w-full border rounded px-3 py-2"
+                />
+                <p v-if="errors.location" class="text-red-600 dark:text-red-400 text-sm mt-1">
+                    {{ errors.location[0] }}
                 </p>
             </div>
             <div v-if="categories.length > 0">

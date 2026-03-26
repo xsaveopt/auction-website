@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $seller_id
  * @property string $title
  * @property string $description
+ * @property string|null $location
  * @property string $starting_price
  * @property int $quantity
  * @property int $max_per_bidder
@@ -31,6 +32,7 @@ class Auction extends Model
         'seller_id',
         'title',
         'description',
+        'location',
         'starting_price',
         'quantity',
         'max_per_bidder',
@@ -67,6 +69,12 @@ class Auction extends Model
     public function leftoverPurchases(): HasMany
     {
         return $this->hasMany(LeftoverPurchase::class);
+    }
+
+    /** @return HasMany<\App\Models\LeftoverPriceOffer, $this> */
+    public function leftoverPriceOffers(): HasMany
+    {
+        return $this->hasMany(LeftoverPriceOffer::class);
     }
 
     /** @return HasMany<\App\Models\AuctionQuestion, $this> */

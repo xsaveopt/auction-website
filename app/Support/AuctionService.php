@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Auction;
 use App\Models\Bid;
+use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
 use App\Support\Presence;
 use Illuminate\Support\Collection;
@@ -137,6 +138,7 @@ class AuctionService
             'id' => $auction->id,
             'title' => $auction->title,
             'description' => $auction->description,
+            'location' => $auction->location,
             'starting_price' => $auction->starting_price,
             'current_price' => $clearingPrice,
             'quantity' => $auction->quantity,
@@ -222,6 +224,27 @@ class AuctionService
                     ];
                 })->values();
             }
+
+            if ($auction->relationLoaded('leftoverPriceOffers')) {
+                // Admins see all offers; regular users only see their own
+                $offers = $isAdmin
+                    ? $auction->leftoverPriceOffers
+                    : $auction->leftoverPriceOffers->filter(
+                        fn(LeftoverPriceOffer $o) => $currentUser && $o->user_id === $currentUser->id,
+                    );
+
+                $data['leftover_price_offers'] = $offers->map(fn(LeftoverPriceOffer $offer) => [
+                    'id' => $offer->id,
+                    'quantity' => $offer->quantity,
+                    'offered_price_per_item' => $offer->offered_price_per_item,
+                    'status' => $offer->status,
+                    'user' => [
+                        'id' => $offer->user?->id,
+                        'username' => $offer->user?->username,
+                    ],
+                    'created_at' => $offer->created_at?->format('Y-m-d\TH:i:sP'),
+                ])->values();
+            }
         }
 
         if ($auction->relationLoaded('questions')) {
@@ -266,6 +289,7 @@ class AuctionService
             'images',
             'questions.user:id,username',
             'leftoverPurchases.user:id,username',
+            'leftoverPriceOffers.user:id,username',
             'category',
         ]);
         $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));

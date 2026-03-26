@@ -30,6 +30,11 @@ const endingSoonNotified = ref(false);
 const leftoverQuantity = ref(1);
 const leftoverError = ref("");
 const buyingLeftover = ref(false);
+const showOfferForm = ref(false);
+const offerQuantity = ref(1);
+const offerPrice = ref("");
+const offerError = ref("");
+const submittingOffer = ref(false);
 
 // Admin state
 const editingBidId = ref(null);
@@ -75,6 +80,16 @@ const myBid = computed(() => {
 const myLeftoverPurchase = computed(() => {
     if (!user.value || !auction.value?.leftover_purchases) return null;
     return auction.value.leftover_purchases.find((p) => p.user.id === user.value.id) ?? null;
+});
+
+const myPriceOffer = computed(() => {
+    if (!user.value || !auction.value?.leftover_price_offers) return null;
+    return auction.value.leftover_price_offers.find((o) => o.user.id === user.value.id) ?? null;
+});
+
+const pendingOffers = computed(() => {
+    if (!auction.value?.leftover_price_offers) return [];
+    return auction.value.leftover_price_offers.filter((o) => o.status === "pending");
 });
 
 const leftoverSold = computed(() => {
@@ -213,6 +228,62 @@ async function buyLeftover() {
             e.data?.message || e.data?.errors?.quantity?.[0] || "Purchase failed.";
     } finally {
         buyingLeftover.value = false;
+    }
+}
+
+async function submitPriceOffer() {
+    offerError.value = "";
+    submittingOffer.value = true;
+    try {
+        const data = await api(`/auctions/${props.id}/leftover-price-offers`, {
+            method: "POST",
+            body: JSON.stringify({
+                quantity: Number(offerQuantity.value),
+                offered_price_per_item: Number(offerPrice.value),
+            }),
+        });
+        updateAuction(data.auction);
+        showOfferForm.value = false;
+        notify?.("Offer submitted!", "success");
+    } catch (e) {
+        offerError.value =
+            e.data?.message ||
+            e.data?.errors?.quantity?.[0] ||
+            e.data?.errors?.offered_price_per_item?.[0] ||
+            "Failed to submit offer.";
+    } finally {
+        submittingOffer.value = false;
+    }
+}
+
+async function acceptPriceOffer(offer) {
+    if (
+        !confirm(
+            `Accept offer of ${currencySymbol.value}${Number(offer.offered_price_per_item).toFixed(2)} × ${offer.quantity} from ${offer.user.username}?`,
+        )
+    )
+        return;
+    try {
+        const data = await api(`/admin/leftover-price-offers/${offer.id}/accept`, {
+            method: "POST",
+        });
+        updateAuction(data.auction);
+        notify?.("Offer accepted.", "success");
+    } catch (e) {
+        notify?.(e.data?.message || "Failed to accept offer.", "error");
+    }
+}
+
+async function rejectPriceOffer(offer) {
+    if (!confirm(`Reject offer from ${offer.user.username}?`)) return;
+    try {
+        const data = await api(`/admin/leftover-price-offers/${offer.id}/reject`, {
+            method: "POST",
+        });
+        updateAuction(data.auction);
+        notify?.("Offer rejected.", "success");
+    } catch (e) {
+        notify?.(e.data?.message || "Failed to reject offer.", "error");
     }
 }
 
@@ -648,6 +719,10 @@ watchEffect(() => {
                         <span class="text-gray-500 dark:text-gray-400">Ends:</span>
                         <span class="ml-1">{{ formatDate(auction.ends_at) }}</span>
                     </div>
+                    <div v-if="auction.location">
+                        <span class="text-gray-500 dark:text-gray-400">Pickup:</span>
+                        <span class="ml-1">{{ auction.location }}</span>
+                    </div>
                 </div>
                 <div
                     v-if="auction.quantity > 1"
@@ -888,6 +963,106 @@ watchEffect(() => {
                                     {{ buyingLeftover ? "Buying..." : "Buy Now" }}
                                 </button>
                             </form>
+
+                            <!-- Name your price -->
+                            <div v-if="!myPriceOffer" class="border-t dark:border-gray-700 pt-4">
+                                <button
+                                    @click="
+                                        showOfferForm = !showOfferForm;
+                                        offerError = '';
+                                    "
+                                    class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    {{ showOfferForm ? "Cancel offer" : "Name your price…" }}
+                                </button>
+                                <div v-if="showOfferForm" class="mt-3">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                        Propose a lower price. An admin will review and accept or
+                                        decline.
+                                    </p>
+                                    <div
+                                        v-if="offerError"
+                                        class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-2 rounded text-sm mb-2"
+                                    >
+                                        {{ offerError }}
+                                    </div>
+                                    <form
+                                        @submit.prevent="submitPriceOffer"
+                                        class="flex flex-wrap gap-3 items-end"
+                                    >
+                                        <div v-if="auction.leftover_quantity > 1">
+                                            <label
+                                                class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                                >Quantity</label
+                                            >
+                                            <input
+                                                v-model="offerQuantity"
+                                                type="number"
+                                                min="1"
+                                                :max="auction.leftover_quantity"
+                                                required
+                                                class="border rounded px-3 py-2 w-20"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                            >
+                                                Price per item (max {{ currencySymbol
+                                                }}{{
+                                                    (Number(auction.leftover_price) - 0.01).toFixed(
+                                                        2,
+                                                    )
+                                                }})
+                                            </label>
+                                            <input
+                                                v-model="offerPrice"
+                                                type="number"
+                                                step="0.01"
+                                                min="0.01"
+                                                :max="
+                                                    (Number(auction.leftover_price) - 0.01).toFixed(
+                                                        2,
+                                                    )
+                                                "
+                                                required
+                                                class="border rounded px-3 py-2 w-28"
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            :disabled="submittingOffer"
+                                            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60 text-sm"
+                                        >
+                                            {{ submittingOffer ? "Submitting…" : "Submit Offer" }}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            <!-- Existing pending/rejected offer status -->
+                            <div v-else class="border-t dark:border-gray-700 pt-4">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    Your offer:
+                                    <span class="font-medium text-gray-800 dark:text-gray-100">
+                                        {{ myPriceOffer.quantity }} × {{ currencySymbol
+                                        }}{{
+                                            Number(myPriceOffer.offered_price_per_item).toFixed(2)
+                                        }}
+                                    </span>
+                                    <span
+                                        :class="{
+                                            'text-yellow-600 dark:text-yellow-400':
+                                                myPriceOffer.status === 'pending',
+                                            'text-green-600 dark:text-green-400':
+                                                myPriceOffer.status === 'accepted',
+                                            'text-red-600 dark:text-red-400':
+                                                myPriceOffer.status === 'rejected',
+                                        }"
+                                        class="ml-2 font-semibold capitalize"
+                                        >{{ myPriceOffer.status }}</span
+                                    >
+                                </p>
+                            </div>
                         </template>
                     </template>
 
@@ -944,6 +1119,52 @@ watchEffect(() => {
                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                                             />
                                         </svg>
+                                    </button>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Admin: pending price offers -->
+                    <div
+                        v-if="user?.is_admin && pendingOffers.length > 0"
+                        class="border-t dark:border-gray-700 pt-4 mt-4"
+                    >
+                        <p
+                            class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2"
+                        >
+                            Price Offers ({{ pendingOffers.length }} pending)
+                        </p>
+                        <ul class="divide-y dark:divide-gray-700">
+                            <li
+                                v-for="offer in pendingOffers"
+                                :key="offer.id"
+                                class="py-2 flex items-center justify-between gap-2"
+                            >
+                                <div class="flex items-center gap-2 text-sm">
+                                    <span class="font-medium">{{ offer.user.username }}</span>
+                                    <span class="text-xs text-gray-400 dark:text-gray-500">{{
+                                        formatDate(offer.created_at)
+                                    }}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span
+                                        class="font-bold text-blue-700 dark:text-blue-400 text-sm"
+                                    >
+                                        {{ offer.quantity }} × {{ currencySymbol
+                                        }}{{ Number(offer.offered_price_per_item).toFixed(2) }}
+                                    </span>
+                                    <button
+                                        @click="acceptPriceOffer(offer)"
+                                        class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                                    >
+                                        Accept
+                                    </button>
+                                    <button
+                                        @click="rejectPriceOffer(offer)"
+                                        class="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                                    >
+                                        Reject
                                     </button>
                                 </div>
                             </li>

@@ -71,6 +71,7 @@ class LeftoverPurchaseController extends Controller
             'images',
             'questions.user:id,username',
             'leftoverPurchases.user:id,username',
+            'leftoverPriceOffers.user:id,username',
             'category',
         ]);
         $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));

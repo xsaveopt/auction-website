@@ -16,6 +16,7 @@ const startingPrice = ref("");
 const quantity = ref(1);
 const maxPerBidder = ref(1);
 const categoryId = ref("");
+const location = ref("");
 const endsAt = ref("");
 const errors = ref({});
 const submitting = ref(false);
@@ -39,6 +40,7 @@ onMounted(async () => {
         quantity.value = a.quantity;
         maxPerBidder.value = a.max_per_bidder;
         categoryId.value = a.category_id || "";
+        location.value = a.location || "";
         endsAt.value = a.ends_at.slice(0, 16);
     } catch {
         errors.value = { general: ["Failed to load auction."] };
@@ -60,6 +62,7 @@ async function submit() {
                 quantity: Number(quantity.value),
                 max_per_bidder: Number(maxPerBidder.value),
                 category_id: categoryId.value ? Number(categoryId.value) : null,
+                location: location.value || null,
                 ends_at: endsAt.value,
             }),
         });
@@ -115,6 +118,18 @@ async function submit() {
                         class="text-red-600 dark:text-red-400 text-sm mt-1"
                     >
                         {{ errors.description[0] }}
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Pickup Location</label>
+                    <input
+                        v-model="location"
+                        type="text"
+                        placeholder="e.g. Warehouse A, 123 Main St"
+                        class="w-full border rounded px-3 py-2"
+                    />
+                    <p v-if="errors.location" class="text-red-600 dark:text-red-400 text-sm mt-1">
+                        {{ errors.location[0] }}
                     </p>
                 </div>
                 <div v-if="categories.length > 0">

@@ -47,6 +47,7 @@ class AuctionController extends Controller
             'images',
             'questions.user:id,username',
             'leftoverPurchases.user:id,username',
+            'leftoverPriceOffers.user:id,username',
             'category',
         ]);
         $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
@@ -228,10 +229,11 @@ class AuctionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        /** @var array{title: string, description: string, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string, category_id?: int|null} $validated */
+        /** @var array{title: string, description: string, location: string|null, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string, category_id?: int|null} $validated */
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:2000'],
+            'location' => ['nullable', 'string', 'max:255'],
             'starting_price' => ['required', 'numeric', 'min:0.01'],
             'quantity' => ['required', 'integer', 'min:1'],
             'max_per_bidder' => ['required', 'integer', 'min:1'],
@@ -262,10 +264,11 @@ class AuctionController extends Controller
 
     public function update(Request $request, Auction $auction): JsonResponse
     {
-        /** @var array{title: string, description: string, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string, category_id?: int|null} $validated */
+        /** @var array{title: string, description: string, location: string|null, starting_price: float, quantity: int, max_per_bidder: int, ends_at: string, category_id?: int|null} $validated */
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:2000'],
+            'location' => ['nullable', 'string', 'max:255'],
             'starting_price' => ['required', 'numeric', 'min:0.01'],
             'quantity' => ['required', 'integer', 'min:1'],
             'max_per_bidder' => ['required', 'integer', 'min:1'],

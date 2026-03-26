@@ -11,6 +11,7 @@ use App\Http\Controllers\AuctionImageController;
 use App\Http\Controllers\AuctionQuestionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BidController;
+use App\Http\Controllers\LeftoverPriceOfferController;
 use App\Http\Controllers\LeftoverPurchaseController;
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -68,6 +69,9 @@ Route::middleware('sso')->group(function () {
     // Leftover purchases
     Route::post('/auctions/{auction}/leftover-purchases', [LeftoverPurchaseController::class, 'store'])->middleware('auth');
 
+    // Leftover price offers
+    Route::post('/auctions/{auction}/leftover-price-offers', [LeftoverPriceOfferController::class, 'store'])->middleware('auth');
+
     // Auction questions
     Route::get('/questions', [AuctionQuestionController::class, 'index'])->middleware(['auth', 'admin']);
     Route::post('/auctions/{auction}/questions', [AuctionQuestionController::class, 'store'])->middleware('auth');
@@ -86,6 +90,8 @@ Route::middleware('sso')->group(function () {
         Route::delete('/bids/{bid}', [AdminBidController::class, 'destroy']);
         Route::post('/auctions/{auction}/leftover-purchases', [LeftoverPurchaseController::class, 'adminStore']);
         Route::delete('/leftover-purchases/{leftoverPurchase}', [LeftoverPurchaseController::class, 'destroy']);
+        Route::post('/leftover-price-offers/{leftoverPriceOffer}/accept', [LeftoverPriceOfferController::class, 'accept']);
+        Route::post('/leftover-price-offers/{leftoverPriceOffer}/reject', [LeftoverPriceOfferController::class, 'reject']);
         Route::get('/audit-log', [AdminAuditLogController::class, 'index']);
     });
 });
