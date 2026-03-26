@@ -131,18 +131,18 @@ class BidLogicUpdatesTest extends TestCase
         // Public view (unauthenticated)
         $response = $this->getJson("/api/auctions/{$auction->id}");
         $data = $response->json('auction');
-        if ($data['bids'][0]['user']['username'] !== "Bidder #{$user1->id}") {
+        if ($data['bids'][0]['user']['username'] !== 'real_user_1') {
             dump('Unauthenticated view:', $data['bids'][0]['user']);
         }
-        $this->assertEquals("Bidder #{$user1->id}", $data['bids'][0]['user']['username']);
+        $this->assertEquals('real_user_1', $data['bids'][0]['user']['username']);
 
         // User 2 viewing User 1's bid
         $response = $this->actingAs($user2)->getJson("/api/auctions/{$auction->id}");
         $data = $response->json('auction');
-        if ($data['bids'][0]['user']['username'] !== "Bidder #{$user1->id}") {
+        if ($data['bids'][0]['user']['username'] !== 'real_user_1') {
             dump('User 2 view:', $data['bids'][0]['user']);
         }
-        $this->assertEquals("Bidder #{$user1->id}", $data['bids'][0]['user']['username']);
+        $this->assertEquals('real_user_1', $data['bids'][0]['user']['username']);
 
         // User 1 viewing their own bid
         $response = $this->actingAs($user1)->getJson("/api/auctions/{$auction->id}");

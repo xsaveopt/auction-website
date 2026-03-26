@@ -409,14 +409,6 @@ function timeLeft(endsAt) {
                                                 original price
                                             </span>
                                         </p>
-                                        <p
-                                            v-else-if="auction.bid_count === 0"
-                                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                                        >
-                                            Starts at {{ currencySymbol
-                                            }}{{ Number(auction.starting_price).toFixed(2) }} per
-                                            item
-                                        </p>
                                     </div>
                                     <span
                                         v-if="auction.is_active || isLeftoverSale(auction)"

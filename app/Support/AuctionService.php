@@ -186,10 +186,7 @@ class AuctionService
             /** @var bool $isAdmin */
             $isAdmin = $currentUser && $currentUser->is_admin;
 
-            $data['bids'] = $sortedBids->map(function (Bid $bid) use ($allocations, $prices, $currentUser, $isAdmin) {
-                $isOwner = $currentUser && $bid->user_id === $currentUser->id;
-                $username = $isAdmin || $isOwner ? $bid->user?->username : "Bidder #{$bid->user_id}";
-
+            $data['bids'] = $sortedBids->map(function (Bid $bid) use ($allocations, $prices) {
                 return [
                     'id' => $bid->id,
                     'amount' => $bid->amount,
@@ -198,7 +195,7 @@ class AuctionService
                     'price' => isset($prices[$bid->id]) ? number_format($prices[$bid->id], 2, '.', '') : null,
                     'user' => [
                         'id' => $bid->user?->id,
-                        'username' => $username,
+                        'username' => $bid->user?->username,
                     ],
                     'created_at' => $bid->created_at?->format('Y-m-d\TH:i:sP'),
                 ];
