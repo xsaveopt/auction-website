@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\LeftoverPriceOffer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -82,5 +83,48 @@ class LeftoverPriceOfferControllerTest extends TestCase
             'id' => $offer2->id,
             'status' => 'pending',
         ]);
+    }
+
+    public function test_user_can_submit_a_new_offer_after_a_soft_deleted_offer(): void
+    {
+        config(['auction.leftover_sales_enabled' => true]);
+
+        $user = $this->createUser();
+        $auction = $this->createAuction($this->createUser(), [
+            'starting_price' => '10.00',
+            'quantity' => 1,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+
+        $oldOffer = $this->createLeftoverPriceOffer($auction, $user, [
+            'offered_price_per_item' => '6.00',
+        ]);
+        $oldOffer->delete();
+
+        $this
+            ->actingAs($user)
+            ->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+                'quantity' => 1,
+                'offered_price_per_item' => 6.50,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('auction.leftover_price_offers.0.user.username', $user->username);
+
+        $this->assertSoftDeleted('leftover_price_offers', ['id' => $oldOffer->id]);
+        $this->assertDatabaseHas('leftover_price_offers', [
+            'auction_id' => $auction->id,
+            'user_id' => $user->id,
+            'offered_price_per_item' => '6.50',
+            'status' => 'pending',
+            'deleted_at' => null,
+        ]);
+        $this->assertSame(
+            2,
+            LeftoverPriceOffer::withTrashed()
+                ->where('auction_id', $auction->id)
+                ->where('user_id', $user->id)
+                ->count(),
+        );
     }
 }
