@@ -1,17 +1,35 @@
 <script setup>
-import { computed, ref, inject, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { computed, ref, inject, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../api.js";
 
 const router = useRouter();
+const route = useRoute();
 const user = inject("user");
 const currencySymbol = inject("currencySymbol");
 const auctions = ref([]);
 const summary = ref(null);
 const loading = ref(true);
 const expanded = ref({});
-const view = ref("auctions");
+const view = ref(route.query.view === "users" ? "users" : "auctions");
 const expandedUsers = ref({});
+
+watch(view, (v) => {
+    const query = { ...route.query };
+    if (v === "auctions") {
+        delete query.view;
+    } else {
+        query.view = v;
+    }
+    router.replace({ path: "/admin", query });
+});
+
+watch(
+    () => route.query.view,
+    (v) => {
+        view.value = v === "users" ? "users" : "auctions";
+    },
+);
 
 if (!user.value?.is_admin) {
     router.push("/");

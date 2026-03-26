@@ -1,14 +1,15 @@
 <script setup>
-import { ref, inject, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, inject, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../api.js";
 
 const router = useRouter();
+const route = useRoute();
 const user = inject("user");
 const logs = ref([]);
 const loading = ref(true);
 const error = ref("");
-const currentPage = ref(1);
+const currentPage = ref(parseInt(route.query.page) || 1);
 const lastPage = ref(1);
 const total = ref(0);
 
@@ -17,7 +18,7 @@ if (!user.value?.is_admin) {
 }
 
 onMounted(async () => {
-    await loadLogs();
+    await loadLogs(currentPage.value);
 });
 
 async function loadLogs(page = 1) {
@@ -29,6 +30,13 @@ async function loadLogs(page = 1) {
         currentPage.value = data.current_page;
         lastPage.value = data.last_page;
         total.value = data.total;
+        const query = { ...route.query };
+        if (page > 1) {
+            query.page = page;
+        } else {
+            delete query.page;
+        }
+        router.replace({ path: "/admin", query });
     } catch (e) {
         error.value = "Failed to load audit log.";
     } finally {
@@ -40,6 +48,16 @@ async function goToPage(page) {
     if (page < 1 || page > lastPage.value) return;
     await loadLogs(page);
 }
+
+watch(
+    () => route.query.page,
+    (newPage) => {
+        const page = parseInt(newPage) || 1;
+        if (page !== currentPage.value) {
+            loadLogs(page);
+        }
+    },
+);
 
 function formatDate(d) {
     if (!d) return "";

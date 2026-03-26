@@ -22,7 +22,13 @@ const tabMounted = ref(Object.fromEntries(validTabs.map((t) => [t, t === activeT
 
 watch(activeTab, (tab) => {
     tabMounted.value[tab] = true;
-    router.replace({ path: "/admin", query: tab !== "results" ? { tab } : {} });
+    const query = { ...route.query };
+    if (tab === "results") {
+        delete query.tab;
+    } else {
+        query.tab = tab;
+    }
+    router.replace({ path: "/admin", query });
 });
 
 watch(
