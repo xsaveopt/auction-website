@@ -551,33 +551,9 @@ provide("notify", notify);
                         >
                         <router-link
                             v-if="user.is_admin"
-                            to="/admin/results"
+                            to="/admin"
                             class="text-blue-600 dark:text-blue-400 hover:underline"
-                            >Results</router-link
-                        >
-                        <router-link
-                            v-if="user.is_admin"
-                            to="/admin/questions"
-                            class="text-blue-600 dark:text-blue-400 hover:underline"
-                            >Questions</router-link
-                        >
-                        <router-link
-                            v-if="user.is_admin"
-                            to="/admin/price-offers"
-                            class="text-blue-600 dark:text-blue-400 hover:underline"
-                            >Price Offers</router-link
-                        >
-                        <router-link
-                            v-if="user.is_admin"
-                            to="/admin/categories"
-                            class="text-blue-600 dark:text-blue-400 hover:underline"
-                            >Categories</router-link
-                        >
-                        <router-link
-                            v-if="user.is_admin"
-                            to="/admin/audit-log"
-                            class="text-blue-600 dark:text-blue-400 hover:underline"
-                            >Audit Log</router-link
+                            >Admin</router-link
                         >
                         <router-link
                             v-if="user.is_admin"

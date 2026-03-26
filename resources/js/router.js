@@ -3,11 +3,7 @@ import AuctionList from "./pages/AuctionList.vue";
 import AuctionDetail from "./pages/AuctionDetail.vue";
 import CreateAuction from "./pages/CreateAuction.vue";
 import EditAuction from "./pages/EditAuction.vue";
-import AdminResults from "./pages/AdminResults.vue";
-import AdminQuestions from "./pages/AdminQuestions.vue";
-import AdminAuditLog from "./pages/AdminAuditLog.vue";
-import AdminCategories from "./pages/AdminCategories.vue";
-import AdminPriceOffers from "./pages/AdminPriceOffers.vue";
+import AdminPanel from "./pages/AdminPanel.vue";
 import Login from "./pages/Login.vue";
 import Register from "./pages/Register.vue";
 import MyDashboard from "./pages/MyDashboard.vue";
@@ -15,11 +11,12 @@ import MyDashboard from "./pages/MyDashboard.vue";
 const routes = [
     { path: "/", component: AuctionList },
     { path: "/dashboard", component: MyDashboard },
-    { path: "/admin/results", component: AdminResults },
-    { path: "/admin/questions", component: AdminQuestions },
-    { path: "/admin/categories", component: AdminCategories },
-    { path: "/admin/audit-log", component: AdminAuditLog },
-    { path: "/admin/price-offers", component: AdminPriceOffers },
+    { path: "/admin", component: AdminPanel },
+    { path: "/admin/results", redirect: "/admin" },
+    { path: "/admin/questions", redirect: { path: "/admin", query: { tab: "questions" } } },
+    { path: "/admin/categories", redirect: { path: "/admin", query: { tab: "categories" } } },
+    { path: "/admin/audit-log", redirect: { path: "/admin", query: { tab: "auditLog" } } },
+    { path: "/admin/price-offers", redirect: { path: "/admin", query: { tab: "priceOffers" } } },
     { path: "/auctions/new", component: CreateAuction },
     { path: "/auctions/:id/edit", component: EditAuction, props: true },
     { path: "/auctions/:id", component: AuctionDetail, props: true },
