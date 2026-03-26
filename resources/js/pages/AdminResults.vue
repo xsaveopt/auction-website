@@ -12,6 +12,7 @@ const loading = ref(true);
 const expanded = ref({});
 const view = ref("auctions");
 const expandedUsers = ref({});
+const expandedOfferAuctions = ref({});
 
 if (!user.value?.is_admin) {
     router.push("/");
@@ -69,6 +70,14 @@ function formatMoney(amount) {
 function toggleUser(username) {
     expandedUsers.value[username] = !expandedUsers.value[username];
 }
+
+function toggleOfferAuction(id) {
+    expandedOfferAuctions.value[id] = !expandedOfferAuctions.value[id];
+}
+
+const auctionsWithOffers = computed(() => {
+    return auctions.value.filter((a) => a.leftover_price_offers?.length > 0);
+});
 
 const userSummaries = computed(() => {
     /** @type {Map<string, {username: string, userId: number, items: Array, totalItems: number, totalOwed: number}>} */
@@ -210,6 +219,17 @@ const statsCards = computed(() => {
                 "
             >
                 By User
+            </button>
+            <button
+                @click="view = 'offers'"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+                :class="
+                    view === 'offers'
+                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                "
+            >
+                Price Offers
             </button>
         </div>
         <div
@@ -523,6 +543,53 @@ const statsCards = computed(() => {
                             </table>
                         </div>
 
+                        <div v-if="auction.leftover_price_offers?.length > 0" class="mt-4">
+                            <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                                Price offers
+                            </h3>
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr
+                                        class="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-700"
+                                    >
+                                        <th class="pb-1 font-medium">User</th>
+                                        <th class="pb-1 font-medium">Qty</th>
+                                        <th class="pb-1 font-medium">Offered / item</th>
+                                        <th class="pb-1 font-medium">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="offer in auction.leftover_price_offers"
+                                        :key="offer.id"
+                                        class="border-b dark:border-gray-700 last:border-0"
+                                    >
+                                        <td class="py-2 font-medium">{{ offer.user.username }}</td>
+                                        <td class="py-2">{{ offer.quantity }}</td>
+                                        <td class="py-2">
+                                            {{ currencySymbol
+                                            }}{{ Number(offer.offered_price_per_item).toFixed(2) }}
+                                        </td>
+                                        <td class="py-2">
+                                            <span
+                                                class="inline-block px-2 py-0.5 rounded text-xs font-medium"
+                                                :class="{
+                                                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300':
+                                                        offer.status === 'pending',
+                                                    'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300':
+                                                        offer.status === 'accepted',
+                                                    'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300':
+                                                        offer.status === 'rejected',
+                                                }"
+                                            >
+                                                {{ offer.status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                         <div class="mt-4 flex items-center gap-3">
                             <router-link
                                 :to="`/auctions/${auction.id}`"
@@ -673,6 +740,125 @@ const statsCards = computed(() => {
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <template v-if="view === 'offers'">
+            <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
+            <p v-else-if="auctionsWithOffers.length === 0" class="text-gray-500 dark:text-gray-400">
+                No price offers submitted yet.
+            </p>
+            <div v-else class="space-y-3">
+                <div
+                    v-for="auction in auctionsWithOffers"
+                    :key="auction.id"
+                    class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden"
+                >
+                    <button
+                        @click="toggleOfferAuction(auction.id)"
+                        class="w-full text-left px-5 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                        <div class="flex items-center gap-3 min-w-0">
+                            <img
+                                v-if="auction.images.length"
+                                :src="auction.images[0].url"
+                                class="w-10 h-10 rounded object-cover shrink-0"
+                            />
+                            <div class="min-w-0">
+                                <h2 class="font-semibold truncate">{{ auction.title }}</h2>
+                                <p class="text-xs text-gray-400 dark:text-gray-500">
+                                    {{ auction.leftover_price_offers.length }} offer{{
+                                        auction.leftover_price_offers.length !== 1 ? "s" : ""
+                                    }}
+                                    ·
+                                    {{
+                                        auction.leftover_price_offers.filter(
+                                            (o) => o.status === "pending",
+                                        ).length
+                                    }}
+                                    pending
+                                </p>
+                            </div>
+                        </div>
+                        <svg
+                            class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform shrink-0"
+                            :class="expandedOfferAuctions[auction.id] ? 'rotate-180' : ''"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 9l-7 7-7-7"
+                            />
+                        </svg>
+                    </button>
+                    <div
+                        v-if="expandedOfferAuctions[auction.id]"
+                        class="border-t dark:border-gray-700 px-5 py-4"
+                    >
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr
+                                    class="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-700"
+                                >
+                                    <th class="pb-1 font-medium">User</th>
+                                    <th class="pb-1 font-medium">Qty</th>
+                                    <th class="pb-1 font-medium">Offered / item</th>
+                                    <th class="pb-1 font-medium">Total offered</th>
+                                    <th class="pb-1 font-medium">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="offer in auction.leftover_price_offers"
+                                    :key="offer.id"
+                                    class="border-b dark:border-gray-700 last:border-0"
+                                >
+                                    <td class="py-2 font-medium">{{ offer.user.username }}</td>
+                                    <td class="py-2">{{ offer.quantity }}</td>
+                                    <td class="py-2">
+                                        {{ currencySymbol
+                                        }}{{ Number(offer.offered_price_per_item).toFixed(2) }}
+                                    </td>
+                                    <td class="py-2 font-bold text-green-700 dark:text-green-400">
+                                        {{ currencySymbol
+                                        }}{{
+                                            (
+                                                offer.quantity *
+                                                Number(offer.offered_price_per_item)
+                                            ).toFixed(2)
+                                        }}
+                                    </td>
+                                    <td class="py-2">
+                                        <span
+                                            class="inline-block px-2 py-0.5 rounded text-xs font-medium"
+                                            :class="{
+                                                'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300':
+                                                    offer.status === 'pending',
+                                                'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300':
+                                                    offer.status === 'accepted',
+                                                'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300':
+                                                    offer.status === 'rejected',
+                                            }"
+                                        >
+                                            {{ offer.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-3">
+                            <router-link
+                                :to="`/auctions/${auction.id}`"
+                                class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                >View auction</router-link
+                            >
+                        </div>
                     </div>
                 </div>
             </div>

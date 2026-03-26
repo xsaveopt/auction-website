@@ -8,6 +8,7 @@ use App\Models\AuctionImage;
 use App\Models\AuctionQuestion;
 use App\Models\Bid;
 use App\Models\Category;
+use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
 use App\Models\PushSubscription;
 use App\Models\User;
@@ -77,6 +78,23 @@ trait InteractsWithAuctionData
                 'question' => 'Is this still available?',
                 'answer' => null,
                 'answered_at' => null,
+            ], $attributes));
+    }
+
+    protected function createLeftoverPriceOffer(
+        Auction $auction,
+        ?User $user = null,
+        array $attributes = [],
+    ): LeftoverPriceOffer {
+        $user ??= $this->createUser();
+
+        return $auction
+            ->leftoverPriceOffers()
+            ->create(array_merge([
+                'user_id' => $user->id,
+                'quantity' => 1,
+                'offered_price_per_item' => '5.00',
+                'status' => 'pending',
             ], $attributes));
     }
 

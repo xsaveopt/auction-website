@@ -277,6 +277,22 @@ class AuctionService
     }
 
     /**
+     * Soft-delete all pending price offers for an auction when no leftover stock remains.
+     */
+    public function closePendingOffersIfSoldOut(Auction $auction): void
+    {
+        $auction->load(['bids', 'leftoverPurchases']);
+        $allocation = $this->allocate($auction);
+        $itemsAllocated = array_sum($allocation['allocations']);
+        $leftoverSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+        $available = max(0, (int) $auction->quantity - $itemsAllocated - $leftoverSold);
+
+        if ($available <= 0) {
+            $auction->leftoverPriceOffers()->where('status', 'pending')->delete();
+        }
+    }
+
+    /**
      * Load all relations on an auction and return a full bid-included response.
      *
      * @return array<string, mixed>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -147,6 +148,88 @@ class LeftoverPurchaseControllerTest extends TestCase
             ])
             ->assertUnprocessable()
             ->assertJsonPath('message', 'No leftover items are available.');
+    }
+
+    public function test_buying_last_leftover_item_soft_deletes_pending_price_offers(): void
+    {
+        config(['auction.leftover_sales_enabled' => true]);
+
+        $seller = $this->createUser();
+        $buyer = $this->createUser();
+        $offerUser = $this->createUser();
+        $auction = $this->createAuction($seller, [
+            'starting_price' => '10.00',
+            'quantity' => 2,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $this->createBid($auction, $this->createUser(), ['amount' => '12.00', 'quantity' => 1]);
+        $offer = $this->createLeftoverPriceOffer($auction, $offerUser, [
+            'quantity' => 1,
+            'offered_price_per_item' => '5.00',
+        ]);
+
+        // Buying the last remaining leftover item should close the pending offer
+        $this
+            ->actingAs($buyer)
+            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 1])
+            ->assertCreated();
+
+        $this->assertSoftDeleted('leftover_price_offers', ['id' => $offer->id]);
+    }
+
+    public function test_buying_some_but_not_all_leftover_items_keeps_pending_price_offers(): void
+    {
+        config(['auction.leftover_sales_enabled' => true]);
+
+        $seller = $this->createUser();
+        $buyer = $this->createUser();
+        $offerUser = $this->createUser();
+        $auction = $this->createAuction($seller, [
+            'starting_price' => '10.00',
+            'quantity' => 3,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $offer = $this->createLeftoverPriceOffer($auction, $offerUser, [
+            'quantity' => 1,
+            'offered_price_per_item' => '5.00',
+        ]);
+
+        // Only buys 2 of 3 — one item remains, offer should stay
+        $this
+            ->actingAs($buyer)
+            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 2])
+            ->assertCreated();
+
+        $this->assertNotSoftDeleted('leftover_price_offers', ['id' => $offer->id]);
+    }
+
+    public function test_admin_buying_last_leftover_item_soft_deletes_pending_price_offers(): void
+    {
+        $admin = $this->createAdmin();
+        $buyer = $this->createUser();
+        $offerUser = $this->createUser();
+        $auction = $this->createAuction($this->createUser(), [
+            'starting_price' => '10.00',
+            'quantity' => 1,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $offer = $this->createLeftoverPriceOffer($auction, $offerUser, [
+            'quantity' => 1,
+            'offered_price_per_item' => '5.00',
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->postJson("/api/admin/auctions/{$auction->id}/leftover-purchases", [
+                'username' => $buyer->username,
+                'quantity' => 1,
+            ])
+            ->assertCreated();
+
+        $this->assertSoftDeleted('leftover_price_offers', ['id' => $offer->id]);
     }
 
     public function test_admin_leftover_purchases_cannot_exceed_available_quantity(): void

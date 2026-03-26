@@ -65,6 +65,8 @@ class LeftoverPurchaseController extends Controller
                 'price_per_item' => $pricePerItem,
             ]);
 
+        $this->auctionService->closePendingOffersIfSoldOut($auction);
+
         $auction->load([
             'seller:id,username',
             'bids.user:id,username',
@@ -124,6 +126,8 @@ class LeftoverPurchaseController extends Controller
                     'price_per_item' => $pricePerItem,
                 ]);
         }
+
+        $this->auctionService->closePendingOffersIfSoldOut($auction);
 
         /** @var \App\Models\User $admin */
         $admin = $request->user();

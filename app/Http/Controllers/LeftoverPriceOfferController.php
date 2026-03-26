@@ -124,6 +124,8 @@ class LeftoverPriceOfferController extends Controller
 
         $leftoverPriceOffer->update(['status' => 'accepted']);
 
+        $this->auctionService->closePendingOffersIfSoldOut($auction);
+
         /** @var \App\Models\User $admin */
         $admin = $request->user();
         AuditLog::record($admin, 'leftover_price_offer.accept', $purchase, [

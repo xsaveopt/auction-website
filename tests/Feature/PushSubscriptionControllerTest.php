@@ -57,7 +57,7 @@ class PushSubscriptionControllerTest extends TestCase
             ])
             ->assertOk();
 
-        $this->assertDatabaseMissing('push_subscriptions', [
+        $this->assertSoftDeleted('push_subscriptions', [
             'user_id' => $user->id,
             'endpoint' => $endpoint,
         ]);
