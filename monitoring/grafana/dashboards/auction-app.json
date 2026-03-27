@@ -300,14 +300,14 @@
       "options": {
         "orientation": "horizontal",
         "displayMode": "gradient",
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "sortDesc": true
+        "reduceOptions": { "calcs": ["lastNotNull"] }
       },
       "targets": [
         {
           "expr": "sort_desc(app_auction_total_views)",
           "legendFormat": "{{auction}}",
-          "refId": "A"
+          "refId": "A",
+          "instant": true
         }
       ]
     },
@@ -503,96 +503,10 @@
       "panels": []
     },
     {
-      "title": "p50 Latency",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 29 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.1 },
-              { "color": "orange", "value": 0.25 },
-              { "color": "red", "value": 0.5 }
-            ]
-          }
-        }
-      },
-      "options": { "graphMode": "area" },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.50, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "title": "Error Rate",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 29 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "decimals": 2,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.01 },
-              { "color": "red", "value": 0.05 }
-            ]
-          }
-        }
-      },
-      "options": { "graphMode": "area" },
-      "targets": [
-        {
-          "expr": "sum(rate(app_http_requests_total{status_code=~\"[45]..\"}[5m])) / sum(rate(app_http_requests_total[5m]))",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "title": "p95 Latency",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 29 },
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.25 },
-              { "color": "orange", "value": 0.5 },
-              { "color": "red", "value": 1.0 }
-            ]
-          }
-        }
-      },
-      "options": { "graphMode": "area" },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le))",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ]
-    },
-    {
       "title": "Traffic & Errors",
       "description": "Request throughput with error overlay — quickly spot if errors correlate with traffic spikes",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 29 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "fieldConfig": {
         "defaults": {
@@ -658,7 +572,7 @@
       "title": "Latency Distribution",
       "description": "Heatmap of request durations — reveals latency patterns that percentile lines miss",
       "type": "heatmap",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 29 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "calculate": false,
@@ -678,14 +592,14 @@
     {
       "title": "Route Performance",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 },
       "collapsed": true,
       "panels": [
         {
           "title": "Slowest Routes (p95)",
           "description": "Top 10 routes by p95 latency — find your bottlenecks at a glance",
           "type": "bargauge",
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 42 },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 38 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -708,9 +622,10 @@
           },
           "targets": [
             {
-              "expr": "topk(10, histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (route, le)))",
+              "expr": "sort_desc(topk(10, histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (route, le))))",
               "legendFormat": "{{route}}",
-              "refId": "A"
+              "refId": "A",
+              "instant": true
             }
           ]
         },
@@ -718,7 +633,7 @@
           "title": "Route Detail",
           "description": "Per-route throughput, latency percentiles, and error rates",
           "type": "table",
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 50 },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 46 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "options": {
             "sortBy": [{ "displayName": "p95", "desc": true }]
@@ -804,13 +719,13 @@
     {
       "title": "Caddy Infrastructure",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 42 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
       "collapsed": true,
       "panels": [
         {
           "title": "Caddy Request Duration (p50 / p95)",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 43 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 39 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {
@@ -834,7 +749,7 @@
         {
           "title": "Caddy Memory & Goroutines",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 43 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 39 },
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "fieldConfig": {
             "defaults": {

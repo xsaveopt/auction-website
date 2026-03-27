@@ -111,6 +111,7 @@ class Presence
             ->recent()
             ->whereNotNull('user_id')
             ->join('users', 'users.id', '=', 'presence_heartbeats.user_id')
+            ->where('users.is_admin', false)
             ->selectRaw(
                 'users.username, COALESCE(presence_heartbeats.path, presence_heartbeats.page_type) as path, MAX(presence_heartbeats.last_seen_at) as last_seen_at',
             )
