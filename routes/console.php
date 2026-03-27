@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('app:finalize-ended-auctions')->everyMinute();
+Schedule::command('app:notify-ending-soon')->everyMinute();

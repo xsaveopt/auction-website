@@ -12,6 +12,28 @@ class AuctionNotificationService
         protected PushNotificationService $pushNotificationService,
     ) {}
 
+    public function sendNewAuctionNotification(Auction $auction): void
+    {
+        $subscribedUsers = User::query()
+            ->whereHas('pushSubscriptions')
+            ->where('id', '!=', $auction->seller_id)
+            ->get();
+
+        if ($subscribedUsers->isEmpty()) {
+            return;
+        }
+
+        $this->pushNotificationService->sendToUsers($subscribedUsers, [
+            'body' => sprintf('New auction: "%s"', $auction->title),
+            'tag' => "auction-new-{$auction->id}",
+            'url' => "/auctions/{$auction->id}",
+            'data' => [
+                'auctionId' => $auction->id,
+                'kind' => 'new_auction',
+            ],
+        ]);
+    }
+
     /**
      * @param array<int, int> $previousAllocations
      * @param array<int, int> $currentAllocations
@@ -47,6 +69,30 @@ class AuctionNotificationService
             'data' => [
                 'auctionId' => $auction->id,
                 'kind' => 'overbid',
+            ],
+        ]);
+    }
+
+    public function sendEndingSoonNotifications(Auction $auction): void
+    {
+        $auction->loadMissing('bids.user:id,username');
+
+        $latestBids = $this->auctionService->latestBids($auction);
+
+        if ($latestBids->isEmpty()) {
+            return;
+        }
+
+        /** @var list<User> $bidders */
+        $bidders = $latestBids->pluck('user')->filter()->values()->all();
+
+        $this->pushNotificationService->sendToUsers($bidders, [
+            'body' => sprintf('"%s" is ending soon!', $auction->title),
+            'tag' => "auction-ending-soon-{$auction->id}",
+            'url' => "/auctions/{$auction->id}",
+            'data' => [
+                'auctionId' => $auction->id,
+                'kind' => 'ending_soon',
             ],
         ]);
     }

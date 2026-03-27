@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $quantity
  * @property int $max_per_bidder
  * @property string $status
+ * @property bool $ending_soon_notified
  * @property int|null $category_id
  * @property \Illuminate\Support\Carbon $ends_at
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -38,6 +39,7 @@ class Auction extends Model
         'max_per_bidder',
         'ends_at',
         'status',
+        'ending_soon_notified',
         'category_id',
     ];
 
@@ -106,6 +108,7 @@ class Auction extends Model
         return [
             'starting_price' => 'decimal:2',
             'ends_at' => 'datetime',
+            'ending_soon_notified' => 'boolean',
         ];
     }
 }

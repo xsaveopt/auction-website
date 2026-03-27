@@ -31,7 +31,7 @@ class MetricsControllerTest extends TestCase
             'quantity' => 1,
         ]);
 
-        Presence::heartbeat('metrics-home', 'client-1', 'home', null, $watcher->id);
+        Presence::heartbeat('metrics-home', 'client-1', 'home', '/', null, $watcher->id);
 
         $response = $this->withHeader('Authorization', 'Bearer test-metrics-token')->get('/metrics');
 

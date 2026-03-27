@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\PresenceHeartbeat;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class Presence
 {
@@ -23,6 +24,7 @@ class Presence
         string $pageId,
         string $clientId,
         string $pageType,
+        string $path,
         ?int $auctionId = null,
         ?int $userId = null,
     ): void {
@@ -40,6 +42,7 @@ class Presence
                     'client_id' => $clientId,
                     'user_id' => $userId,
                     'page_type' => $pageType,
+                    'path' => $path,
                     'auction_id' => $auctionId,
                     'last_seen_at' => $now,
                     'created_at' => $now,
@@ -47,8 +50,16 @@ class Presence
                 ],
             ],
             ['page_id'],
-            ['client_id', 'user_id', 'page_type', 'auction_id', 'last_seen_at', 'updated_at'],
+            ['client_id', 'user_id', 'page_type', 'path', 'auction_id', 'last_seen_at', 'updated_at'],
         );
+
+        if ($auctionId !== null) {
+            DB::table('auction_total_views')->insertOrIgnore([
+                'auction_id' => $auctionId,
+                'client_id' => $clientId,
+                'created_at' => $now,
+            ]);
+        }
     }
 
     public static function onlineUsers(): int
@@ -91,19 +102,19 @@ class Presence
     }
 
     /**
-     * @return list<array{username: string, page_type: string, last_seen_at: int}>
+     * @return list<array{username: string, path: string, last_seen_at: int}>
      */
     public static function onlineUserDetails(): array
     {
-        /** @var list<object{username: string, page_type: string, last_seen_at: string|null}> $rows */
+        /** @var list<object{username: string, path: string|null, page_type: string, last_seen_at: string|null}> $rows */
         $rows = PresenceHeartbeat::query()
             ->recent()
             ->whereNotNull('user_id')
             ->join('users', 'users.id', '=', 'presence_heartbeats.user_id')
             ->selectRaw(
-                'users.username, presence_heartbeats.page_type, MAX(presence_heartbeats.last_seen_at) as last_seen_at',
+                'users.username, COALESCE(presence_heartbeats.path, presence_heartbeats.page_type) as path, MAX(presence_heartbeats.last_seen_at) as last_seen_at',
             )
-            ->groupBy('users.username', 'presence_heartbeats.page_type')
+            ->groupBy('users.username', 'path')
             ->get()
             ->all();
 
@@ -111,12 +122,32 @@ class Presence
         foreach ($rows as $row) {
             $result[] = [
                 'username' => $row->username,
-                'page_type' => $row->page_type,
+                'path' => $row->path ?? $row->page_type,
                 'last_seen_at' => $row->last_seen_at !== null ? (int) (strtotime($row->last_seen_at) * 1000) : 0,
             ];
         }
 
         return $result;
+    }
+
+    /**
+     * @return list<array{auction_id: int, title: string, view_count: int}>
+     */
+    public static function totalViewsByAuction(): array
+    {
+        /** @var list<object{auction_id: int, title: string, view_count: int}> $rows */
+        $rows = DB::table('auction_total_views')
+            ->join('auctions', 'auctions.id', '=', 'auction_total_views.auction_id')
+            ->selectRaw('auction_total_views.auction_id, auctions.title, COUNT(*) as view_count')
+            ->groupBy('auction_total_views.auction_id', 'auctions.title')
+            ->get()
+            ->all();
+
+        return array_map(fn($row) => [
+            'auction_id' => $row->auction_id,
+            'title' => $row->title,
+            'view_count' => (int) $row->view_count,
+        ], $rows);
     }
 
     /** @return Builder<PresenceHeartbeat> */

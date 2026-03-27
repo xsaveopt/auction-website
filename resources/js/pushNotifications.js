@@ -9,7 +9,7 @@ const pushSupported = ref(
 );
 
 const browserPermission = ref(pushSupported.value ? Notification.permission : "denied");
-const subscriptionState = ref(pushSupported.value ? "idle" : "unsupported");
+const subscriptionState = ref(pushSupported.value ? "checking" : "unsupported");
 
 let registrationPromise;
 let pushConfigPromise;
@@ -184,10 +184,12 @@ export function usePushNotifications() {
     const pushEnabled = computed(
         () => browserPermission.value === "granted" && subscriptionState.value === "subscribed",
     );
+    const pushStateKnown = computed(() => subscriptionState.value !== "checking");
 
     return {
         pushSupported,
         pushEnabled,
+        pushStateKnown,
         browserPermission,
         subscriptionState,
         registerPushServiceWorker,

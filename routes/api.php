@@ -93,6 +93,8 @@ Route::middleware('sso')->group(function () {
         Route::get('/leftover-price-offers', [LeftoverPriceOfferController::class, 'index']);
         Route::post('/leftover-price-offers/{leftoverPriceOffer}/accept', [LeftoverPriceOfferController::class, 'accept']);
         Route::post('/leftover-price-offers/{leftoverPriceOffer}/reject', [LeftoverPriceOfferController::class, 'reject']);
+        Route::post('/auctions/{auction}/leftover-price-offers', [LeftoverPriceOfferController::class, 'adminStore']);
+        Route::delete('/leftover-price-offers/{leftoverPriceOffer}', [LeftoverPriceOfferController::class, 'destroy']);
         Route::get('/audit-log', [AdminAuditLogController::class, 'index']);
     });
 });

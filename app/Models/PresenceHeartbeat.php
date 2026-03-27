@@ -22,6 +22,7 @@ class PresenceHeartbeat extends Model
         'client_id',
         'user_id',
         'page_type',
+        'path',
         'auction_id',
         'last_seen_at',
     ];

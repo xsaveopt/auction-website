@@ -138,6 +138,7 @@ class AuthorizationMatrixTest extends TestCase
                 'page_id' => 'matrix-home',
                 'client_id' => 'matrix-client',
                 'page_type' => 'page',
+                'path' => '/my-dashboard',
             ])
             ->assertOk();
     }

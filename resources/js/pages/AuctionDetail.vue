@@ -42,6 +42,12 @@ const offerError = ref("");
 const submittingOffer = ref(false);
 
 // Admin state
+const showAdminOfferForm = ref(false);
+const adminOfferUsername = ref("");
+const adminOfferQuantity = ref(1);
+const adminOfferPrice = ref("");
+const adminOfferError = ref("");
+const adminOfferSaving = ref(false);
 const editingBidId = ref(null);
 const editBidAmount = ref("");
 const editBidQuantity = ref(1);
@@ -96,6 +102,8 @@ const pendingOffers = computed(() => {
     if (!auction.value?.leftover_price_offers) return [];
     return auction.value.leftover_price_offers.filter((o) => o.status === "pending");
 });
+
+const allOffers = computed(() => auction.value?.leftover_price_offers ?? []);
 
 const hasLeftoversAvailable = computed(() => hasAvailableLeftovers(auction.value));
 
@@ -382,6 +390,47 @@ async function rejectPriceOffer(offer) {
         notify?.("Offer rejected.", "success");
     } catch (e) {
         notify?.(e.data?.message || "Failed to reject offer.", "error");
+    }
+}
+
+async function submitAdminOffer() {
+    adminOfferError.value = "";
+    adminOfferSaving.value = true;
+    try {
+        const data = await api(`/admin/auctions/${props.id}/leftover-price-offers`, {
+            method: "POST",
+            body: JSON.stringify({
+                username: adminOfferUsername.value,
+                quantity: Number(adminOfferQuantity.value),
+                offered_price_per_item: Number(adminOfferPrice.value),
+            }),
+        });
+        updateAuction(data.auction);
+        showAdminOfferForm.value = false;
+        adminOfferUsername.value = "";
+        adminOfferQuantity.value = 1;
+        adminOfferPrice.value = "";
+        notify?.("Offer added.", "success");
+    } catch (e) {
+        adminOfferError.value =
+            e.data?.message ||
+            e.data?.errors?.username?.[0] ||
+            e.data?.errors?.quantity?.[0] ||
+            e.data?.errors?.offered_price_per_item?.[0] ||
+            "Failed to add offer.";
+    } finally {
+        adminOfferSaving.value = false;
+    }
+}
+
+async function deletePriceOffer(offer) {
+    if (!confirm(`Delete offer from ${offer.user.username}?`)) return;
+    try {
+        const data = await api(`/admin/leftover-price-offers/${offer.id}`, { method: "DELETE" });
+        updateAuction(data.auction);
+        notify?.("Offer deleted.", "success");
+    } catch (e) {
+        notify?.(e.data?.message || "Failed to delete offer.", "error");
     }
 }
 
@@ -1303,17 +1352,101 @@ watchEffect(() => {
                         </div>
                     </template>
 
+                    <!-- Admin: add price offer as another user -->
+                    <div
+                        v-else-if="hasLeftoversAvailable && user?.is_admin"
+                        class="mt-4 border-t dark:border-gray-700 pt-4"
+                    >
+                        <div class="flex items-center justify-between mb-2">
+                            <p
+                                class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
+                            >
+                                Admin — Add price offer
+                            </p>
+                            <button
+                                @click="
+                                    showAdminOfferForm = !showAdminOfferForm;
+                                    if (showAdminOfferForm) loadUsers();
+                                    adminOfferError = '';
+                                "
+                                class="text-xs border rounded px-2 py-1"
+                                :class="
+                                    showAdminOfferForm
+                                        ? 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                                        : 'border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
+                                "
+                            >
+                                {{ showAdminOfferForm ? "Cancel" : "+ Add offer" }}
+                            </button>
+                        </div>
+                        <div
+                            v-if="adminOfferError"
+                            class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-2 rounded text-sm mb-3"
+                        >
+                            {{ adminOfferError }}
+                        </div>
+                        <form
+                            v-if="showAdminOfferForm"
+                            @submit.prevent="submitAdminOffer"
+                            class="flex flex-wrap gap-3 items-end"
+                        >
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                    >Username</label
+                                >
+                                <select
+                                    v-model="adminOfferUsername"
+                                    required
+                                    class="border rounded px-3 py-2 w-40 dark:bg-gray-700 dark:border-gray-600"
+                                >
+                                    <option value="" disabled>Select user</option>
+                                    <option v-for="u in allUsers" :key="u.id" :value="u.username">
+                                        {{ u.username }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                    >Qty (max {{ auction.leftover_quantity }})</label
+                                >
+                                <input
+                                    v-model="adminOfferQuantity"
+                                    type="number"
+                                    min="1"
+                                    :max="auction.leftover_quantity"
+                                    required
+                                    class="border rounded px-3 py-2 w-20 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                    >Price/item (max {{ currencySymbol
+                                    }}{{ priceOfferLimit }})</label
+                                >
+                                <input
+                                    v-model="adminOfferPrice"
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    :max="priceOfferLimit"
+                                    required
+                                    class="border rounded px-3 py-2 w-28 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                :disabled="adminOfferSaving"
+                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60 text-sm"
+                            >
+                                {{ adminOfferSaving ? "Saving..." : "Add" }}
+                            </button>
+                        </form>
+                    </div>
                     <div
                         v-else-if="hasLeftoversAvailable && isSeller"
                         class="mt-4 rounded-lg bg-gray-50 dark:bg-gray-700/60 p-4 text-sm text-gray-500 dark:text-gray-400"
                     >
                         You cannot purchase leftovers from your own auction.
-                    </div>
-                    <div
-                        v-else-if="hasLeftoversAvailable && user?.is_admin"
-                        class="mt-4 rounded-lg bg-gray-50 dark:bg-gray-700/60 p-4 text-sm text-gray-500 dark:text-gray-400"
-                    >
-                        Review offers or add purchases below.
                     </div>
                     <div
                         v-else-if="hasLeftoversAvailable"
@@ -1393,9 +1526,9 @@ watchEffect(() => {
                         </ul>
                     </div>
 
-                    <!-- Admin: pending price offers -->
+                    <!-- Admin: all price offers -->
                     <div
-                        v-if="user?.is_admin && pendingOffers.length > 0"
+                        v-if="user?.is_admin && allOffers.length > 0"
                         class="border-t dark:border-gray-700 pt-6 mt-6"
                     >
                         <p
@@ -1405,12 +1538,25 @@ watchEffect(() => {
                         </p>
                         <ul class="divide-y dark:divide-gray-700">
                             <li
-                                v-for="offer in pendingOffers"
+                                v-for="offer in allOffers"
                                 :key="offer.id"
                                 class="py-3 flex items-center justify-between gap-2"
                             >
-                                <div class="flex items-center gap-2 text-sm">
+                                <div class="flex items-center gap-2 text-sm flex-wrap">
                                     <span class="font-medium">{{ offer.user.username }}</span>
+                                    <span
+                                        class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize"
+                                        :class="{
+                                            'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300':
+                                                offer.status === 'pending',
+                                            'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300':
+                                                offer.status === 'accepted',
+                                            'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300':
+                                                offer.status === 'rejected',
+                                        }"
+                                    >
+                                        {{ offer.status }}
+                                    </span>
                                     <span class="text-xs text-gray-400 dark:text-gray-500">{{
                                         formatDate(offer.created_at)
                                     }}</span>
@@ -1422,17 +1568,38 @@ watchEffect(() => {
                                         {{ offer.quantity }} × {{ currencySymbol
                                         }}{{ Number(offer.offered_price_per_item).toFixed(2) }}
                                     </span>
+                                    <template v-if="offer.status === 'pending'">
+                                        <button
+                                            @click="acceptPriceOffer(offer)"
+                                            class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                                        >
+                                            Accept
+                                        </button>
+                                        <button
+                                            @click="rejectPriceOffer(offer)"
+                                            class="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                                        >
+                                            Reject
+                                        </button>
+                                    </template>
                                     <button
-                                        @click="acceptPriceOffer(offer)"
-                                        class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                                        @click="deletePriceOffer(offer)"
+                                        class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 ml-1"
+                                        title="Delete offer"
                                     >
-                                        Accept
-                                    </button>
-                                    <button
-                                        @click="rejectPriceOffer(offer)"
-                                        class="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
-                                    >
-                                        Reject
+                                        <svg
+                                            class="w-3.5 h-3.5 inline"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                            />
+                                        </svg>
                                     </button>
                                 </div>
                             </li>

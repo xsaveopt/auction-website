@@ -29,6 +29,7 @@ export function presencePayload(route) {
         client_id: getStorageValue(window.localStorage, CLIENT_STORAGE_KEY),
         page_id: getStorageValue(window.sessionStorage, PAGE_STORAGE_KEY),
         page_type: "page",
+        path: route.path,
     };
 
     if (route.path === "/") {

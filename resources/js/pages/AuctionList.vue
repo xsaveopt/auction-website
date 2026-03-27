@@ -123,12 +123,21 @@ onMounted(async () => {
 });
 
 const showSoldOut = ref(false);
+const selectedLocation = ref(null);
 
 function shouldHideEnded(auction) {
     return !auction.is_active && !(auction.leftover_enabled && auction.leftover_quantity > 0);
 }
 
 const hiddenEndedCount = computed(() => auctions.value.filter((a) => shouldHideEnded(a)).length);
+
+const availableLocations = computed(() => {
+    const locs = new Set();
+    for (const auction of auctions.value) {
+        if (auction.location) locs.add(auction.location);
+    }
+    return [...locs].sort();
+});
 
 const groupedAuctions = computed(() => {
     const groups = [];
@@ -149,6 +158,7 @@ const groupedAuctions = computed(() => {
 
     for (const auction of auctions.value) {
         if (!showSoldOut.value && shouldHideEnded(auction)) continue;
+        if (selectedLocation.value && auction.location !== selectedLocation.value) continue;
         if (auction.category_id && categoryMap.has(auction.category_id)) {
             categoryMap.get(auction.category_id).auctions.push(auction);
         } else {
@@ -288,14 +298,15 @@ function timeLeft(endsAt) {
                 </div>
             </div>
 
-            <!-- Toolbar: admin announcement link (left) + ended toggle (right) -->
+            <!-- Toolbar: admin announcement link (left) + filters (right) -->
             <div
+                class="mb-4 flex items-center justify-between gap-3 flex-wrap"
                 v-if="
                     (!announcement && !editingAnnouncement && user?.is_admin) ||
                     hiddenEndedCount > 0 ||
-                    showSoldOut
+                    showSoldOut ||
+                    availableLocations.length > 0
                 "
-                class="mb-4 flex items-center justify-between"
             >
                 <button
                     v-if="!announcement && !editingAnnouncement && user?.is_admin"
@@ -314,14 +325,27 @@ function timeLeft(endsAt) {
                 </button>
                 <span v-else />
 
-                <button
-                    v-if="hiddenEndedCount > 0 || showSoldOut"
-                    @click="showSoldOut = !showSoldOut"
-                    class="ml-auto text-sm font-medium border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                    <span v-if="!showSoldOut">Show {{ hiddenEndedCount }} ended</span>
-                    <span v-else>Hide ended</span>
-                </button>
+                <div class="flex items-center gap-2 ml-auto flex-wrap">
+                    <select
+                        v-if="availableLocations.length > 0"
+                        v-model="selectedLocation"
+                        class="text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option :value="null">All locations</option>
+                        <option v-for="loc in availableLocations" :key="loc" :value="loc">
+                            {{ loc }}
+                        </option>
+                    </select>
+
+                    <button
+                        v-if="hiddenEndedCount > 0 || showSoldOut"
+                        @click="showSoldOut = !showSoldOut"
+                        class="text-sm font-medium border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                        <span v-if="!showSoldOut">Show {{ hiddenEndedCount }} ended</span>
+                        <span v-else>Hide ended</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Auction groups by category — 3-column pane layout -->

@@ -22,6 +22,7 @@ class PresenceControllerTest extends TestCase
                 'page_id' => 'home-page',
                 'client_id' => 'client-1',
                 'page_type' => 'home',
+                'path' => '/',
             ])
             ->assertOk()
             ->assertJsonPath('auction_updates.0.id', $auction->id)
@@ -41,6 +42,7 @@ class PresenceControllerTest extends TestCase
                 'page_id' => 'auction-page',
                 'client_id' => 'client-2',
                 'page_type' => 'auction',
+                'path' => '/auctions/1',
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('auction_id');
@@ -56,6 +58,7 @@ class PresenceControllerTest extends TestCase
                 'page_id' => 'auction-page',
                 'client_id' => 'client-3',
                 'page_type' => 'auction',
+                'path' => "/auctions/{$auction->id}",
                 'auction_id' => $auction->id,
             ])
             ->assertOk()
@@ -73,6 +76,7 @@ class PresenceControllerTest extends TestCase
                 'page_id' => 'generic-page',
                 'client_id' => 'client-4',
                 'page_type' => 'page',
+                'path' => '/my-dashboard',
             ])
             ->assertOk()
             ->assertExactJson([]);

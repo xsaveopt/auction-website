@@ -13,6 +13,7 @@ const { notify } = useNotifications();
 const {
     pushSupported,
     pushEnabled,
+    pushStateKnown,
     browserPermission,
     registerPushServiceWorker,
     refreshPushSubscriptionState,
@@ -460,28 +461,20 @@ provide("notify", notify);
                         title="Server time"
                         >{{ serverClock }}</span
                     >
+                    <!-- Notifications enabled: subtle icon-only bell -->
                     <button
-                        v-if="notificationsSupported && user && !user.is_admin"
+                        v-if="
+                            notificationsSupported &&
+                            user &&
+                            !user.is_admin &&
+                            pushStateKnown &&
+                            pushEnabled
+                        "
                         @click="handleNotificationBell"
-                        :disabled="browserPermission === 'denied'"
-                        class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:cursor-default"
-                        :class="
-                            pushEnabled
-                                ? 'text-green-500 dark:text-green-400'
-                                : 'text-gray-500 dark:text-gray-400'
-                        "
-                        :title="
-                            pushEnabled
-                                ? 'Browser notifications enabled'
-                                : browserPermission === 'denied'
-                                  ? 'Notifications blocked — enable in browser settings'
-                                  : browserPermission === 'granted'
-                                    ? 'Finish enabling browser notifications'
-                                    : 'Enable browser notifications'
-                        "
+                        class="p-1.5 rounded-lg text-green-500 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        title="Browser notifications enabled"
                     >
                         <svg
-                            v-if="browserPermission !== 'denied'"
                             class="w-4 h-4"
                             fill="none"
                             stroke="currentColor"
@@ -494,8 +487,21 @@ provide("notify", notify);
                                 d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                             />
                         </svg>
+                    </button>
+                    <!-- Notifications blocked: muted icon with tooltip -->
+                    <button
+                        v-else-if="
+                            notificationsSupported &&
+                            user &&
+                            !user.is_admin &&
+                            pushStateKnown &&
+                            browserPermission === 'denied'
+                        "
+                        disabled
+                        class="p-1.5 rounded-lg text-gray-400 dark:text-gray-600 cursor-default"
+                        title="Notifications blocked — enable in browser settings"
+                    >
                         <svg
-                            v-else
                             class="w-4 h-4 opacity-40"
                             fill="none"
                             stroke="currentColor"
@@ -509,6 +515,30 @@ provide("notify", notify);
                             />
                             <line x1="2" y1="2" x2="22" y2="22" stroke-linecap="round" />
                         </svg>
+                    </button>
+                    <!-- Notifications not yet enabled: prominent button with text -->
+                    <button
+                        v-else-if="
+                            notificationsSupported && user && !user.is_admin && pushStateKnown
+                        "
+                        @click="handleNotificationBell"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                        title="Enable push notifications"
+                    >
+                        <svg
+                            class="w-4 h-4 shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                            />
+                        </svg>
+                        <span class="hidden sm:inline">Enable notifications</span>
                     </button>
                     <button
                         @click="toggleTheme"

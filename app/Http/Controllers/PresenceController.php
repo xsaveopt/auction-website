@@ -18,11 +18,12 @@ class PresenceController extends Controller
 
     public function heartbeat(Request $request): JsonResponse
     {
-        /** @var array{page_id: string, client_id: string, page_type: string, auction_id?: int} $validated */
+        /** @var array{page_id: string, client_id: string, page_type: string, path: string, auction_id?: int} $validated */
         $validated = $request->validate([
             'page_id' => ['required', 'string', 'max:100'],
             'client_id' => ['required', 'string', 'max:100'],
             'page_type' => ['required', 'string', Rule::in(['page', 'home', 'auction'])],
+            'path' => ['required', 'string', 'max:500'],
             'auction_id' => ['nullable', 'integer', 'exists:auctions,id'],
         ]);
 
@@ -43,6 +44,7 @@ class PresenceController extends Controller
             pageId: $validated['page_id'],
             clientId: $validated['client_id'],
             pageType: $validated['page_type'],
+            path: $validated['path'],
             auctionId: $auctionId,
             userId: $userId,
         );

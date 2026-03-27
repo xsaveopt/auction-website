@@ -76,6 +76,19 @@ async function reject(offer) {
         processingId.value = null;
     }
 }
+
+async function deleteOffer(offer) {
+    processingId.value = offer.id;
+    error.value = "";
+    try {
+        await api(`/admin/leftover-price-offers/${offer.id}`, { method: "DELETE" });
+        offers.value = offers.value.filter((o) => o.id !== offer.id);
+    } catch (e) {
+        error.value = e.data?.message || "Failed to delete offer.";
+    } finally {
+        processingId.value = null;
+    }
+}
 </script>
 
 <template>
@@ -122,6 +135,17 @@ async function reject(offer) {
                                     {{ offer.quantity }} × {{ currencySymbol
                                     }}{{ Number(offer.offered_price_per_item).toFixed(2) }}
                                 </span>
+                                <span
+                                    v-if="offer.quantity > 1"
+                                    class="text-gray-400 dark:text-gray-500"
+                                >
+                                    = {{ currencySymbol
+                                    }}{{
+                                        (
+                                            offer.quantity * Number(offer.offered_price_per_item)
+                                        ).toFixed(2)
+                                    }}
+                                </span>
                             </p>
                             <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                                 {{ formatDate(offer.created_at) }}
@@ -141,6 +165,13 @@ async function reject(offer) {
                                 class="text-sm bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white px-3 py-1.5 rounded"
                             >
                                 Reject
+                            </button>
+                            <button
+                                @click="deleteOffer(offer)"
+                                :disabled="processingId === offer.id"
+                                class="text-sm bg-gray-400 hover:bg-gray-500 disabled:opacity-50 text-white px-3 py-1.5 rounded"
+                            >
+                                Delete
                             </button>
                         </div>
                     </div>

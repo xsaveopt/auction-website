@@ -6,6 +6,7 @@ use App\Models\Auction;
 use App\Models\AuditLog;
 use App\Models\LeftoverPurchase;
 use App\Support\AuctionFinalizationService;
+use App\Support\AuctionNotificationService;
 use App\Support\AuctionService;
 use App\Support\Presence;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,7 @@ class AuctionController extends Controller
     public function __construct(
         protected AuctionService $auctionService,
         protected AuctionFinalizationService $auctionFinalizationService,
+        protected AuctionNotificationService $auctionNotificationService,
     ) {}
 
     public function index(): JsonResponse
@@ -258,6 +260,8 @@ class AuctionController extends Controller
             'quantity' => $auction->quantity,
             'ends_at' => $auction->ends_at->toISOString(),
         ]);
+
+        $this->auctionNotificationService->sendNewAuctionNotification($auction);
 
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction)], 201);
     }

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Auction;
 use App\Models\AuctionQuestion;
 use App\Models\Bid;
+use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
+use App\Models\PushSubscription;
 use App\Models\User;
 use App\Support\AuctionService;
 use App\Support\Presence;
@@ -63,6 +65,16 @@ class MetricsController extends Controller
             'Number of unanswered auction questions',
             AuctionQuestion::whereNull('answer')->count(),
         );
+        $prometheus->registerGauge(
+            'price_offers_pending',
+            'Number of pending leftover price offers',
+            LeftoverPriceOffer::where('status', 'pending')->count(),
+        );
+        $prometheus->registerGauge(
+            'push_subscriptions',
+            'Number of users with active browser push notification subscriptions',
+            PushSubscription::query()->distinct('user_id')->count('user_id'),
+        );
 
         $output = $prometheus->renderMetrics();
 
@@ -72,8 +84,17 @@ class MetricsController extends Controller
         $output .= "# TYPE app_online_user_last_seen gauge\n";
         foreach ($onlineUserDetails as $detail) {
             $username = self::escapeLabel($detail['username']);
-            $pageType = self::escapeLabel($detail['page_type']);
-            $output .= "app_online_user_last_seen{username=\"{$username}\",page_type=\"{$pageType}\"} {$detail['last_seen_at']}\n";
+            $path = self::escapeLabel($detail['path']);
+            $output .= "app_online_user_last_seen{username=\"{$username}\",path=\"{$path}\"} {$detail['last_seen_at']}\n";
+        }
+
+        // Total unique viewers per auction (all-time)
+        $auctionViews = Presence::totalViewsByAuction();
+        $output .= "# HELP app_auction_total_views Total unique viewers per auction (all-time)\n";
+        $output .= "# TYPE app_auction_total_views gauge\n";
+        foreach ($auctionViews as $row) {
+            $title = self::escapeLabel($row['title']);
+            $output .= "app_auction_total_views{auction=\"{$title}\"} {$row['view_count']}\n";
         }
 
         // Recent user signups (last 25)
@@ -115,6 +136,26 @@ class MetricsController extends Controller
             $ts = ($purchase->created_at?->getTimestamp() ?? 0) * 1000;
             $type = $purchase->leftover_price_offer_id !== null ? 'price_offer' : 'buy';
             $output .= "app_auction_bid_info{auction=\"{$auctionTitle}\",username=\"{$username}\",amount=\"{$amount}\",quantity=\"{$qty}\",type=\"{$type}\"} {$ts}\n";
+        }
+
+        // Pending price offers
+        $pendingOffers = LeftoverPriceOffer::with(['auction:id,title', 'user:id,username'])->where(
+            'status',
+            'pending',
+        )->get();
+        $output .= "# HELP app_price_offer_info Pending price offer info, value is timestamp in milliseconds\n";
+        $output .= "# TYPE app_price_offer_info gauge\n";
+        foreach ($pendingOffers as $offer) {
+            /** @var Auction $offerAuction */
+            $offerAuction = $offer->auction;
+            /** @var User $offerUser */
+            $offerUser = $offer->user;
+            $auctionTitle = self::escapeLabel($offerAuction->title);
+            $username = self::escapeLabel($offerUser->username);
+            $amount = number_format((float) $offer->offered_price_per_item, 2, '.', '');
+            $qty = $offer->quantity;
+            $ts = ($offer->created_at?->getTimestamp() ?? 0) * 1000;
+            $output .= "app_price_offer_info{auction=\"{$auctionTitle}\",username=\"{$username}\",amount=\"{$amount}\",quantity=\"{$qty}\"} {$ts}\n";
         }
 
         return new Response($output, 200, ['Content-Type' => RenderTextFormat::MIME_TYPE]);

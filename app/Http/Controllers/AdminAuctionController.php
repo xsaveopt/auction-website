@@ -48,6 +48,7 @@ class AdminAuctionController extends Controller
 
         $auction->status = 'active';
         $auction->ends_at = Carbon::parse($validated['ends_at']);
+        $auction->ending_soon_notified = false;
         $auction->save();
 
         /** @var \App\Models\User $admin */
@@ -68,6 +69,7 @@ class AdminAuctionController extends Controller
         ]);
 
         $auction->ends_at = Carbon::parse($validated['ends_at']);
+        $auction->ending_soon_notified = false;
         $auction->save();
 
         /** @var \App\Models\User $admin */
