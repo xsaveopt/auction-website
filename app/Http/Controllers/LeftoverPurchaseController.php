@@ -34,10 +34,6 @@ class LeftoverPurchaseController extends Controller
             return response()->json(['message' => 'You cannot purchase from your own auction.'], 403);
         }
 
-        if ($auction->leftoverPurchases()->where('user_id', $user->id)->exists()) {
-            return response()->json(['message' => 'You have already purchased leftover items from this auction.'], 422);
-        }
-
         $auction->load(['bids', 'leftoverPurchases']);
         $allocation = $this->auctionService->allocate($auction);
         $itemsAllocated = array_sum($allocation['allocations']);
@@ -57,13 +53,19 @@ class LeftoverPurchaseController extends Controller
         $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
         $pricePerItem = round((float) $auction->starting_price * $leftoverPriceFactor, 2);
 
-        $auction
-            ->leftoverPurchases()
-            ->create([
-                'user_id' => $user->id,
-                'quantity' => $validated['quantity'],
-                'price_per_item' => $pricePerItem,
-            ]);
+        $existing = $auction->leftoverPurchases()->where('user_id', $user->id)->first();
+
+        if ($existing) {
+            $existing->update(['quantity' => $existing->quantity + $validated['quantity']]);
+        } else {
+            $auction
+                ->leftoverPurchases()
+                ->create([
+                    'user_id' => $user->id,
+                    'quantity' => $validated['quantity'],
+                    'price_per_item' => $pricePerItem,
+                ]);
+        }
 
         $this->auctionService->closePendingOffersIfSoldOut($auction);
 

@@ -1172,13 +1172,13 @@ watchEffect(() => {
                                 }}
                             </p>
                         </div>
-                        <div v-else class="mt-4 grid gap-4 lg:grid-cols-2">
+                        <div class="mt-4 grid gap-4 lg:grid-cols-2">
                             <div
                                 class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4"
                             >
                                 <div>
                                     <h3 class="font-semibold text-gray-900 dark:text-gray-100">
-                                        Buy now
+                                        {{ myLeftoverPurchase ? "Buy more" : "Buy now" }}
                                     </h3>
                                 </div>
 
@@ -1224,7 +1224,13 @@ watchEffect(() => {
                                         class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-60"
                                         :disabled="buyingLeftover"
                                     >
-                                        {{ buyingLeftover ? "Buying..." : "Buy now" }}
+                                        {{
+                                            buyingLeftover
+                                                ? "Buying..."
+                                                : myLeftoverPurchase
+                                                  ? "Buy more"
+                                                  : "Buy now"
+                                        }}
                                     </button>
                                 </form>
                             </div>

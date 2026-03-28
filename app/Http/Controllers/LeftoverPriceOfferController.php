@@ -76,10 +76,6 @@ class LeftoverPriceOfferController extends Controller
             return response()->json(['message' => 'You cannot make an offer on your own auction.'], 403);
         }
 
-        if ($auction->leftoverPurchases()->where('user_id', $user->id)->exists()) {
-            return response()->json(['message' => 'You have already purchased leftover items from this auction.'], 422);
-        }
-
         if ($auction->leftoverPriceOffers()->where('user_id', $user->id)->exists()) {
             return response()->json(['message' => 'You have already submitted a price offer for this auction.'], 422);
         }

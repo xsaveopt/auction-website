@@ -11,7 +11,7 @@ class LeftoverPurchaseControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_can_buy_leftover_items_once_when_sales_are_enabled(): void
+    public function test_user_can_add_more_leftover_purchases_when_sales_are_enabled(): void
     {
         config(['auction.leftover_sales_enabled' => true]);
 
@@ -19,7 +19,7 @@ class LeftoverPurchaseControllerTest extends TestCase
         $buyer = $this->createUser();
         $auction = $this->createAuction($seller, [
             'starting_price' => '10.00',
-            'quantity' => 3,
+            'quantity' => 4,
             'status' => 'ended',
             'ends_at' => now()->subHour(),
         ]);
@@ -41,15 +41,22 @@ class LeftoverPurchaseControllerTest extends TestCase
             ->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
                 'quantity' => 1,
             ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'You have already purchased leftover items from this auction.');
+            ->assertCreated()
+            ->assertJsonPath('auction.leftover_purchases.0.quantity', 3);
 
         $this->assertDatabaseHas('leftover_purchases', [
             'auction_id' => $auction->id,
             'user_id' => $buyer->id,
-            'quantity' => 2,
+            'quantity' => 3,
             'price_per_item' => '7.50',
         ]);
+        $this->assertSame(
+            1,
+            LeftoverPurchase::query()
+                ->where('auction_id', $auction->id)
+                ->where('user_id', $buyer->id)
+                ->count(),
+        );
     }
 
     public function test_admin_leftover_purchases_merge_for_the_same_buyer_and_can_be_deleted(): void
