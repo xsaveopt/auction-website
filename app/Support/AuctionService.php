@@ -202,13 +202,7 @@ class AuctionService
             });
 
             if ($auction->relationLoaded('leftoverPurchases')) {
-                $data['leftover_purchases'] = $auction->leftoverPurchases->map(function (LeftoverPurchase $purchase) use (
-                    $currentUser,
-                    $isAdmin,
-                ) {
-                    $isOwner = $currentUser && $purchase->user_id === $currentUser->id;
-                    $username = $isAdmin || $isOwner ? $purchase->user?->username : "User #{$purchase->user_id}";
-
+                $data['leftover_purchases'] = $auction->leftoverPurchases->map(function (LeftoverPurchase $purchase) {
                     return [
                         'id' => $purchase->id,
                         'quantity' => $purchase->quantity,
@@ -216,7 +210,7 @@ class AuctionService
                         'from_price_offer' => $purchase->leftover_price_offer_id !== null,
                         'user' => [
                             'id' => $purchase->user?->id,
-                            'username' => $username,
+                            'username' => $purchase->user?->username,
                         ],
                         'created_at' => $purchase->created_at?->format('Y-m-d\TH:i:sP'),
                     ];
