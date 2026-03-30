@@ -87,6 +87,10 @@ function leftoverQuoteUrl(auctionId, purchaseId) {
     return `/api/auctions/${auctionId}/leftover-purchases/${purchaseId}/quotes`;
 }
 
+function priceOfferQuoteUrl(auctionId, offerId) {
+    return `/api/auctions/${auctionId}/leftover-price-offers/${offerId}/quotes`;
+}
+
 function downloadAllQuotes(auction) {
     for (const bid of winners(auction)) {
         window.open(quoteUrl(auction.id, bid.id), "_blank");
@@ -177,6 +181,36 @@ const userSummaries = computed(() => {
             entry.totalItems += purchase.quantity;
             entry.totalOwed += owed;
         }
+
+        for (const offer of (auction.leftover_price_offers ?? []).filter(
+            (o) => o.status === "accepted",
+        )) {
+            const username = offer.user.username;
+            if (!map.has(username)) {
+                map.set(username, {
+                    username,
+                    userId: offer.user.id,
+                    items: [],
+                    totalItems: 0,
+                    totalOwed: 0,
+                });
+            }
+            const entry = map.get(username);
+            const owed = offer.quantity * Number(offer.offered_price_per_item);
+            entry.items.push({
+                auctionId: auction.id,
+                auctionTitle: auction.title,
+                auctionImages: auction.images,
+                wonQuantity: offer.quantity,
+                totalOwed: owed,
+                bidId: null,
+                offerId: offer.id,
+                isLeftover: true,
+                fromPriceOffer: true,
+            });
+            entry.totalItems += offer.quantity;
+            entry.totalOwed += owed;
+        }
     }
 
     return [...map.values()].sort((a, b) => b.totalOwed - a.totalOwed);
@@ -184,7 +218,10 @@ const userSummaries = computed(() => {
 
 const auctionsWithSales = computed(() => {
     return auctions.value.filter(
-        (a) => winners(a).length > 0 || (a.leftover_purchases?.length ?? 0) > 0,
+        (a) =>
+            winners(a).length > 0 ||
+            (a.leftover_purchases?.length ?? 0) > 0 ||
+            (a.leftover_price_offers ?? []).some((o) => o.status === "accepted"),
     );
 });
 
@@ -525,7 +562,15 @@ const statsCards = computed(() => {
                             </div>
                         </div>
 
-                        <div v-if="auction.leftover_purchases?.length > 0" class="mt-4">
+                        <div
+                            v-if="
+                                auction.leftover_purchases?.length > 0 ||
+                                (auction.leftover_price_offers ?? []).some(
+                                    (o) => o.status === 'accepted',
+                                )
+                            "
+                            class="mt-4"
+                        >
                             <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                                 Leftover purchases
                             </h3>
@@ -545,18 +590,14 @@ const statsCards = computed(() => {
                                 <tbody>
                                     <tr
                                         v-for="purchase in auction.leftover_purchases"
-                                        :key="purchase.id"
+                                        :key="`purchase-${purchase.id}`"
                                         class="border-b dark:border-gray-700 last:border-0"
                                     >
                                         <td class="py-2 font-medium">
                                             {{ purchase.user.username }}
                                         </td>
                                         <td class="py-2 text-gray-500 dark:text-gray-400">
-                                            {{
-                                                purchase.from_price_offer
-                                                    ? "Price offer"
-                                                    : "Leftover buy"
-                                            }}
+                                            Leftover buy
                                         </td>
                                         <td class="py-2">{{ purchase.quantity }}</td>
                                         <td class="py-2">
@@ -597,30 +638,96 @@ const statsCards = computed(() => {
                                             </a>
                                         </td>
                                     </tr>
+                                    <tr
+                                        v-for="offer in (
+                                            auction.leftover_price_offers ?? []
+                                        ).filter((o) => o.status === 'accepted')"
+                                        :key="`offer-${offer.id}`"
+                                        class="border-b dark:border-gray-700 last:border-0"
+                                    >
+                                        <td class="py-2 font-medium">
+                                            {{ offer.user.username }}
+                                        </td>
+                                        <td class="py-2 text-gray-500 dark:text-gray-400">
+                                            Price offer
+                                        </td>
+                                        <td class="py-2">{{ offer.quantity }}</td>
+                                        <td class="py-2">
+                                            {{ currencySymbol
+                                            }}{{ Number(offer.offered_price_per_item).toFixed(2) }}
+                                        </td>
+                                        <td
+                                            class="py-2 text-right font-bold text-green-700 dark:text-green-400"
+                                        >
+                                            {{ currencySymbol
+                                            }}{{
+                                                (
+                                                    offer.quantity *
+                                                    Number(offer.offered_price_per_item)
+                                                ).toFixed(2)
+                                            }}
+                                        </td>
+                                        <td class="py-2 text-right">
+                                            <a
+                                                :href="priceOfferQuoteUrl(auction.id, offer.id)"
+                                                target="_blank"
+                                                class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                                                title="Download quote PDF"
+                                            >
+                                                <svg
+                                                    class="w-4 h-4 inline"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                    />
+                                                </svg>
+                                            </a>
+                                        </td>
+                                    </tr>
                                 </tbody>
                                 <tfoot>
                                     <tr class="text-gray-500 dark:text-gray-400">
                                         <td class="pt-2" colspan="3">Total</td>
                                         <td class="pt-2">
                                             {{
-                                                auction.leftover_purchases.reduce(
+                                                (auction.leftover_purchases ?? []).reduce(
                                                     (s, p) => s + p.quantity,
                                                     0,
-                                                )
+                                                ) +
+                                                (auction.leftover_price_offers ?? [])
+                                                    .filter((o) => o.status === "accepted")
+                                                    .reduce((s, o) => s + o.quantity, 0)
                                             }}
                                             items
                                         </td>
                                         <td class="pt-2 text-right font-bold">
                                             {{ currencySymbol
                                             }}{{
-                                                auction.leftover_purchases
-                                                    .reduce(
+                                                (
+                                                    (auction.leftover_purchases ?? []).reduce(
                                                         (s, p) =>
                                                             s +
                                                             p.quantity * Number(p.price_per_item),
                                                         0,
-                                                    )
-                                                    .toFixed(2)
+                                                    ) +
+                                                    (auction.leftover_price_offers ?? [])
+                                                        .filter((o) => o.status === "accepted")
+                                                        .reduce(
+                                                            (s, o) =>
+                                                                s +
+                                                                o.quantity *
+                                                                    Number(
+                                                                        o.offered_price_per_item,
+                                                                    ),
+                                                            0,
+                                                        )
+                                                ).toFixed(2)
                                             }}
                                         </td>
                                         <td></td>

@@ -201,7 +201,7 @@ class LeftoverPurchaseControllerTest extends TestCase
             ->assertJsonPath('message', 'No leftover items are available.');
     }
 
-    public function test_buying_last_leftover_item_soft_deletes_pending_price_offers(): void
+    public function test_buying_last_leftover_item_rejects_pending_price_offers(): void
     {
         config(['auction.leftover_sales_enabled' => true]);
 
@@ -226,7 +226,7 @@ class LeftoverPurchaseControllerTest extends TestCase
             ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 1])
             ->assertCreated();
 
-        $this->assertSoftDeleted('leftover_price_offers', ['id' => $offer->id]);
+        $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer->id, 'status' => 'rejected']);
     }
 
     public function test_buying_some_but_not_all_leftover_items_keeps_pending_price_offers(): void
@@ -253,10 +253,10 @@ class LeftoverPurchaseControllerTest extends TestCase
             ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 2])
             ->assertCreated();
 
-        $this->assertNotSoftDeleted('leftover_price_offers', ['id' => $offer->id]);
+        $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer->id, 'status' => 'pending']);
     }
 
-    public function test_admin_buying_last_leftover_item_soft_deletes_pending_price_offers(): void
+    public function test_admin_buying_last_leftover_item_rejects_pending_price_offers(): void
     {
         $admin = $this->createAdmin();
         $buyer = $this->createUser();
@@ -280,7 +280,7 @@ class LeftoverPurchaseControllerTest extends TestCase
             ])
             ->assertCreated();
 
-        $this->assertSoftDeleted('leftover_price_offers', ['id' => $offer->id]);
+        $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer->id, 'status' => 'rejected']);
     }
 
     public function test_admin_leftover_purchases_cannot_exceed_available_quantity(): void

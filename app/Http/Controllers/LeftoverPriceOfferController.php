@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Auction;
 use App\Models\AuditLog;
 use App\Models\LeftoverPriceOffer;
-use App\Models\LeftoverPurchase;
 use App\Models\User;
 use App\Support\AuctionNotificationService;
 use App\Support\AuctionService;
@@ -85,7 +84,7 @@ class LeftoverPriceOfferController extends Controller
         $auction->load(['bids', 'leftoverPurchases']);
         $allocation = $this->auctionService->allocate($auction);
         $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+        $leftoverSold = $this->auctionService->leftoverSoldQuantity($auction);
         $available = (int) $auction->quantity - $itemsAllocated - $leftoverSold;
 
         if ($available <= 0) {
@@ -142,7 +141,7 @@ class LeftoverPriceOfferController extends Controller
 
         $allocation = $this->auctionService->allocate($auction);
         $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+        $leftoverSold = $this->auctionService->leftoverSoldQuantity($auction);
         $available = (int) $auction->quantity - $itemsAllocated - $leftoverSold;
 
         if ($available < $leftoverPriceOffer->quantity) {
@@ -150,19 +149,6 @@ class LeftoverPriceOfferController extends Controller
                 'message' => "Only {$available} item(s) available; cannot fulfil this offer.",
             ], 422);
         }
-
-        if ($auction->leftoverPurchases()->where('user_id', $leftoverPriceOffer->user_id)->exists()) {
-            return response()->json(['message' => 'This user already has a purchase for this auction.'], 422);
-        }
-
-        $purchase = $auction
-            ->leftoverPurchases()
-            ->create([
-                'user_id' => $leftoverPriceOffer->user_id,
-                'leftover_price_offer_id' => $leftoverPriceOffer->id,
-                'quantity' => $leftoverPriceOffer->quantity,
-                'price_per_item' => $leftoverPriceOffer->offered_price_per_item,
-            ]);
 
         $leftoverPriceOffer->update(['status' => 'accepted']);
 
@@ -172,7 +158,7 @@ class LeftoverPriceOfferController extends Controller
 
         /** @var \App\Models\User $admin */
         $admin = $request->user();
-        AuditLog::record($admin, 'leftover_price_offer.accept', $purchase, [
+        AuditLog::record($admin, 'leftover_price_offer.accept', $leftoverPriceOffer, [
             'auction_id' => $auction->id,
             'auction_title' => $auction->title,
             'buyer' => $leftoverPriceOffer->user?->username,
@@ -224,7 +210,7 @@ class LeftoverPriceOfferController extends Controller
         $auction->load(['bids', 'leftoverPurchases']);
         $allocation = $this->auctionService->allocate($auction);
         $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+        $leftoverSold = $this->auctionService->leftoverSoldQuantity($auction);
         $available = (int) $auction->quantity - $itemsAllocated - $leftoverSold;
 
         if ($available <= 0) {

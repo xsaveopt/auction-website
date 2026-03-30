@@ -68,6 +68,7 @@ class AuctionController extends Controller
             'images',
             'category',
             'leftoverPurchases.user:id,username',
+            'leftoverPriceOffers.user:id,username',
         ])->get();
 
         $this->auctionService->loadWatcherCounts($allAuctions);
@@ -104,7 +105,7 @@ class AuctionController extends Controller
                 $soldQuantity = array_sum($allocations);
                 $soldItems += $soldQuantity;
 
-                $leftoverItemsSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+                $leftoverItemsSold = $this->auctionService->leftoverSoldQuantity($auction);
                 $soldItems += $leftoverItemsSold;
 
                 if ($soldQuantity > 0 || $leftoverItemsSold > 0) {
@@ -124,6 +125,9 @@ class AuctionController extends Controller
                         $leftoverRevenue = 0.0;
                         foreach ($auction->leftoverPurchases as $purchase) {
                             $leftoverRevenue += round($purchase->quantity * (float) $purchase->price_per_item, 2);
+                        }
+                        foreach ($auction->leftoverPriceOffers->where('status', 'accepted') as $offer) {
+                            $leftoverRevenue += round($offer->quantity * (float) $offer->offered_price_per_item, 2);
                         }
                         $revenueAfterTax += $leftoverRevenue;
                         $revenueBeforeTax += round($leftoverRevenue / $taxMultiplier, 2);
@@ -208,9 +212,16 @@ class AuctionController extends Controller
                 'images',
                 'category',
                 'leftoverPurchases.user:id,username',
+                'leftoverPriceOffers.user:id,username',
             ])
-            ->whereHas('leftoverPurchases', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            ->where(function ($q) use ($user) {
+                $q->whereHas('leftoverPurchases', fn($q) => $q->where(
+                    'user_id',
+                    $user->id,
+                ))->orWhereHas('leftoverPriceOffers', fn($q) => $q->where('user_id', $user->id)->where(
+                    'status',
+                    'accepted',
+                ));
             })
             ->get();
 

@@ -53,6 +53,7 @@ Route::middleware('sso')->group(function () {
     Route::get('/auctions/ended', [AuctionController::class, 'ended'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}/quotes/{bid}', [QuotePdfController::class, 'download'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}/leftover-purchases/{leftoverPurchase}/quotes', [QuotePdfController::class, 'downloadForLeftoverPurchase'])->middleware(['auth', 'admin']);
+    Route::get('/auctions/{auction}/leftover-price-offers/{leftoverPriceOffer}/quotes', [QuotePdfController::class, 'downloadForLeftoverPriceOffer'])->middleware(['auth', 'admin']);
     Route::get('/users/{user}/quotes', [QuotePdfController::class, 'downloadForUser'])->middleware(['auth', 'admin']);
     Route::get('/quotes/{filename}', [QuotePdfController::class, 'downloadStored'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}', [AuctionController::class, 'show']);

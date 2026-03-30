@@ -123,12 +123,7 @@ class AuctionService
         $prices = $result['prices'];
 
         $itemsAllocated = array_sum($allocations);
-        if ($auction->relationLoaded('leftoverPurchases')) {
-            $leftoverSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
-        } else {
-            /** @var int $leftoverSold */
-            $leftoverSold = $auction->leftoverPurchases()->sum('quantity');
-        }
+        $leftoverSold = $this->leftoverSoldQuantity($auction);
         $leftoverQuantity = max(0, (int) $auction->quantity - $itemsAllocated - $leftoverSold);
         /** @var float $leftoverPriceFactor */
         $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
@@ -268,19 +263,35 @@ class AuctionService
         return $data;
     }
 
+    public function leftoverSoldQuantity(Auction $auction): int
+    {
+        $fromPurchases = $auction->relationLoaded('leftoverPurchases')
+            ? (int) $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity)
+            : (int) $auction->leftoverPurchases()->sum('quantity');
+
+        $fromOffers = $auction->relationLoaded('leftoverPriceOffers')
+            ? (int) $auction
+                ->leftoverPriceOffers
+                ->where('status', 'accepted')
+                ->sum(fn(LeftoverPriceOffer $o) => $o->quantity)
+            : (int) $auction->leftoverPriceOffers()->where('status', 'accepted')->sum('quantity');
+
+        return $fromPurchases + $fromOffers;
+    }
+
     /**
-     * Soft-delete all pending price offers for an auction when no leftover stock remains.
+     * Reject all pending price offers for an auction when no leftover stock remains.
      */
     public function closePendingOffersIfSoldOut(Auction $auction): void
     {
         $auction->load(['bids', 'leftoverPurchases']);
         $allocation = $this->allocate($auction);
         $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+        $leftoverSold = $this->leftoverSoldQuantity($auction);
         $available = max(0, (int) $auction->quantity - $itemsAllocated - $leftoverSold);
 
         if ($available <= 0) {
-            $auction->leftoverPriceOffers()->where('status', 'pending')->delete();
+            $auction->leftoverPriceOffers()->where('status', 'pending')->update(['status' => 'rejected']);
         }
     }
 

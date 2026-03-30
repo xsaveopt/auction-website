@@ -10,7 +10,7 @@ class LeftoverPriceOfferControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_accepting_offer_that_exhausts_stock_soft_deletes_other_pending_offers(): void
+    public function test_accepting_offer_that_exhausts_stock_rejects_other_pending_offers(): void
     {
         config(['auction.leftover_sales_enabled' => true]);
 
@@ -45,8 +45,8 @@ class LeftoverPriceOfferControllerTest extends TestCase
         ]);
         $this->assertNotSoftDeleted('leftover_price_offers', ['id' => $offer1->id]);
 
-        // offer2 is soft-deleted because stock is gone
-        $this->assertSoftDeleted('leftover_price_offers', ['id' => $offer2->id]);
+        // offer2 is rejected because stock is gone
+        $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer2->id, 'status' => 'rejected']);
     }
 
     public function test_accepting_offer_that_leaves_remaining_stock_keeps_other_pending_offers(): void

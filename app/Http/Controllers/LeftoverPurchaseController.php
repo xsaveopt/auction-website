@@ -37,7 +37,7 @@ class LeftoverPurchaseController extends Controller
         $auction->load(['bids', 'leftoverPurchases']);
         $allocation = $this->auctionService->allocate($auction);
         $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+        $leftoverSold = $this->auctionService->leftoverSoldQuantity($auction);
         $available = (int) $auction->quantity - $itemsAllocated - $leftoverSold;
 
         if ($available <= 0) {
@@ -99,7 +99,7 @@ class LeftoverPurchaseController extends Controller
         $auction->load(['bids', 'leftoverPurchases']);
         $allocation = $this->auctionService->allocate($auction);
         $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity);
+        $leftoverSold = $this->auctionService->leftoverSoldQuantity($auction);
         $available = (int) $auction->quantity - $itemsAllocated - $leftoverSold;
 
         if ($available <= 0) {

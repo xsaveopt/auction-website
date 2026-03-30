@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Auction;
 use App\Models\Bid;
+use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
 use App\Models\User;
 use App\Support\AuctionService;
@@ -122,11 +123,68 @@ class QuotePdfController extends Controller
         return $pdf->download($filename);
     }
 
+    public function downloadForLeftoverPriceOffer(Auction $auction, LeftoverPriceOffer $leftoverPriceOffer): Response
+    {
+        abort_unless($leftoverPriceOffer->auction_id === $auction->id, 404);
+        abort_unless($leftoverPriceOffer->status === 'accepted', 404);
+
+        $leftoverPriceOffer->load('user:id,username,payment_reference');
+
+        $pricePerItem = (float) $leftoverPriceOffer->offered_price_per_item;
+        $totalOwed = round($leftoverPriceOffer->quantity * $pricePerItem, 2);
+
+        /** @var float $btwPercentage */
+        $btwPercentage = config('auction.invoice.btw_percentage');
+        $subtotal = round($totalOwed / (1 + ($btwPercentage / 100)), 2);
+        $btwAmount = round($totalOwed - $subtotal, 2);
+
+        $data = [
+            'winner' => [
+                'username' => $leftoverPriceOffer->user->username ?? 'Unknown',
+            ],
+            'items' => [
+                [
+                    'title' => $auction->title,
+                    'quantity' => $leftoverPriceOffer->quantity,
+                    'price_per_item' => $pricePerItem,
+                    'total' => $totalOwed,
+                ],
+            ],
+            'payment_reference' => $leftoverPriceOffer->user
+                ? $this->getOrCreatePaymentReference($leftoverPriceOffer->user)
+                : null,
+            'currency' => BiddingSchedule::currencySymbol(),
+            'generated_at' => now()->format('d-m-Y'),
+            'company' => config('auction.company'),
+            'subtotal' => $subtotal,
+            'btw_percentage' => number_format($btwPercentage, 2),
+            'btw_amount' => $btwAmount,
+            'total' => $totalOwed,
+        ];
+
+        /** @var \Barryvdh\DomPDF\PDF $pdf */
+        $pdf = Pdf::loadView('pdf.quote', $data);
+        $pdf->setPaper('a4');
+
+        $filename =
+            str_replace(' ', '_', $auction->title) . '_' . ($leftoverPriceOffer->user->username ?? 'user') . '.pdf';
+
+        /** @var Response */
+        return $pdf->download($filename);
+    }
+
     public function downloadForUser(User $user): Response
     {
         $userBidAuctionIds = Bid::where('user_id', $user->id)->pluck('auction_id');
         $userPurchaseAuctionIds = LeftoverPurchase::where('user_id', $user->id)->pluck('auction_id');
-        $auctionIds = $userBidAuctionIds->merge($userPurchaseAuctionIds)->unique()->values();
+        $userOfferAuctionIds = LeftoverPriceOffer::where('user_id', $user->id)
+            ->where('status', 'accepted')
+            ->pluck('auction_id');
+        $auctionIds = $userBidAuctionIds
+            ->merge($userPurchaseAuctionIds)
+            ->merge($userOfferAuctionIds)
+            ->unique()
+            ->values();
 
         $auctions = Auction::query()
             ->whereIn('id', $auctionIds)
@@ -136,6 +194,10 @@ class QuotePdfController extends Controller
                     'user_id',
                     $user->id,
                 ),
+                'leftoverPriceOffers' => fn(\Illuminate\Database\Eloquent\Relations\Relation $q) => $q->where(
+                    'user_id',
+                    $user->id,
+                )->where('status', 'accepted'),
             ])
             ->get()
             ->filter(fn($a) => !$a->isActive());
@@ -173,6 +235,18 @@ class QuotePdfController extends Controller
                 $items[] = [
                     'title' => $auction->title,
                     'quantity' => $purchase->quantity,
+                    'price_per_item' => $pricePerItem,
+                    'total' => $itemTotal,
+                ];
+                $totalOwed += $itemTotal;
+            }
+
+            foreach ($auction->leftoverPriceOffers as $offer) {
+                $pricePerItem = (float) $offer->offered_price_per_item;
+                $itemTotal = round($offer->quantity * $pricePerItem, 2);
+                $items[] = [
+                    'title' => $auction->title,
+                    'quantity' => $offer->quantity,
                     'price_per_item' => $pricePerItem,
                     'total' => $itemTotal,
                 ];

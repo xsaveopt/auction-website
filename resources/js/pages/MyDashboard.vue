@@ -33,6 +33,20 @@ function myLeftoverPurchase(auction) {
     return auction.leftover_purchases?.find((p) => p.user.id === user.value?.id);
 }
 
+function myAcceptedOffer(auction) {
+    return auction.leftover_price_offers?.find(
+        (o) => o.user.id === user.value?.id && o.status === "accepted",
+    );
+}
+
+function myLeftoverSale(auction) {
+    return myLeftoverPurchase(auction) ?? myAcceptedOffer(auction);
+}
+
+function myLeftoverPrice(sale) {
+    return sale?.price_per_item ?? sale?.offered_price_per_item;
+}
+
 function timeLeft(endsAt) {
     const diff = new Date(endsAt) - now.value;
     if (diff <= 0) return "Ended";
@@ -75,22 +89,25 @@ function myBid(auction) {
                             <div class="p-4 min-w-0">
                                 <h3 class="font-bold truncate">{{ auction.title }}</h3>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                                    Bought {{ myLeftoverPurchase(auction)?.quantity }} item{{
-                                        myLeftoverPurchase(auction)?.quantity !== 1 ? "s" : ""
+                                    Bought {{ myLeftoverSale(auction)?.quantity }} item{{
+                                        myLeftoverSale(auction)?.quantity !== 1 ? "s" : ""
                                     }}
                                     @ {{ currencySymbol
                                     }}{{
-                                        Number(myLeftoverPurchase(auction)?.price_per_item).toFixed(
-                                            2,
-                                        )
+                                        Number(myLeftoverPrice(myLeftoverSale(auction))).toFixed(2)
                                     }}
+                                    <span
+                                        v-if="myAcceptedOffer(auction)"
+                                        class="ml-1 text-xs text-blue-600 dark:text-blue-400"
+                                        >(price offer)</span
+                                    >
                                 </p>
                                 <p class="mt-1 font-bold text-blue-700 dark:text-blue-400">
                                     Total: {{ currencySymbol
                                     }}{{
                                         (
-                                            (myLeftoverPurchase(auction)?.quantity ?? 0) *
-                                            Number(myLeftoverPurchase(auction)?.price_per_item)
+                                            (myLeftoverSale(auction)?.quantity ?? 0) *
+                                            Number(myLeftoverPrice(myLeftoverSale(auction)))
                                         ).toFixed(2)
                                     }}
                                 </p>
