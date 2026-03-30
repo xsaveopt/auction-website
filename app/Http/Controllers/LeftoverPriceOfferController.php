@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
 use App\Models\User;
+use App\Support\AuctionNotificationService;
 use App\Support\AuctionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class LeftoverPriceOfferController extends Controller
 {
     public function __construct(
         protected AuctionService $auctionService,
+        protected AuctionNotificationService $notificationService,
     ) {}
 
     public function index(): JsonResponse
@@ -164,6 +166,8 @@ class LeftoverPriceOfferController extends Controller
 
         $leftoverPriceOffer->update(['status' => 'accepted']);
 
+        $this->notificationService->sendOfferAcceptedNotification($leftoverPriceOffer);
+
         $this->auctionService->closePendingOffersIfSoldOut($auction);
 
         /** @var \App\Models\User $admin */
@@ -186,6 +190,8 @@ class LeftoverPriceOfferController extends Controller
         }
 
         $leftoverPriceOffer->update(['status' => 'rejected']);
+
+        $this->notificationService->sendOfferRejectedNotification($leftoverPriceOffer);
 
         /** @var \App\Models\Auction $auction */
         $auction = $leftoverPriceOffer->auction()->firstOrFail();

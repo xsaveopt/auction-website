@@ -17,7 +17,7 @@ const auctions = ref([]);
 const summary = ref(null);
 const loading = ref(true);
 const expanded = ref({});
-const view = ref(route.query.view === "users" ? "users" : "auctions");
+const view = ref(route.query.view === "auctions" ? "auctions" : "users");
 const expandedUsers = ref({});
 
 function syncViewQuery(v) {
@@ -35,7 +35,7 @@ watch(view, syncViewQuery, { immediate: true });
 watch(
     () => route.query.view,
     (v) => {
-        view.value = v === "users" ? "users" : "auctions";
+        view.value = v === "auctions" ? "auctions" : "users";
     },
 );
 
@@ -79,6 +79,14 @@ function quoteUrl(auctionId, bidId) {
     return `/api/auctions/${auctionId}/quotes/${bidId}`;
 }
 
+function userQuoteUrl(userId) {
+    return `/api/users/${userId}/quotes`;
+}
+
+function leftoverQuoteUrl(auctionId, purchaseId) {
+    return `/api/auctions/${auctionId}/leftover-purchases/${purchaseId}/quotes`;
+}
+
 function downloadAllQuotes(auction) {
     for (const bid of winners(auction)) {
         window.open(quoteUrl(auction.id, bid.id), "_blank");
@@ -90,6 +98,12 @@ function downloadEveryQuote() {
         for (const bid of winners(auction)) {
             window.open(quoteUrl(auction.id, bid.id), "_blank");
         }
+    }
+}
+
+function downloadAllUserQuotes() {
+    for (const u of userSummaries.value) {
+        window.open(userQuoteUrl(u.userId), "_blank");
     }
 }
 
@@ -168,6 +182,12 @@ const userSummaries = computed(() => {
     return [...map.values()].sort((a, b) => b.totalOwed - a.totalOwed);
 });
 
+const auctionsWithSales = computed(() => {
+    return auctions.value.filter(
+        (a) => winners(a).length > 0 || (a.leftover_purchases?.length ?? 0) > 0,
+    );
+});
+
 const statsCards = computed(() => {
     if (!summary.value) {
         return [];
@@ -206,6 +226,26 @@ const statsCards = computed(() => {
             <button
                 v-if="!loading && hasAnyWinners() && view === 'auctions'"
                 @click="downloadEveryQuote"
+                class="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+                <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                </svg>
+                Download all quotes
+            </button>
+            <button
+                v-if="!loading && userSummaries.length > 0 && view === 'users'"
+                @click="downloadAllUserQuotes"
                 class="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
             >
                 <svg
@@ -287,12 +327,12 @@ const statsCards = computed(() => {
         </div>
         <template v-if="view === 'auctions'">
             <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
-            <p v-else-if="auctions.length === 0" class="text-gray-500 dark:text-gray-400">
-                No ended auctions yet, but the totals above show the current earning potential.
+            <p v-else-if="auctionsWithSales.length === 0" class="text-gray-500 dark:text-gray-400">
+                No auctions with sales yet.
             </p>
             <div v-else class="space-y-3">
                 <div
-                    v-for="auction in auctions"
+                    v-for="auction in auctionsWithSales"
                     :key="auction.id"
                     class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden"
                 >
@@ -322,25 +362,29 @@ const statsCards = computed(() => {
                             </div>
                         </div>
                         <div class="flex items-center gap-3 shrink-0 ml-4">
-                            <span
-                                v-if="winners(auction).length > 0"
-                                class="text-sm font-medium text-green-700 dark:text-green-400"
-                            >
-                                {{ winners(auction).reduce((s, b) => s + b.won_quantity, 0) }}
+                            <span class="text-sm font-medium text-green-700 dark:text-green-400">
+                                {{
+                                    winners(auction).reduce((s, b) => s + b.won_quantity, 0) +
+                                    (auction.leftover_purchases ?? []).reduce(
+                                        (s, p) => s + p.quantity,
+                                        0,
+                                    )
+                                }}
                                 sold · {{ currencySymbol
                                 }}{{
-                                    winners(auction)
-                                        .reduce(
+                                    (
+                                        winners(auction).reduce(
                                             (s, b) =>
                                                 s + b.won_quantity * Number(b.price ?? b.amount),
                                             0,
+                                        ) +
+                                        (auction.leftover_purchases ?? []).reduce(
+                                            (s, p) => s + p.quantity * Number(p.price_per_item),
+                                            0,
                                         )
-                                        .toFixed(2)
+                                    ).toFixed(2)
                                 }}
                             </span>
-                            <span v-else class="text-sm text-gray-400 dark:text-gray-500"
-                                >No bids</span
-                            >
                             <svg
                                 class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
                                 :class="expanded[auction.id] ? 'rotate-180' : ''"
@@ -362,13 +406,7 @@ const statsCards = computed(() => {
                         v-if="expanded[auction.id]"
                         class="border-t dark:border-gray-700 px-5 py-4"
                     >
-                        <div
-                            v-if="winners(auction).length === 0"
-                            class="text-gray-400 dark:text-gray-500 text-sm"
-                        >
-                            No winners — auction ended without bids.
-                        </div>
-                        <div v-else>
+                        <div v-if="winners(auction).length > 0">
                             <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                                 Winners
                             </h3>
@@ -501,6 +539,7 @@ const statsCards = computed(() => {
                                         <th class="pb-1 font-medium">Qty</th>
                                         <th class="pb-1 font-medium">Price / item</th>
                                         <th class="pb-1 font-medium text-right">Total Owed</th>
+                                        <th class="pb-1 font-medium w-8"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -535,6 +574,28 @@ const statsCards = computed(() => {
                                                 ).toFixed(2)
                                             }}
                                         </td>
+                                        <td class="py-2 text-right">
+                                            <a
+                                                :href="leftoverQuoteUrl(auction.id, purchase.id)"
+                                                target="_blank"
+                                                class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                                                title="Download quote PDF"
+                                            >
+                                                <svg
+                                                    class="w-4 h-4 inline"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                    />
+                                                </svg>
+                                            </a>
+                                        </td>
                                     </tr>
                                 </tbody>
                                 <tfoot>
@@ -562,6 +623,7 @@ const statsCards = computed(() => {
                                                     .toFixed(2)
                                             }}
                                         </td>
+                                        <td></td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -620,6 +682,27 @@ const statsCards = computed(() => {
                                 {{ u.totalItems }} item{{ u.totalItems !== 1 ? "s" : "" }} ·
                                 {{ formatMoney(u.totalOwed) }}
                             </span>
+                            <a
+                                :href="userQuoteUrl(u.userId)"
+                                target="_blank"
+                                @click.stop
+                                class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                                title="Download quote PDF"
+                            >
+                                <svg
+                                    class="w-4 h-4 inline"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                            </a>
                             <svg
                                 class="w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform"
                                 :class="expandedUsers[u.username] ? 'rotate-180' : ''"
@@ -649,7 +732,6 @@ const statsCards = computed(() => {
                                     <th class="pb-1 font-medium">Type</th>
                                     <th class="pb-1 font-medium">Qty</th>
                                     <th class="pb-1 font-medium text-right">Total Owed</th>
-                                    <th class="pb-1 font-medium w-8"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -687,29 +769,6 @@ const statsCards = computed(() => {
                                     >
                                         {{ formatMoney(item.totalOwed) }}
                                     </td>
-                                    <td class="py-2 text-right">
-                                        <a
-                                            v-if="!item.isLeftover && item.bidId"
-                                            :href="quoteUrl(item.auctionId, item.bidId)"
-                                            target="_blank"
-                                            class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
-                                            title="Download quote PDF"
-                                        >
-                                            <svg
-                                                class="w-4 h-4 inline"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                stroke-width="2"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                />
-                                            </svg>
-                                        </a>
-                                    </td>
                                 </tr>
                             </tbody>
                             <tfoot>
@@ -719,7 +778,6 @@ const statsCards = computed(() => {
                                     <td class="pt-2 text-right font-bold">
                                         {{ formatMoney(u.totalOwed) }}
                                     </td>
-                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>

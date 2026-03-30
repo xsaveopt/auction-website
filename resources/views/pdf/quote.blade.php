@@ -70,10 +70,18 @@
                 <td style="width: 180px; padding: 3px 0; font-size: 10px;">Datum:</td>
                 <td style="padding: 3px 0; font-size: 10px;">{{ $generated_at }}</td>
             </tr>
+            @if(count($items) === 1)
             <tr>
                 <td style="padding: 3px 0; font-size: 10px;">Artikel:</td>
-                <td style="padding: 3px 0; font-size: 10px;">{{ $auction['title'] }}</td>
+                <td style="padding: 3px 0; font-size: 10px;">{{ $items[0]['title'] }}</td>
             </tr>
+            @endif
+            @if(isset($payment_reference))
+            <tr>
+                <td style="padding: 3px 0; font-size: 10px;">Kenmerk:</td>
+                <td style="padding: 3px 0; font-size: 10px; font-weight: bold;">{{ $payment_reference }}</td>
+            </tr>
+            @endif
         </table>
 
         {{-- Line items --}}
@@ -86,17 +94,19 @@
                     Totaal
                 </td>
             </tr>
+            @foreach($items as $item)
             <tr>
                 <td style="padding: 12px 0; border-bottom: 1px solid #eeeeee; font-size: 10px;">
-                    {{ $auction['title'] }}
-                    @if($winner['won_quantity'] > 1)
-                        ({{ $winner['won_quantity'] }}&times;)
+                    {{ $item['title'] }}
+                    @if($item['quantity'] > 1)
+                        <br><span style="color: #666666; font-size: 9px;">{{ $item['quantity'] }}&times; {{ $currency }} {{ number_format($item['price_per_item'], 2, ',', '.') }}</span>
                     @endif
                 </td>
-                <td style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-size: 10px; white-space: nowrap;">
-                    {{ $currency }} {{ number_format($total, 2, ',', '.') }}
+                <td style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-size: 10px; white-space: nowrap; vertical-align: top;">
+                    {{ $currency }} {{ number_format($item['total'], 2, ',', '.') }}
                 </td>
             </tr>
+            @endforeach
         </table>
 
         <br>
@@ -140,6 +150,12 @@
         <div style="margin-top: 50px; font-size: 10px; line-height: 1.6;">
             Dit document is een leverbon en geldt niet als factuur.
         </div>
+
+        @if(isset($payment_reference))
+        <div style="margin-top: 10px; font-size: 10px; line-height: 1.6;">
+            Gelieve bij uw overboeking het kenmerk <strong>{{ $payment_reference }}</strong> te vermelden.
+        </div>
+        @endif
 
         <div style="margin-top: 20px; font-size: 10px;">
             {{ $company['name'] }}

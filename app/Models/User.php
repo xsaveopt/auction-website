@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  * @property string $username
  * @property bool $is_admin
  * @property string|null $microsoft_id
+ * @property string|null $payment_reference
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
  */
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'username',
         'password',
         'microsoft_id',
+        'payment_reference',
     ];
 
     /** @var list<string> */

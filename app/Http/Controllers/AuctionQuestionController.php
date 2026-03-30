@@ -5,11 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Auction;
 use App\Models\AuctionQuestion;
 use App\Models\AuditLog;
+use App\Support\AuctionNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AuctionQuestionController extends Controller
 {
+    public function __construct(
+        protected AuctionNotificationService $notificationService,
+    ) {}
+
     public function index(): JsonResponse
     {
         $questions = AuctionQuestion::with(['auction:id,title', 'user:id,username'])
@@ -76,10 +81,16 @@ class AuctionQuestionController extends Controller
             'answer' => ['required', 'string', 'max:4000'],
         ]);
 
+        $wasUnanswered = $question->answer === null;
+
         $question->update([
             'answer' => $validated['answer'],
             'answered_at' => now(),
         ]);
+
+        if ($wasUnanswered) {
+            $this->notificationService->sendQuestionAnsweredNotification($question);
+        }
 
         if ($user->is_admin) {
             AuditLog::record($user, 'question.answer', $question, [

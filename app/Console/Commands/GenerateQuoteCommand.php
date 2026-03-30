@@ -55,22 +55,17 @@ class GenerateQuoteCommand extends Command
         $btwAmount = round($total - $subtotal, 2);
 
         $data = [
-            'auction' => [
-                'id' => null,
-                'title' => $title,
-                'description' => '',
-                'ends_at' => now()->format('d-m-Y'),
-                'quantity' => $quantity,
-                'bid_count' => 0,
-            ],
             'winner' => [
                 'username' => $buyer,
-                'bid_amount' => $pricePerItem,
-                'bid_date' => now()->format('d-m-Y'),
-                'won_quantity' => $quantity,
-                'total_owed' => $totalOwed,
             ],
-            'clearing_price' => $pricePerItem,
+            'items' => [
+                [
+                    'title' => $title,
+                    'quantity' => $quantity,
+                    'price_per_item' => $pricePerItem,
+                    'total' => $totalOwed,
+                ],
+            ],
             'currency' => BiddingSchedule::currencySymbol(),
             'generated_at' => now()->format('d-m-Y'),
             'company' => config('auction.company'),

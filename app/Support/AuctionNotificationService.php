@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\Auction;
+use App\Models\AuctionQuestion;
+use App\Models\LeftoverPriceOffer;
 use App\Models\User;
 
 class AuctionNotificationService
@@ -69,6 +71,72 @@ class AuctionNotificationService
             'data' => [
                 'auctionId' => $auction->id,
                 'kind' => 'overbid',
+            ],
+        ]);
+    }
+
+    public function sendQuestionAnsweredNotification(AuctionQuestion $question): void
+    {
+        $question->loadMissing(['auction', 'user']);
+
+        $user = $question->user;
+        $auction = $question->auction;
+
+        if (!$user || !$auction) {
+            return;
+        }
+
+        $this->pushNotificationService->sendToUsers(collect([$user]), [
+            'body' => sprintf('Your question on "%s" has been answered.', $auction->title),
+            'tag' => "question-answered-{$question->id}",
+            'url' => "/auctions/{$auction->id}",
+            'data' => [
+                'auctionId' => $auction->id,
+                'kind' => 'question_answered',
+            ],
+        ]);
+    }
+
+    public function sendOfferAcceptedNotification(LeftoverPriceOffer $offer): void
+    {
+        $offer->loadMissing(['auction', 'user']);
+
+        $user = $offer->user;
+        $auction = $offer->auction;
+
+        if (!$user || !$auction) {
+            return;
+        }
+
+        $this->pushNotificationService->sendToUsers(collect([$user]), [
+            'body' => sprintf('Your price offer on "%s" has been accepted!', $auction->title),
+            'tag' => "offer-accepted-{$offer->id}",
+            'url' => "/auctions/{$auction->id}",
+            'data' => [
+                'auctionId' => $auction->id,
+                'kind' => 'offer_accepted',
+            ],
+        ]);
+    }
+
+    public function sendOfferRejectedNotification(LeftoverPriceOffer $offer): void
+    {
+        $offer->loadMissing(['auction', 'user']);
+
+        $user = $offer->user;
+        $auction = $offer->auction;
+
+        if (!$user || !$auction) {
+            return;
+        }
+
+        $this->pushNotificationService->sendToUsers(collect([$user]), [
+            'body' => sprintf('Your price offer on "%s" was declined.', $auction->title),
+            'tag' => "offer-rejected-{$offer->id}",
+            'url' => "/auctions/{$auction->id}",
+            'data' => [
+                'auctionId' => $auction->id,
+                'kind' => 'offer_rejected',
             ],
         ]);
     }

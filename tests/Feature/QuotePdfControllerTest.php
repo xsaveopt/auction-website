@@ -41,8 +41,8 @@ class QuotePdfControllerTest extends TestCase
                 'pdf.quote',
                 Mockery::on(
                     fn(array $data) => (
-                        $data['auction']['id'] === $auction->id
-                        && $data['winner']['won_quantity'] === 1
+                        $data['items'][0]['title'] === $auction->title
+                        && $data['items'][0]['quantity'] === 1
                         && $data['winner']['username'] === $winner->username
                     ),
                 ),
