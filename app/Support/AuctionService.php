@@ -225,6 +225,7 @@ class AuctionService
                     'quantity' => $offer->quantity,
                     'offered_price_per_item' => $offer->offered_price_per_item,
                     'status' => $offer->status,
+                    'rebid_requested_at' => $offer->rebid_requested_at?->format('Y-m-d\TH:i:sP'),
                     'user' => [
                         'id' => $offer->user?->id,
                         'username' => $offer->user?->username,

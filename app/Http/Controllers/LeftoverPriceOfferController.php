@@ -34,6 +34,7 @@ class LeftoverPriceOfferController extends Controller
                 'quantity' => $offer->quantity,
                 'offered_price_per_item' => $offer->offered_price_per_item,
                 'status' => $offer->status,
+                'rebid_requested_at' => $offer->rebid_requested_at?->format('Y-m-d\TH:i:sP'),
                 'created_at' => $offer->created_at?->format('Y-m-d\TH:i:sP'),
                 'user' => [
                     'id' => $offer->user?->id,
@@ -77,7 +78,9 @@ class LeftoverPriceOfferController extends Controller
             return response()->json(['message' => 'You cannot make an offer on your own auction.'], 403);
         }
 
-        if ($auction->leftoverPriceOffers()->where('user_id', $user->id)->exists()) {
+        $existingOffer = $auction->leftoverPriceOffers()->where('user_id', $user->id)->first();
+
+        if ($existingOffer && $existingOffer->rebid_requested_at === null) {
             return response()->json(['message' => 'You have already submitted a price offer for this auction.'], 422);
         }
 
@@ -95,16 +98,24 @@ class LeftoverPriceOfferController extends Controller
         $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
         $leftoverPrice = round((float) $auction->starting_price * $leftoverPriceFactor, 2);
 
+        $minPrice = $existingOffer
+            ? number_format((float) $existingOffer->offered_price_per_item + 0.01, 2, '.', '')
+            : '0.01';
+
         /** @var array{quantity: int, offered_price_per_item: float} $validated */
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1', "max:{$available}"],
             'offered_price_per_item' => [
                 'required',
                 'numeric',
-                'min:0.01',
+                "min:{$minPrice}",
                 'max:' . number_format($leftoverPrice - 0.01, 2, '.', ''),
             ],
         ]);
+
+        if ($existingOffer) {
+            $existingOffer->delete();
+        }
 
         $offer = $auction
             ->leftoverPriceOffers()
@@ -238,6 +249,39 @@ class LeftoverPriceOfferController extends Controller
         ]);
 
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)], 201);
+    }
+
+    public function requestRebid(Request $request): JsonResponse
+    {
+        /** @var array{offer_ids: int[]} $validated */
+        $validated = $request->validate([
+            'offer_ids' => ['required', 'array', 'min:2'],
+            'offer_ids.*' => ['required', 'integer'],
+        ]);
+
+        $offers = LeftoverPriceOffer::whereIn('id', $validated['offer_ids'])->where('status', 'pending')->get();
+
+        if ($offers->count() !== count($validated['offer_ids'])) {
+            return response()->json(['message' => 'Some offers are invalid or no longer pending.'], 422);
+        }
+
+        if ($offers->pluck('auction_id')->unique()->count() !== 1) {
+            return response()->json(['message' => 'All offers must belong to the same auction.'], 422);
+        }
+
+        if ($offers->pluck('offered_price_per_item')->unique()->count() !== 1) {
+            return response()->json(['message' => 'All offers must have the same price to request a rebid.'], 422);
+        }
+
+        LeftoverPriceOffer::whereIn('id', $validated['offer_ids'])->update(['rebid_requested_at' => now()]);
+
+        /** @var \App\Models\User $admin */
+        $admin = $request->user();
+        AuditLog::record($admin, 'leftover_price_offer.rebid_requested', null, [
+            'offer_ids' => $validated['offer_ids'],
+        ]);
+
+        return response()->json(['offer_ids' => $validated['offer_ids']]);
     }
 
     public function destroy(Request $request, LeftoverPriceOffer $leftoverPriceOffer): JsonResponse

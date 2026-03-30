@@ -98,6 +98,11 @@ const myPriceOffer = computed(() => {
     return auction.value.leftover_price_offers.find((o) => o.user.id === user.value.id) ?? null;
 });
 
+const myPriceOfferNeedsRebid = computed(
+    () =>
+        myPriceOffer.value?.status === "pending" && myPriceOffer.value?.rebid_requested_at != null,
+);
+
 const pendingOffers = computed(() => {
     if (!auction.value?.leftover_price_offers) return [];
     return auction.value.leftover_price_offers.filter((o) => o.status === "pending");
@@ -127,6 +132,11 @@ const priceOfferLimit = computed(() => {
     const limit = Number(auction.value?.leftover_price) - 0.01;
 
     return limit > 0 ? limit.toFixed(2) : "0.01";
+});
+
+const rebidMinPrice = computed(() => {
+    const current = Number(myPriceOffer.value?.offered_price_per_item ?? 0);
+    return (current + 0.01).toFixed(2);
 });
 
 const leftoverBuyTotal = computed(() => {
@@ -1340,7 +1350,72 @@ watchEffect(() => {
                                             each
                                         </p>
                                     </div>
+
+                                    <!-- Rebid requested: allow submitting a higher offer -->
+                                    <template v-if="myPriceOfferNeedsRebid">
+                                        <div
+                                            class="rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-3 text-sm text-amber-700 dark:text-amber-300"
+                                        >
+                                            There is a tie at your price. Submit a higher offer to
+                                            compete.
+                                        </div>
+                                        <div
+                                            v-if="offerError"
+                                            class="rounded bg-red-100 dark:bg-red-900/30 p-3 text-sm text-red-700 dark:text-red-400"
+                                        >
+                                            {{ offerError }}
+                                        </div>
+                                        <form @submit.prevent="submitPriceOffer" class="space-y-3">
+                                            <div class="grid gap-3 sm:grid-cols-2">
+                                                <div>
+                                                    <label
+                                                        class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                                        >Quantity</label
+                                                    >
+                                                    <input
+                                                        v-model="offerQuantity"
+                                                        type="number"
+                                                        min="1"
+                                                        :max="auction.leftover_quantity"
+                                                        required
+                                                        class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                                    >
+                                                        Price per item ({{ currencySymbol
+                                                        }}{{ rebidMinPrice }} – {{ currencySymbol
+                                                        }}{{ priceOfferLimit }})
+                                                    </label>
+                                                    <input
+                                                        v-model="offerPrice"
+                                                        type="number"
+                                                        step="0.01"
+                                                        :min="rebidMinPrice"
+                                                        :max="priceOfferLimit"
+                                                        required
+                                                        class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                :disabled="submittingOffer"
+                                                class="w-full bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 disabled:opacity-60 text-sm"
+                                            >
+                                                {{
+                                                    submittingOffer
+                                                        ? "Submitting..."
+                                                        : "Submit higher offer"
+                                                }}
+                                            </button>
+                                        </form>
+                                    </template>
+
                                     <span
+                                        v-else
                                         class="inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize"
                                         :class="{
                                             'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300':
