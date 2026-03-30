@@ -14,6 +14,8 @@ class AdminSettingsController extends Controller
 
         return response()->json([
             'settings' => [
+                'is_locked' => $s->is_locked,
+                'lock_message' => $s->lock_message ?? '',
                 'bidding_schedule_enabled' => $s->bidding_schedule_enabled,
                 'bidding_closed_start' => $s->bidding_closed_start ?? '09:00',
                 'bidding_closed_end' => $s->bidding_closed_end ?? '18:00',
@@ -42,6 +44,8 @@ class AdminSettingsController extends Controller
     {
         /** @var array<string, mixed> $validated */
         $validated = $request->validate([
+            'is_locked' => ['sometimes', 'boolean'],
+            'lock_message' => ['sometimes', 'nullable', 'string', 'max:500'],
             'bidding_schedule_enabled' => ['sometimes', 'boolean'],
             'bidding_closed_start' => ['sometimes', 'string', 'regex:/^\d{2}:\d{2}$/'],
             'bidding_closed_end' => ['sometimes', 'string', 'regex:/^\d{2}:\d{2}$/'],

@@ -40,8 +40,8 @@
             </td>
             <td style="width: 25%; padding: 22px 15px 22px 15px; vertical-align: top; font-size: 8.5px; line-height: 1.6;">
                 <span style="font-size: 9px; font-weight: bold;">{{ __('quote.financial') }}</span><br>
-                {{ $company['iban_1'] }}<br>
-                {{ $company['iban_2'] }}
+                {{ $company['iban_1'] }}
+                @if($company['iban_2'])<br>{{ $company['iban_2'] }}@endif
             </td>
         </tr>
     </table>

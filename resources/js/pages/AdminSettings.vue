@@ -8,6 +8,8 @@ const saved = ref(false);
 const error = ref(null);
 
 const form = ref({
+    is_locked: false,
+    lock_message: "",
     bidding_schedule_enabled: true,
     bidding_closed_start: "09:00",
     bidding_closed_end: "18:00",
@@ -68,6 +70,38 @@ async function save() {
 
         <div v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</div>
         <form v-else @submit.prevent="save" class="space-y-8">
+            <!-- Maintenance Mode -->
+            <section>
+                <h2
+                    class="text-base font-semibold mb-3 border-b border-gray-200 dark:border-gray-700 pb-1"
+                >
+                    Maintenance Mode
+                </h2>
+                <div class="space-y-4">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input
+                            v-model="form.is_locked"
+                            type="checkbox"
+                            class="w-4 h-4 rounded border-gray-300"
+                        />
+                        <span class="text-sm font-medium">Lock site for non-admin users</span>
+                    </label>
+                    <div :class="{ 'opacity-50 pointer-events-none': !form.is_locked }">
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                            >Message shown to users
+                            <span class="text-gray-400">(optional)</span></label
+                        >
+                        <input
+                            v-model="form.lock_message"
+                            type="text"
+                            maxlength="500"
+                            placeholder="Site is temporarily unavailable."
+                            class="w-full border rounded px-3 py-2 text-sm dark:bg-gray-800 dark:border-gray-600"
+                        />
+                    </div>
+                </div>
+            </section>
+
             <!-- Bidding Schedule -->
             <section>
                 <h2
