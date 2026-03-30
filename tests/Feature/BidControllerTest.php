@@ -140,12 +140,12 @@ class BidControllerTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-03-24 10:00:00'));
 
         try {
-            config([
-                'auction.bidding_schedule_enabled' => true,
-                'auction.bidding_closed_start' => '09:00',
-                'auction.bidding_closed_end' => '18:00',
-                'auction.weekends_open' => false,
-            ]);
+            $settings = SiteSetting::instance();
+            $settings->bidding_schedule_enabled = true;
+            $settings->bidding_closed_start = '09:00';
+            $settings->bidding_closed_end = '18:00';
+            $settings->bidding_weekends_open = false;
+            $settings->save();
 
             $auction = $this->createAuction($this->createUser(), [
                 'ends_at' => now()->addHour(),
@@ -161,7 +161,9 @@ class BidControllerTest extends TestCase
                 ->assertSee('Bidding is closed during office hours', false);
         } finally {
             Carbon::setTestNow();
-            config(['auction.bidding_schedule_enabled' => false]);
+            $settings = SiteSetting::instance();
+            $settings->bidding_schedule_enabled = false;
+            $settings->save();
         }
     }
 
@@ -222,11 +224,11 @@ class BidControllerTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-03-24 12:00:00'));
 
         try {
-            config([
-                'auction.anti_sniping_enabled' => true,
-                'auction.anti_sniping_window' => 60,
-                'auction.anti_sniping_extension' => 300,
-            ]);
+            $settings = SiteSetting::instance();
+            $settings->anti_sniping_enabled = true;
+            $settings->anti_sniping_window = 60;
+            $settings->anti_sniping_extension = 300;
+            $settings->save();
 
             $seller = $this->createUser();
             $auction = $this->createAuction($seller, [
@@ -244,7 +246,9 @@ class BidControllerTest extends TestCase
             $this->assertTrue($auction->fresh()->ends_at->equalTo(now()->addSeconds(330)));
         } finally {
             Carbon::setTestNow();
-            config(['auction.anti_sniping_enabled' => false]);
+            $settings = SiteSetting::instance();
+            $settings->anti_sniping_enabled = false;
+            $settings->save();
         }
     }
 }

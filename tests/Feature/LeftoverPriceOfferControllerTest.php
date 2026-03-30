@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\LeftoverPriceOffer;
+use App\Models\SiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -12,7 +13,9 @@ class LeftoverPriceOfferControllerTest extends TestCase
 
     public function test_accepting_offer_that_exhausts_stock_rejects_other_pending_offers(): void
     {
-        config(['auction.leftover_sales_enabled' => true]);
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
 
         $admin = $this->createAdmin();
         $offerUser1 = $this->createUser();
@@ -51,7 +54,9 @@ class LeftoverPriceOfferControllerTest extends TestCase
 
     public function test_accepting_offer_that_leaves_remaining_stock_keeps_other_pending_offers(): void
     {
-        config(['auction.leftover_sales_enabled' => true]);
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
 
         $admin = $this->createAdmin();
         $offerUser1 = $this->createUser();
@@ -87,7 +92,9 @@ class LeftoverPriceOfferControllerTest extends TestCase
 
     public function test_user_can_submit_a_new_offer_after_a_soft_deleted_offer(): void
     {
-        config(['auction.leftover_sales_enabled' => true]);
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
 
         $user = $this->createUser();
         $auction = $this->createAuction($this->createUser(), [

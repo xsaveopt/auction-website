@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
+use App\Models\SiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,7 +14,9 @@ class LeftoverPurchaseControllerTest extends TestCase
 
     public function test_user_can_add_more_leftover_purchases_when_sales_are_enabled(): void
     {
-        config(['auction.leftover_sales_enabled' => true]);
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
 
         $seller = $this->createUser();
         $buyer = $this->createUser();
@@ -102,7 +105,9 @@ class LeftoverPurchaseControllerTest extends TestCase
 
     public function test_user_can_buy_again_after_a_soft_deleted_purchase(): void
     {
-        config(['auction.leftover_sales_enabled' => true]);
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
 
         $seller = $this->createUser();
         $buyer = $this->createUser();
@@ -158,7 +163,9 @@ class LeftoverPurchaseControllerTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('message', 'Leftover sales are not enabled.');
 
-        config(['auction.leftover_sales_enabled' => true]);
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
 
         $this
             ->actingAs($buyer)
@@ -171,7 +178,9 @@ class LeftoverPurchaseControllerTest extends TestCase
 
     public function test_leftover_purchases_reject_the_seller_or_fully_allocated_auctions(): void
     {
-        config(['auction.leftover_sales_enabled' => true]);
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
 
         $seller = $this->createUser();
         $auction = $this->createAuction($seller, [
@@ -203,7 +212,9 @@ class LeftoverPurchaseControllerTest extends TestCase
 
     public function test_buying_last_leftover_item_rejects_pending_price_offers(): void
     {
-        config(['auction.leftover_sales_enabled' => true]);
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
 
         $seller = $this->createUser();
         $buyer = $this->createUser();
@@ -231,7 +242,9 @@ class LeftoverPurchaseControllerTest extends TestCase
 
     public function test_buying_some_but_not_all_leftover_items_keeps_pending_price_offers(): void
     {
-        config(['auction.leftover_sales_enabled' => true]);
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
 
         $seller = $this->createUser();
         $buyer = $this->createUser();

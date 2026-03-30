@@ -4,6 +4,7 @@ use App\Support\BiddingSchedule;
 use App\Http\Controllers\AdminAuditLogController;
 use App\Http\Controllers\AdminAuctionController;
 use App\Http\Controllers\AdminBidController;
+use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\CategoryController;
@@ -100,5 +101,7 @@ Route::middleware('sso')->group(function () {
         Route::post('/auctions/{auction}/leftover-price-offers', [LeftoverPriceOfferController::class, 'adminStore']);
         Route::delete('/leftover-price-offers/{leftoverPriceOffer}', [LeftoverPriceOfferController::class, 'destroy']);
         Route::get('/audit-log', [AdminAuditLogController::class, 'index']);
+        Route::get('/settings', [AdminSettingsController::class, 'show']);
+        Route::put('/settings', [AdminSettingsController::class, 'update']);
     });
 });

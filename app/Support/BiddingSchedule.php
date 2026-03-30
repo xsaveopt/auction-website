@@ -9,54 +9,55 @@ class BiddingSchedule
 {
     public static function isEnabled(): bool
     {
-        return boolval(config('auction.bidding_schedule_enabled', true));
+        return SiteSetting::instance()->bidding_schedule_enabled;
     }
 
     public static function closedStart(): string
     {
-        /** @var string */
-        return config('auction.bidding_closed_start', '09:00');
+        return SiteSetting::instance()->bidding_closed_start ?? '09:00';
     }
 
     public static function closedEnd(): string
     {
-        /** @var string */
-        return config('auction.bidding_closed_end', '18:00');
+        return SiteSetting::instance()->bidding_closed_end ?? '18:00';
     }
 
     public static function weekendsOpen(): bool
     {
-        return boolval(config('auction.weekends_open', true));
+        return SiteSetting::instance()->bidding_weekends_open;
     }
 
-    public static function isBiddingOpen(?Carbon $at = null): bool
+    private static function isBiddingOpenFromSettings(SiteSetting $settings, ?Carbon $at = null): bool
     {
-        if (!self::isEnabled()) {
+        if (!$settings->bidding_schedule_enabled) {
             return true;
         }
 
         $now = $at ?? now();
 
-        if (self::weekendsOpen() && $now->isWeekend()) {
+        if ($settings->bidding_weekends_open && $now->isWeekend()) {
             return true;
         }
 
         $current = ((int) $now->format('H') * 60) + (int) $now->format('i');
 
-        [$startH, $startM] = array_map('intval', explode(':', self::closedStart()));
-        [$endH, $endM] = array_map('intval', explode(':', self::closedEnd()));
+        [$startH, $startM] = array_map('intval', explode(':', $settings->bidding_closed_start ?? '09:00'));
+        [$endH, $endM] = array_map('intval', explode(':', $settings->bidding_closed_end ?? '18:00'));
 
         $start = ($startH * 60) + $startM;
         $end = ($endH * 60) + $endM;
 
-        // Bidding is closed between start and end on weekdays
         return $current < $start || $current >= $end;
+    }
+
+    public static function isBiddingOpen(?Carbon $at = null): bool
+    {
+        return self::isBiddingOpenFromSettings(SiteSetting::instance(), $at);
     }
 
     public static function currencySymbol(): string
     {
-        /** @var string */
-        return config('auction.currency_symbol', '$');
+        return SiteSetting::instance()->currency_symbol ?? '$';
     }
 
     /**
@@ -64,15 +65,12 @@ class BiddingSchedule
      */
     public static function antiSniping(): array
     {
-        /** @var int $window */
-        $window = config('auction.anti_sniping_window', 60);
-        /** @var int $extension */
-        $extension = config('auction.anti_sniping_extension', 300);
+        $settings = SiteSetting::instance();
 
         return [
-            'enabled' => boolval(config('auction.anti_sniping_enabled', true)),
-            'window' => $window,
-            'extension' => $extension,
+            'enabled' => $settings->anti_sniping_enabled,
+            'window' => $settings->anti_sniping_window ?? 60,
+            'extension' => $settings->anti_sniping_extension ?? 300,
         ];
     }
 
@@ -83,16 +81,23 @@ class BiddingSchedule
     {
         $settings = SiteSetting::instance();
 
+        $closedStart = $settings->bidding_closed_start ?? '09:00';
+        $closedEnd = $settings->bidding_closed_end ?? '18:00';
+
         return [
-            'enabled' => self::isEnabled(),
-            'closed_start' => self::closedStart(),
-            'closed_end' => self::closedEnd(),
-            'weekends_open' => self::weekendsOpen(),
-            'is_open' => self::isBiddingOpen(),
+            'enabled' => $settings->bidding_schedule_enabled,
+            'closed_start' => $closedStart,
+            'closed_end' => $closedEnd,
+            'weekends_open' => $settings->bidding_weekends_open,
+            'is_open' => self::isBiddingOpenFromSettings($settings),
             'server_time' => now()->toISOString() ?? '',
             'server_time_local' => now()->format('H:i:s'),
-            'currency_symbol' => self::currencySymbol(),
-            'anti_sniping' => self::antiSniping(),
+            'currency_symbol' => $settings->currency_symbol ?? '$',
+            'anti_sniping' => [
+                'enabled' => $settings->anti_sniping_enabled,
+                'window' => $settings->anti_sniping_window ?? 60,
+                'extension' => $settings->anti_sniping_extension ?? 300,
+            ],
             'site_locked' => $settings->is_locked,
             'lock_message' => $settings->lock_message,
         ];

@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Models\SiteSetting;
 use App\Support\PrometheusService;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Tests\Concerns\InteractsWithAuctionData;
@@ -21,10 +22,6 @@ abstract class TestCase extends BaseTestCase
         $this->app->instance(PrometheusService::class, new FakePrometheusService());
 
         config([
-            'auction.anti_sniping_enabled' => false,
-            'auction.bidding_schedule_enabled' => false,
-            'auction.leftover_price_factor' => 0.75,
-            'auction.leftover_sales_enabled' => false,
             'services.metrics.token' => 'test-metrics-token',
             'services.microsoft.client_id' => null,
             'services.microsoft.client_secret' => null,
@@ -32,5 +29,17 @@ abstract class TestCase extends BaseTestCase
             'services.webpush.private_key' => null,
             'services.webpush.subject' => null,
         ]);
+
+        // Disable schedule-dependent features by default for all tests that have a DB
+        try {
+            $settings = SiteSetting::instance();
+            $settings->anti_sniping_enabled = false;
+            $settings->bidding_schedule_enabled = false;
+            $settings->leftover_sales_enabled = false;
+            $settings->leftover_price_factor = 0.75;
+            $settings->save();
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Table not available in unit tests without RefreshDatabase
+        }
     }
 }

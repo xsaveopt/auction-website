@@ -6,6 +6,7 @@ use App\Models\Auction;
 use App\Models\Bid;
 use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Support\AuctionService;
 use App\Support\BiddingSchedule;
@@ -37,8 +38,7 @@ class QuotePdfController extends Controller
         $pricePerItem = $prices[$bid->id] ?? (float) $bid->amount;
         $totalOwed = round($wonQty * $pricePerItem, 2);
 
-        /** @var float $btwPercentage */
-        $btwPercentage = config('auction.invoice.btw_percentage');
+        $btwPercentage = $this->siteSettings()->invoice_btw_percentage ?? 21.0;
         $subtotal = round($totalOwed / (1 + ($btwPercentage / 100)), 2);
         $btwAmount = round($totalOwed - $subtotal, 2);
 
@@ -57,7 +57,7 @@ class QuotePdfController extends Controller
             'payment_reference' => $bid->user ? $this->getOrCreatePaymentReference($bid->user) : null,
             'currency' => BiddingSchedule::currencySymbol(),
             'generated_at' => now()->format('d-m-Y'),
-            'company' => config('auction.company'),
+            'company' => $this->siteSettings()->company(),
             'subtotal' => $subtotal,
             'btw_percentage' => number_format($btwPercentage, 2),
             'btw_amount' => $btwAmount,
@@ -83,8 +83,7 @@ class QuotePdfController extends Controller
         $pricePerItem = (float) $leftoverPurchase->price_per_item;
         $totalOwed = round($leftoverPurchase->quantity * $pricePerItem, 2);
 
-        /** @var float $btwPercentage */
-        $btwPercentage = config('auction.invoice.btw_percentage');
+        $btwPercentage = $this->siteSettings()->invoice_btw_percentage ?? 21.0;
         $subtotal = round($totalOwed / (1 + ($btwPercentage / 100)), 2);
         $btwAmount = round($totalOwed - $subtotal, 2);
 
@@ -105,7 +104,7 @@ class QuotePdfController extends Controller
                 : null,
             'currency' => BiddingSchedule::currencySymbol(),
             'generated_at' => now()->format('d-m-Y'),
-            'company' => config('auction.company'),
+            'company' => $this->siteSettings()->company(),
             'subtotal' => $subtotal,
             'btw_percentage' => number_format($btwPercentage, 2),
             'btw_amount' => $btwAmount,
@@ -133,8 +132,7 @@ class QuotePdfController extends Controller
         $pricePerItem = (float) $leftoverPriceOffer->offered_price_per_item;
         $totalOwed = round($leftoverPriceOffer->quantity * $pricePerItem, 2);
 
-        /** @var float $btwPercentage */
-        $btwPercentage = config('auction.invoice.btw_percentage');
+        $btwPercentage = $this->siteSettings()->invoice_btw_percentage ?? 21.0;
         $subtotal = round($totalOwed / (1 + ($btwPercentage / 100)), 2);
         $btwAmount = round($totalOwed - $subtotal, 2);
 
@@ -155,7 +153,7 @@ class QuotePdfController extends Controller
                 : null,
             'currency' => BiddingSchedule::currencySymbol(),
             'generated_at' => now()->format('d-m-Y'),
-            'company' => config('auction.company'),
+            'company' => $this->siteSettings()->company(),
             'subtotal' => $subtotal,
             'btw_percentage' => number_format($btwPercentage, 2),
             'btw_amount' => $btwAmount,
@@ -256,8 +254,7 @@ class QuotePdfController extends Controller
 
         abort_if(empty($items), 404, 'No won items found for this user.');
 
-        /** @var float $btwPercentage */
-        $btwPercentage = config('auction.invoice.btw_percentage');
+        $btwPercentage = $this->siteSettings()->invoice_btw_percentage ?? 21.0;
         $subtotal = round($totalOwed / (1 + ($btwPercentage / 100)), 2);
         $btwAmount = round($totalOwed - $subtotal, 2);
 
@@ -269,7 +266,7 @@ class QuotePdfController extends Controller
             'payment_reference' => $this->getOrCreatePaymentReference($user),
             'currency' => BiddingSchedule::currencySymbol(),
             'generated_at' => now()->format('d-m-Y'),
-            'company' => config('auction.company'),
+            'company' => $this->siteSettings()->company(),
             'subtotal' => $subtotal,
             'btw_percentage' => number_format($btwPercentage, 2),
             'btw_amount' => $btwAmount,
@@ -293,6 +290,11 @@ class QuotePdfController extends Controller
         abort_unless(str_ends_with($filename, '.pdf') && !str_contains($filename, '/') && file_exists($path), 404);
 
         return response()->download($path);
+    }
+
+    private function siteSettings(): SiteSetting
+    {
+        return SiteSetting::instance();
     }
 
     private function getOrCreatePaymentReference(User $user): string

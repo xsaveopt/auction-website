@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Auction;
 use App\Models\AuditLog;
 use App\Models\LeftoverPurchase;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Support\AuctionService;
 use App\Support\Presence;
@@ -19,7 +20,7 @@ class LeftoverPurchaseController extends Controller
 
     public function store(Request $request, Auction $auction): JsonResponse
     {
-        if (!(bool) config('auction.leftover_sales_enabled')) {
+        if (!SiteSetting::instance()->leftover_sales_enabled) {
             return response()->json(['message' => 'Leftover sales are not enabled.'], 403);
         }
 
@@ -49,8 +50,7 @@ class LeftoverPurchaseController extends Controller
             'quantity' => ['required', 'integer', 'min:1', "max:{$available}"],
         ]);
 
-        /** @var float $leftoverPriceFactor */
-        $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
+        $leftoverPriceFactor = SiteSetting::instance()->leftover_price_factor ?? 0.75;
         $pricePerItem = round((float) $auction->starting_price * $leftoverPriceFactor, 2);
 
         $existing = $auction->leftoverPurchases()->where('user_id', $user->id)->first();
@@ -110,8 +110,7 @@ class LeftoverPurchaseController extends Controller
             return response()->json(['message' => "Only {$available} item(s) available."], 422);
         }
 
-        /** @var float $leftoverPriceFactor */
-        $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
+        $leftoverPriceFactor = SiteSetting::instance()->leftover_price_factor ?? 0.75;
         $pricePerItem = round((float) $auction->starting_price * $leftoverPriceFactor, 2);
 
         $existing = $auction->leftoverPurchases()->where('user_id', $buyer->id)->first();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Auction;
 use App\Models\AuditLog;
 use App\Models\LeftoverPriceOffer;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Support\AuctionNotificationService;
 use App\Support\AuctionService;
@@ -21,7 +22,7 @@ class LeftoverPriceOfferController extends Controller
     public function index(): JsonResponse
     {
         /** @var float $leftoverPriceFactor */
-        $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
+        $leftoverPriceFactor = SiteSetting::instance()->leftover_price_factor ?? 0.75;
 
         $offers = LeftoverPriceOffer::with(['auction.images', 'user:id,username'])
             ->where('status', 'pending')
@@ -63,7 +64,7 @@ class LeftoverPriceOfferController extends Controller
 
     public function store(Request $request, Auction $auction): JsonResponse
     {
-        if (!(bool) config('auction.leftover_sales_enabled')) {
+        if (!SiteSetting::instance()->leftover_sales_enabled) {
             return response()->json(['message' => 'Leftover sales are not enabled.'], 403);
         }
 
@@ -95,7 +96,7 @@ class LeftoverPriceOfferController extends Controller
         }
 
         /** @var float $leftoverPriceFactor */
-        $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
+        $leftoverPriceFactor = SiteSetting::instance()->leftover_price_factor ?? 0.75;
         $leftoverPrice = round((float) $auction->starting_price * $leftoverPriceFactor, 2);
 
         $minPrice = $existingOffer

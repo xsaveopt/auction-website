@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\SiteSetting;
 use App\Support\BiddingSchedule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Console\Command;
@@ -45,11 +46,11 @@ class GenerateQuoteCommand extends Command
             return;
         }
 
+        $siteSettings = SiteSetting::instance();
         $pricePerItem = (float) $price;
         $totalOwed = $quantity * $pricePerItem;
 
-        /** @var float $btwPercentage */
-        $btwPercentage = config('auction.invoice.btw_percentage');
+        $btwPercentage = $siteSettings->invoice_btw_percentage ?? 21.0;
         $total = $totalOwed;
         $subtotal = round($total / (1 + ($btwPercentage / 100)), 2);
         $btwAmount = round($total - $subtotal, 2);
@@ -68,7 +69,7 @@ class GenerateQuoteCommand extends Command
             ],
             'currency' => BiddingSchedule::currencySymbol(),
             'generated_at' => now()->format('d-m-Y'),
-            'company' => config('auction.company'),
+            'company' => $siteSettings->company(),
             'subtotal' => $subtotal,
             'btw_percentage' => number_format($btwPercentage, 2),
             'btw_amount' => $btwAmount,

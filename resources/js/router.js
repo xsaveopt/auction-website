@@ -14,6 +14,7 @@ const adminTabPaths = {
     categories: "/admin/categories",
     auditLog: "/admin/audit-log",
     sell: "/admin/sell",
+    settings: "/admin/settings",
 };
 
 const adminTabQueryKeys = {
@@ -50,6 +51,7 @@ const routes = [
     { path: "/admin/categories", name: "admin-categories", component: AdminPanel },
     { path: "/admin/audit-log", name: "admin-audit-log", component: AdminPanel },
     { path: "/admin/sell", name: "admin-sell", component: AdminPanel },
+    { path: "/admin/settings", name: "admin-settings", component: AdminPanel },
     { path: "/auctions/new", redirect: "/admin/sell" },
     { path: "/auctions/:id/edit", component: EditAuction, props: true },
     { path: "/auctions/:id", component: AuctionDetail, props: true },

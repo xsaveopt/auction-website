@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Auction;
 use App\Models\AuditLog;
 use App\Models\LeftoverPurchase;
+use App\Models\SiteSetting;
 use App\Support\AuctionFinalizationService;
 use App\Support\AuctionNotificationService;
 use App\Support\AuctionService;
@@ -75,8 +76,7 @@ class AuctionController extends Controller
 
         /** @var array<int, array<string, mixed>> $auctionResponses */
         $auctionResponses = [];
-        /** @var float $taxPercentage */
-        $taxPercentage = config('auction.invoice.btw_percentage');
+        $taxPercentage = SiteSetting::instance()->invoice_btw_percentage ?? 21.0;
         $taxMultiplier = 1 + ($taxPercentage / 100);
         $revenueAfterTax = 0.0;
         $revenueBeforeTax = 0.0;

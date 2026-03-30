@@ -6,6 +6,7 @@ use App\Models\Auction;
 use App\Models\Bid;
 use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
+use App\Models\SiteSetting;
 use App\Support\Presence;
 use Illuminate\Support\Collection;
 
@@ -122,11 +123,11 @@ class AuctionService
         $clearingPrice = $result['clearing_price'];
         $prices = $result['prices'];
 
+        $settings = SiteSetting::instance();
         $itemsAllocated = array_sum($allocations);
         $leftoverSold = $this->leftoverSoldQuantity($auction);
         $leftoverQuantity = max(0, (int) $auction->quantity - $itemsAllocated - $leftoverSold);
-        /** @var float $leftoverPriceFactor */
-        $leftoverPriceFactor = config('auction.leftover_price_factor', 0.75);
+        $leftoverPriceFactor = $settings->leftover_price_factor ?? 0.75;
         $leftoverPrice = round((float) $auction->starting_price * $leftoverPriceFactor, 2);
 
         $data = [
@@ -149,7 +150,7 @@ class AuctionService
             'bid_count' => $auction->bids->unique('user_id')->count(),
             'watcher_count' => $auction->watcher_count,
             'items_allocated' => $itemsAllocated,
-            'leftover_enabled' => (bool) config('auction.leftover_sales_enabled'),
+            'leftover_enabled' => $settings->leftover_sales_enabled,
             'leftover_quantity' => $leftoverQuantity,
             'leftover_price' => number_format($leftoverPrice, 2, '.', ''),
             'images' => $auction
