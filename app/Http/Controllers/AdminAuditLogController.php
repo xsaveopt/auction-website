@@ -58,7 +58,7 @@ class AdminAuditLogController extends Controller
             'comment' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $auditLog->comment = $validated['comment'];
+        $auditLog->comment = $validated['comment'] ?? null;
         $auditLog->save();
 
         return response()->json(['comment' => $auditLog->comment]);
