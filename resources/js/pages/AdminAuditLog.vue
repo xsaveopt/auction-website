@@ -151,7 +151,7 @@ async function saveComment(log) {
     try {
         const data = await api(`/admin/audit-log/${log.id}/comment`, {
             method: "PATCH",
-            body: { comment: editingCommentText.value || null },
+            body: JSON.stringify({ comment: editingCommentText.value || null }),
         });
         log.comment = data.comment;
         editingCommentId.value = null;
