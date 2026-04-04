@@ -5,12 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property string $action
+ * @property string|null $target_type
+ * @property int|null $target_id
+ * @property array<string, mixed>|null $data
+ * @property string|null $comment
+ * @property \Illuminate\Support\Carbon $created_at
+ */
 class AuditLog extends Model
 {
     public $timestamps = false;
 
     /** @var list<string> */
-    protected $fillable = ['user_id', 'action', 'target_type', 'target_id', 'data', 'created_at'];
+    protected $fillable = ['user_id', 'action', 'target_type', 'target_id', 'data', 'comment', 'created_at'];
 
     /** @var array<string, string> */
     protected $casts = [

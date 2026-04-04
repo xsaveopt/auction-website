@@ -101,6 +101,7 @@ Route::middleware('sso')->group(function () {
         Route::post('/auctions/{auction}/leftover-price-offers', [LeftoverPriceOfferController::class, 'adminStore']);
         Route::delete('/leftover-price-offers/{leftoverPriceOffer}', [LeftoverPriceOfferController::class, 'destroy']);
         Route::get('/audit-log', [AdminAuditLogController::class, 'index']);
+        Route::patch('/audit-log/{auditLog}/comment', [AdminAuditLogController::class, 'updateComment']);
         Route::get('/settings', [AdminSettingsController::class, 'show']);
         Route::put('/settings', [AdminSettingsController::class, 'update']);
     });
