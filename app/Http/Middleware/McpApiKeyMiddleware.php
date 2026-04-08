@@ -29,7 +29,7 @@ class McpApiKeyMiddleware
             return $next($request);
         }
 
-        $admin = User::where('is_admin', true)->oldest()->first();
+        $admin = User::where('is_admin', true)->orderBy('id')->first();
 
         if ($admin) {
             Auth::setUser($admin);
