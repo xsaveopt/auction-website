@@ -318,6 +318,8 @@ class AuctionController extends Controller
             $image->delete();
         }
 
+        $auction->leftoverPriceOffers()->delete();
+
         /** @var \App\Models\User $user */
         $user = $request->user();
         AuditLog::record($user, 'auction.delete', $auction, ['title' => $auction->title]);

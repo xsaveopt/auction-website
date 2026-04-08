@@ -1541,6 +1541,55 @@ watchEffect(() => {
                         </router-link>
                         to buy leftovers or send a lower offer.
                     </div>
+                    <div
+                        v-else-if="
+                            user &&
+                            !isSeller &&
+                            !user.is_admin &&
+                            (myLeftoverPurchase || myPriceOffer?.status === 'accepted')
+                        "
+                        class="mt-4 space-y-3"
+                    >
+                        <div
+                            v-if="myLeftoverPurchase"
+                            class="rounded-lg border border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/20 p-4 text-green-800 dark:text-green-300"
+                        >
+                            <p class="font-semibold">Purchase confirmed</p>
+                            <p class="mt-1 text-sm">
+                                You purchased {{ getItemLabel(myLeftoverPurchase.quantity) }} at
+                                {{ currencySymbol
+                                }}{{ formatMoney(myLeftoverPurchase.price_per_item) }} each.
+                            </p>
+                            <p class="mt-1 text-xs text-green-700 dark:text-green-400">
+                                Total: {{ currencySymbol
+                                }}{{
+                                    formatMoney(
+                                        myLeftoverPurchase.quantity *
+                                            Number(myLeftoverPurchase.price_per_item),
+                                    )
+                                }}
+                            </p>
+                        </div>
+                        <div
+                            v-if="myPriceOffer?.status === 'accepted'"
+                            class="rounded-lg border border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/20 p-4 text-green-800 dark:text-green-300"
+                        >
+                            <p class="font-semibold">Offer accepted</p>
+                            <p class="mt-1 text-sm">
+                                {{ getItemLabel(myPriceOffer.quantity) }} at {{ currencySymbol
+                                }}{{ formatMoney(myPriceOffer.offered_price_per_item) }} each.
+                            </p>
+                            <p class="mt-1 text-xs text-green-700 dark:text-green-400">
+                                Total: {{ currencySymbol
+                                }}{{
+                                    formatMoney(
+                                        myPriceOffer.quantity *
+                                            Number(myPriceOffer.offered_price_per_item),
+                                    )
+                                }}
+                            </p>
+                        </div>
+                    </div>
 
                     <div
                         v-if="auction.leftover_purchases && auction.leftover_purchases.length > 0"

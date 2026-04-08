@@ -25,6 +25,7 @@ class LeftoverPriceOfferController extends Controller
         $leftoverPriceFactor = SiteSetting::instance()->leftover_price_factor ?? 0.75;
 
         $offers = LeftoverPriceOffer::with(['auction.images', 'user:id,username'])
+            ->whereHas('auction')
             ->where('status', 'pending')
             ->orderBy('created_at')
             ->get();
@@ -148,8 +149,13 @@ class LeftoverPriceOfferController extends Controller
             return response()->json(['message' => 'This offer is no longer pending.'], 422);
         }
 
-        /** @var \App\Models\Auction $auction */
-        $auction = $leftoverPriceOffer->auction()->with(['bids', 'leftoverPurchases'])->firstOrFail();
+        $auction = Auction::withTrashed()->find($leftoverPriceOffer->auction_id);
+
+        if (!$auction || $auction->trashed()) {
+            return response()->json(['message' => 'The auction no longer exists.'], 422);
+        }
+
+        $auction->load(['bids', 'leftoverPurchases']);
 
         $allocation = $this->auctionService->allocate($auction);
         $itemsAllocated = array_sum($allocation['allocations']);
@@ -191,20 +197,23 @@ class LeftoverPriceOfferController extends Controller
 
         $this->notificationService->sendOfferRejectedNotification($leftoverPriceOffer);
 
-        /** @var \App\Models\Auction $auction */
-        $auction = $leftoverPriceOffer->auction()->firstOrFail();
+        $auction = Auction::withTrashed()->find($leftoverPriceOffer->auction_id);
 
         /** @var \App\Models\User $admin */
         $admin = $request->user();
         AuditLog::record($admin, 'leftover_price_offer.reject', $leftoverPriceOffer, [
-            'auction_id' => $auction->id,
-            'auction_title' => $auction->title,
+            'auction_id' => $auction?->id,
+            'auction_title' => $auction?->title,
             'buyer' => $leftoverPriceOffer->user?->username,
             'quantity' => $leftoverPriceOffer->quantity,
             'offered_price_per_item' => $leftoverPriceOffer->offered_price_per_item,
         ]);
 
-        return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
+        if ($auction && !$auction->trashed()) {
+            return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
+        }
+
+        return response()->json(['message' => 'Offer rejected.']);
     }
 
     public function adminStore(Request $request, Auction $auction): JsonResponse
@@ -287,14 +296,13 @@ class LeftoverPriceOfferController extends Controller
 
     public function destroy(Request $request, LeftoverPriceOffer $leftoverPriceOffer): JsonResponse
     {
-        /** @var \App\Models\Auction $auction */
-        $auction = $leftoverPriceOffer->auction()->firstOrFail();
+        $auction = Auction::withTrashed()->find($leftoverPriceOffer->auction_id);
 
         /** @var \App\Models\User $admin */
         $admin = $request->user();
         AuditLog::record($admin, 'leftover_price_offer.delete', $leftoverPriceOffer, [
-            'auction_id' => $auction->id,
-            'auction_title' => $auction->title,
+            'auction_id' => $auction?->id,
+            'auction_title' => $auction?->title,
             'buyer' => $leftoverPriceOffer->user?->username,
             'quantity' => $leftoverPriceOffer->quantity,
             'offered_price_per_item' => $leftoverPriceOffer->offered_price_per_item,
@@ -302,6 +310,10 @@ class LeftoverPriceOfferController extends Controller
 
         $leftoverPriceOffer->delete();
 
-        return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
+        if ($auction && !$auction->trashed()) {
+            return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
+        }
+
+        return response()->json(['message' => 'Offer deleted.']);
     }
 }
