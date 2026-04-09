@@ -52,6 +52,7 @@ Route::middleware('sso')->group(function () {
     Route::get('/auctions', [AuctionController::class, 'index']);
     Route::get('/my-auctions', [AuctionController::class, 'myAuctions'])->middleware('auth');
     Route::get('/auctions/ended', [AuctionController::class, 'ended'])->middleware(['auth', 'admin']);
+    Route::get('/auctions/leftovers', [AuctionController::class, 'leftovers'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}/quotes/{bid}', [QuotePdfController::class, 'download'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}/leftover-purchases/{leftoverPurchase}/quotes', [QuotePdfController::class, 'downloadForLeftoverPurchase'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}/leftover-price-offers/{leftoverPriceOffer}/quotes', [QuotePdfController::class, 'downloadForLeftoverPriceOffer'])->middleware(['auth', 'admin']);

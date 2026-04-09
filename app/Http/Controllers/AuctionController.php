@@ -161,6 +161,34 @@ class AuctionController extends Controller
         ]);
     }
 
+    public function leftovers(): JsonResponse
+    {
+        $this->auctionFinalizationService->finalizeExpiredAuctions();
+
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
+        $auctions = Auction::query()
+            ->with(['seller:id,username', 'bids', 'images', 'leftoverPurchases', 'leftoverPriceOffers', 'category'])
+            ->where('status', '!=', 'active')
+            ->orderByDesc('ends_at')
+            ->get();
+
+        $result = [];
+        foreach ($auctions as $auction) {
+            $allocation = $this->auctionService->allocate($auction);
+            $leftoverQuantity = max(
+                0,
+                (int) $auction->quantity - array_sum($allocation['allocations'])
+                - $this->auctionService->leftoverSoldQuantity($auction),
+            );
+
+            if ($leftoverQuantity > 0) {
+                $result[] = $this->auctionService->auctionResponseFromAllocation($auction, $allocation);
+            }
+        }
+
+        return response()->json(['auctions' => $result]);
+    }
+
     public function myAuctions(Request $request): JsonResponse
     {
         $this->auctionFinalizationService->finalizeExpiredAuctions();

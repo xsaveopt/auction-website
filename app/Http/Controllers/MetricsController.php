@@ -125,10 +125,11 @@ class MetricsController extends Controller
 
         $allPurchases = LeftoverPurchase::with(['auction:id,title', 'user:id,username'])->get();
         foreach ($allPurchases as $purchase) {
-            /** @var Auction $purchaseAuction */
             $purchaseAuction = $purchase->auction;
-            /** @var User $purchaseUser */
             $purchaseUser = $purchase->user;
+            if (!$purchaseAuction || !$purchaseUser) {
+                continue;
+            }
             $auctionTitle = self::escapeLabel($purchaseAuction->title);
             $username = self::escapeLabel($purchaseUser->username);
             $amount = number_format((float) $purchase->price_per_item, 2, '.', '');
@@ -146,10 +147,11 @@ class MetricsController extends Controller
         $output .= "# HELP app_price_offer_info Pending price offer info, value is timestamp in milliseconds\n";
         $output .= "# TYPE app_price_offer_info gauge\n";
         foreach ($pendingOffers as $offer) {
-            /** @var Auction $offerAuction */
             $offerAuction = $offer->auction;
-            /** @var User $offerUser */
             $offerUser = $offer->user;
+            if (!$offerAuction || !$offerUser) {
+                continue;
+            }
             $auctionTitle = self::escapeLabel($offerAuction->title);
             $username = self::escapeLabel($offerUser->username);
             $amount = number_format((float) $offer->offered_price_per_item, 2, '.', '');

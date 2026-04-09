@@ -6,6 +6,7 @@ import AdminQuestions from "./AdminQuestions.vue";
 import AdminPriceOffers from "./AdminPriceOffers.vue";
 import AdminCategories from "./AdminCategories.vue";
 import AdminAuditLog from "./AdminAuditLog.vue";
+import AdminLeftovers from "./AdminLeftovers.vue";
 import AdminSettings from "./AdminSettings.vue";
 import CreateAuction from "./CreateAuction.vue";
 
@@ -43,6 +44,14 @@ const tabDefinitions = [
             "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z",
     },
     {
+        key: "leftovers",
+        label: "Leftovers",
+        to: "/admin/leftovers",
+        activeClasses: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+        iconPath:
+            "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
+    },
+    {
         key: "categories",
         label: "Categories",
         to: "/admin/categories",
@@ -78,6 +87,7 @@ const tabByRouteName = {
     "admin-results": "results",
     "admin-questions": "questions",
     "admin-price-offers": "priceOffers",
+    "admin-leftovers": "leftovers",
     "admin-categories": "categories",
     "admin-audit-log": "auditLog",
     "admin-sell": "sell",
@@ -89,7 +99,15 @@ const activeTab = computed(() => tabByRouteName[route.name] ?? "results");
 
 // Tracks which tabs have been opened at least once (lazy mount, keeps alive)
 // Sell is excluded — it always remounts to give a fresh form
-const lazyTabs = ["results", "questions", "priceOffers", "categories", "auditLog", "settings"];
+const lazyTabs = [
+    "results",
+    "questions",
+    "priceOffers",
+    "leftovers",
+    "categories",
+    "auditLog",
+    "settings",
+];
 const tabMounted = ref(Object.fromEntries(lazyTabs.map((tab) => [tab, false])));
 
 watch(
@@ -152,6 +170,7 @@ watch(
             />
             <AdminQuestions v-if="tabMounted.questions" v-show="activeTab === 'questions'" />
             <AdminPriceOffers v-if="tabMounted.priceOffers" v-show="activeTab === 'priceOffers'" />
+            <AdminLeftovers v-if="tabMounted.leftovers" v-show="activeTab === 'leftovers'" />
             <AdminCategories v-if="tabMounted.categories" v-show="activeTab === 'categories'" />
             <AdminAuditLog
                 v-if="tabMounted.auditLog"
