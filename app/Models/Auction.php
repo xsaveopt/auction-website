@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $status
  * @property bool $ending_soon_notified
  * @property int|null $category_id
+ * @property int|null $auction_round_id
  * @property \Illuminate\Support\Carbon $ends_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
@@ -41,12 +42,19 @@ class Auction extends Model
         'status',
         'ending_soon_notified',
         'category_id',
+        'auction_round_id',
     ];
 
     /** @return BelongsTo<\App\Models\User, $this> */
     public function seller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    /** @return BelongsTo<\App\Models\AuctionRound, $this> */
+    public function round(): BelongsTo
+    {
+        return $this->belongsTo(AuctionRound::class, 'auction_round_id');
     }
 
     /** @return BelongsTo<\App\Models\Category, $this> */

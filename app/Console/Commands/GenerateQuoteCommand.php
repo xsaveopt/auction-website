@@ -59,6 +59,7 @@ class GenerateQuoteCommand extends Command
             'winner' => [
                 'username' => $buyer,
             ],
+            'payment_reference' => 'PAY-' . strtoupper(Str::random(6)),
             'items' => [
                 [
                     'title' => $title,

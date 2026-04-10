@@ -296,6 +296,46 @@ class LeftoverPurchaseControllerTest extends TestCase
         $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer->id, 'status' => 'rejected']);
     }
 
+    public function test_leftover_purchase_rejected_when_auction_round_is_closed(): void
+    {
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
+
+        $round = $this->createRound(['status' => 'ended', 'ends_at' => now()->subDay()]);
+        $auction = $this->createAuction(null, [
+            'quantity' => 2,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+            'auction_round_id' => $round->id,
+        ]);
+
+        $this
+            ->actingAs($this->createUser())
+            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 1])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', "This auction's round has been closed.");
+    }
+
+    public function test_leftover_purchase_allowed_when_auction_has_no_round(): void
+    {
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
+
+        $auction = $this->createAuction(null, [
+            'starting_price' => '10.00',
+            'quantity' => 2,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+
+        $this
+            ->actingAs($this->createUser())
+            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 1])
+            ->assertCreated();
+    }
+
     public function test_admin_leftover_purchases_cannot_exceed_available_quantity(): void
     {
         $admin = $this->createAdmin();

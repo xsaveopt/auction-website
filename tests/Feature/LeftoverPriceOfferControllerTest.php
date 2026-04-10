@@ -90,6 +90,52 @@ class LeftoverPriceOfferControllerTest extends TestCase
         ]);
     }
 
+    public function test_price_offer_rejected_when_auction_round_is_closed(): void
+    {
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
+
+        $round = $this->createRound(['status' => 'ended', 'ends_at' => now()->subDay()]);
+        $auction = $this->createAuction(null, [
+            'quantity' => 2,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+            'auction_round_id' => $round->id,
+        ]);
+
+        $this
+            ->actingAs($this->createUser())
+            ->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+                'quantity' => 1,
+                'offered_price_per_item' => 5.00,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', "This auction's round has been closed.");
+    }
+
+    public function test_price_offer_allowed_when_auction_has_no_round(): void
+    {
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
+
+        $auction = $this->createAuction(null, [
+            'starting_price' => '10.00',
+            'quantity' => 2,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+
+        $this
+            ->actingAs($this->createUser())
+            ->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+                'quantity' => 1,
+                'offered_price_per_item' => 5.00,
+            ])
+            ->assertCreated();
+    }
+
     public function test_user_can_submit_a_new_offer_after_a_soft_deleted_offer(): void
     {
         $siteSettings = SiteSetting::instance();

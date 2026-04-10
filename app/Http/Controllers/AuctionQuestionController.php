@@ -15,9 +15,13 @@ class AuctionQuestionController extends Controller
         protected AuctionNotificationService $notificationService,
     ) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $questions = AuctionQuestion::with(['auction:id,title', 'user:id,username'])
+            ->when($request->filled('round_id'), fn($q) => $q->whereHas('auction', fn($q) => $q->where(
+                'auction_round_id',
+                $request->integer('round_id'),
+            )))
             ->orderByRaw('CASE WHEN answer IS NULL THEN 0 ELSE 1 END')
             ->orderByDesc('created_at')
             ->get();

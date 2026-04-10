@@ -28,6 +28,11 @@ class LeftoverPurchaseController extends Controller
             return response()->json(['message' => 'This auction is still active.'], 422);
         }
 
+        $auction->loadMissing('round');
+        if ($auction->round && $auction->round->status === 'ended') {
+            return response()->json(['message' => 'This auction\'s round has been closed.'], 422);
+        }
+
         /** @var \App\Models\User $user */
         $user = $request->user();
 

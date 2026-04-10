@@ -167,6 +167,12 @@ class AuctionService
                     'name' => $auction->category->name,
                     'slug' => $auction->category->slug,
                 ] : null,
+            'round' => $auction->relationLoaded('round') && $auction->round
+                ? [
+                    'id' => $auction->round->id,
+                    'name' => $auction->round->name,
+                    'status' => $auction->round->status,
+                ] : null,
             'created_at' => $auction->created_at?->format('Y-m-d\TH:i:sP'),
         ];
 
@@ -312,6 +318,7 @@ class AuctionService
             'leftoverPurchases.user:id,username',
             'leftoverPriceOffers.user:id,username',
             'category',
+            'round',
         ]);
         $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
 

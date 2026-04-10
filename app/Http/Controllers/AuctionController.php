@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Models\AuctionRound;
 use App\Models\AuditLog;
 use App\Models\LeftoverPurchase;
 use App\Models\SiteSetting;
@@ -22,13 +23,14 @@ class AuctionController extends Controller
         protected AuctionNotificationService $auctionNotificationService,
     ) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $this->auctionFinalizationService->finalizeExpiredAuctions();
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
         $auctions = Auction::query()
-            ->with(['seller:id,username', 'bids', 'images', 'category', 'leftoverPurchases'])
+            ->with(['seller:id,username', 'bids', 'images', 'category', 'leftoverPurchases', 'round'])
+            ->when($request->filled('round_id'), fn($q) => $q->where('auction_round_id', $request->integer('round_id')))
             ->orderByRaw("CASE WHEN status = 'active' AND ends_at > ? THEN 1 ELSE 0 END DESC", [now()])
             ->orderByDesc('created_at')
             ->get();
@@ -52,25 +54,33 @@ class AuctionController extends Controller
             'leftoverPurchases.user:id,username',
             'leftoverPriceOffers.user:id,username',
             'category',
+            'round',
         ]);
         $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
 
         return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);
     }
 
-    public function ended(): JsonResponse
+    public function ended(Request $request): JsonResponse
     {
         $this->auctionFinalizationService->finalizeExpiredAuctions();
 
-        /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $allAuctions */
-        $allAuctions = Auction::query()->with([
+        $query = Auction::query()->with([
             'seller:id,username',
             'bids.user:id,username',
             'images',
             'category',
             'leftoverPurchases.user:id,username',
             'leftoverPriceOffers.user:id,username',
-        ])->get();
+            'round',
+        ]);
+
+        if ($request->filled('round_id')) {
+            $query->where('auction_round_id', $request->integer('round_id'));
+        }
+
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $allAuctions */
+        $allAuctions = $query->get();
 
         $this->auctionService->loadWatcherCounts($allAuctions);
 
@@ -161,14 +171,23 @@ class AuctionController extends Controller
         ]);
     }
 
-    public function leftovers(): JsonResponse
+    public function leftovers(Request $request): JsonResponse
     {
         $this->auctionFinalizationService->finalizeExpiredAuctions();
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
         $auctions = Auction::query()
-            ->with(['seller:id,username', 'bids', 'images', 'leftoverPurchases', 'leftoverPriceOffers', 'category'])
+            ->with([
+                'seller:id,username',
+                'bids',
+                'images',
+                'leftoverPurchases',
+                'leftoverPriceOffers',
+                'category',
+                'round',
+            ])
             ->where('status', '!=', 'active')
+            ->when($request->filled('round_id'), fn($q) => $q->where('auction_round_id', $request->integer('round_id')))
             ->orderByDesc('ends_at')
             ->get();
 
@@ -204,10 +223,12 @@ class AuctionController extends Controller
                 'images',
                 'category',
                 'leftoverPurchases.user:id,username',
+                'round',
             ])
             ->whereHas('bids', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
+            ->when($request->filled('round_id'), fn($q) => $q->where('auction_round_id', $request->integer('round_id')))
             ->get();
 
         $this->auctionService->loadWatcherCounts($auctions);
@@ -241,6 +262,7 @@ class AuctionController extends Controller
                 'category',
                 'leftoverPurchases.user:id,username',
                 'leftoverPriceOffers.user:id,username',
+                'round',
             ])
             ->where(function ($q) use ($user) {
                 $q->whereHas('leftoverPurchases', fn($q) => $q->where(
@@ -251,6 +273,7 @@ class AuctionController extends Controller
                     'accepted',
                 ));
             })
+            ->when($request->filled('round_id'), fn($q) => $q->where('auction_round_id', $request->integer('round_id')))
             ->get();
 
         $this->auctionService->loadWatcherCounts($purchasedAuctions);
@@ -289,8 +312,13 @@ class AuctionController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
+        $activeRound = AuctionRound::where('status', 'active')->latest()->first();
+        if ($activeRound) {
+            $validated['auction_round_id'] = $activeRound->id;
+        }
+
         $auction = $user->auctions()->create($validated);
-        $auction->load(['seller:id,username', 'images', 'category']);
+        $auction->load(['seller:id,username', 'images', 'category', 'round']);
         $auction->setAttribute('watcher_count', 0);
 
         AuditLog::record($user, 'auction.create', $auction, [

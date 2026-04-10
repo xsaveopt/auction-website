@@ -7,6 +7,7 @@ use App\Http\Controllers\AdminBidController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuctionController;
+use App\Http\Controllers\AuctionRoundController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\AuctionImageController;
 use App\Http\Controllers\AuctionQuestionController;
@@ -36,6 +37,9 @@ Route::middleware('sso')->group(function () {
 
     // Bidding schedule
     Route::get('/schedule', fn () => response()->json(['schedule' => BiddingSchedule::toArray()]));
+
+    // Auction rounds (current must come before wildcard routes)
+    Route::get('/rounds/current', [AuctionRoundController::class, 'current']);
 
     // Announcements
     Route::get('/announcement', [AnnouncementController::class, 'active']);
@@ -84,8 +88,16 @@ Route::middleware('sso')->group(function () {
     Route::delete('/questions/{question}', [AuctionQuestionController::class, 'destroy'])->middleware('auth');
 
     // Admin management
+    Route::middleware(['auth', 'admin'])->group(function () {
+        Route::get('/rounds', [AuctionRoundController::class, 'index']);
+        Route::post('/rounds', [AuctionRoundController::class, 'store']);
+        Route::post('/rounds/{round}/close', [AuctionRoundController::class, 'close']);
+        Route::get('/rounds/{round}/users/{user}/quotes', [\App\Http\Controllers\QuotePdfController::class, 'downloadForUser']);
+    });
+
     Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
         Route::get('/users', [AdminBidController::class, 'users']);
+        Route::patch('/auctions/bulk', [AdminAuctionController::class, 'bulkUpdate']);
         Route::post('/auctions/{auction}/end', [AdminAuctionController::class, 'end']);
         Route::post('/auctions/{auction}/cancel', [AdminAuctionController::class, 'cancel']);
         Route::post('/auctions/{auction}/reactivate', [AdminAuctionController::class, 'reactivate']);
@@ -102,6 +114,7 @@ Route::middleware('sso')->group(function () {
         Route::post('/auctions/{auction}/leftover-price-offers', [LeftoverPriceOfferController::class, 'adminStore']);
         Route::delete('/leftover-price-offers/{leftoverPriceOffer}', [LeftoverPriceOfferController::class, 'destroy']);
         Route::get('/audit-log', [AdminAuditLogController::class, 'index']);
+        Route::patch('/audit-log/bulk-comment', [AdminAuditLogController::class, 'bulkComment']);
         Route::patch('/audit-log/{auditLog}/comment', [AdminAuditLogController::class, 'updateComment']);
         Route::get('/settings', [AdminSettingsController::class, 'show']);
         Route::put('/settings', [AdminSettingsController::class, 'update']);

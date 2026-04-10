@@ -6,7 +6,9 @@ import AdminQuestions from "./AdminQuestions.vue";
 import AdminPriceOffers from "./AdminPriceOffers.vue";
 import AdminCategories from "./AdminCategories.vue";
 import AdminAuditLog from "./AdminAuditLog.vue";
+import AdminAuctions from "./AdminAuctions.vue";
 import AdminLeftovers from "./AdminLeftovers.vue";
+import AdminRounds from "./AdminRounds.vue";
 import AdminSettings from "./AdminSettings.vue";
 import CreateAuction from "./CreateAuction.vue";
 
@@ -60,6 +62,21 @@ const tabDefinitions = [
             "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10",
     },
     {
+        key: "auctions",
+        label: "Auctions",
+        to: "/admin/auctions",
+        activeClasses: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        iconPath:
+            "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
+    },
+    {
+        key: "rounds",
+        label: "Rounds",
+        to: "/admin/rounds",
+        activeClasses: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+        iconPath: "M4 6h16M4 10h16M4 14h16M4 18h16",
+    },
+    {
         key: "auditLog",
         label: "Audit Log",
         to: "/admin/audit-log",
@@ -88,7 +105,9 @@ const tabByRouteName = {
     "admin-questions": "questions",
     "admin-price-offers": "priceOffers",
     "admin-leftovers": "leftovers",
+    "admin-auctions": "auctions",
     "admin-categories": "categories",
+    "admin-rounds": "rounds",
     "admin-audit-log": "auditLog",
     "admin-sell": "sell",
     "admin-settings": "settings",
@@ -104,6 +123,8 @@ const lazyTabs = [
     "questions",
     "priceOffers",
     "leftovers",
+    "auctions",
+    "rounds",
     "categories",
     "auditLog",
     "settings",
@@ -171,6 +192,8 @@ watch(
             <AdminQuestions v-if="tabMounted.questions" v-show="activeTab === 'questions'" />
             <AdminPriceOffers v-if="tabMounted.priceOffers" v-show="activeTab === 'priceOffers'" />
             <AdminLeftovers v-if="tabMounted.leftovers" v-show="activeTab === 'leftovers'" />
+            <AdminAuctions v-if="tabMounted.auctions" v-show="activeTab === 'auctions'" />
+            <AdminRounds v-if="tabMounted.rounds" v-show="activeTab === 'rounds'" />
             <AdminCategories v-if="tabMounted.categories" v-show="activeTab === 'categories'" />
             <AdminAuditLog
                 v-if="tabMounted.auditLog"

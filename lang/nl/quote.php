@@ -9,6 +9,7 @@ return [
     'title' => 'Leverbon',
     'date' => 'Datum:',
     'item' => 'Artikel:',
+    'round' => 'Ronde:',
     'reference' => 'Kenmerk:',
     'description' => 'Omschrijving',
     'total' => 'Totaal',

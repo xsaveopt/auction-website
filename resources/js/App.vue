@@ -47,6 +47,7 @@ const now = ref(new Date());
 const heartbeatData = ref(null);
 const siteLocked = ref(false);
 const lockMessage = ref(null);
+const currentRound = ref({ active: null, ended: [] });
 let serverOffsetMs = 0; // server time minus browser time
 const serverClockSeconds = ref(0); // seconds since midnight in server-local time
 
@@ -228,6 +229,15 @@ async function fetchSsoEnabled() {
     }
 }
 
+async function fetchCurrentRound() {
+    try {
+        const data = await api("/rounds/current");
+        currentRound.value = data;
+    } catch {
+        // ignore — rounds are optional
+    }
+}
+
 async function sendPresenceHeartbeat() {
     try {
         const data = await api("/presence/heartbeat", {
@@ -320,6 +330,7 @@ onMounted(() => {
     fetchUser();
     fetchSchedule();
     fetchSsoEnabled();
+    fetchCurrentRound();
     startHeartbeat();
     scheduleInterval = setInterval(fetchSchedule, 60000);
     clockInterval = setInterval(() => {
@@ -420,6 +431,7 @@ provide("currencySymbol", currencySymbol);
 provide("heartbeatData", heartbeatData);
 provide("now", now);
 provide("notify", notify);
+provide("currentRound", currentRound);
 </script>
 
 <template>

@@ -1,8 +1,9 @@
 <script setup>
-import { ref, inject, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed, inject, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../api.js";
 
+const route = useRoute();
 const router = useRouter();
 const user = inject("user");
 
@@ -11,19 +12,64 @@ if (!user.value) {
 }
 const currencySymbol = inject("currencySymbol");
 const now = inject("now");
+
 const active = ref([]);
 const won = ref([]);
 const lost = ref([]);
 const purchased = ref([]);
+const allRounds = ref([]);
 const loading = ref(true);
+const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
+
+function syncRoundQuery(roundId) {
+    const query = { ...route.query };
+    if (roundId !== null) {
+        query.round_id = String(roundId);
+    } else {
+        delete query.round_id;
+    }
+    router.replace({ path: route.path, query });
+}
+
+async function loadMyAuctions(roundId = null) {
+    const url = roundId !== null ? `/my-auctions?round_id=${roundId}` : "/my-auctions";
+    const data = await api(url);
+    active.value = data.active;
+    won.value = data.won;
+    lost.value = data.lost;
+    purchased.value = data.purchased ?? [];
+}
+
+let initialized = false;
 
 onMounted(async () => {
     try {
-        const data = await api("/my-auctions");
-        active.value = data.active;
-        won.value = data.won;
-        lost.value = data.lost;
-        purchased.value = data.purchased ?? [];
+        const currentData = await api("/rounds/current");
+
+        // Build rounds list: active first, then all ended rounds
+        const rounds = [];
+        if (currentData?.active) rounds.push(currentData.active);
+        allRounds.value = [...rounds, ...(currentData?.ended ?? [])];
+
+        let roundId = selectedRoundId.value;
+        if (roundId === null) {
+            roundId = currentData?.active?.id ?? null;
+            selectedRoundId.value = roundId;
+        }
+        syncRoundQuery(roundId);
+        await loadMyAuctions(roundId);
+    } finally {
+        loading.value = false;
+        initialized = true;
+    }
+});
+
+watch(selectedRoundId, async (roundId) => {
+    if (!initialized) return;
+    syncRoundQuery(roundId);
+    loading.value = true;
+    try {
+        await loadMyAuctions(roundId);
     } finally {
         loading.value = false;
     }
@@ -59,16 +105,42 @@ function timeLeft(endsAt) {
 function myBid(auction) {
     return auction.bids.find((b) => b.user.id === user.value?.id);
 }
+
+const hasAnything = computed(
+    () =>
+        active.value.length > 0 ||
+        won.value.length > 0 ||
+        lost.value.length > 0 ||
+        purchased.value.length > 0,
+);
 </script>
 
 <template>
     <div>
         <h1 class="text-2xl font-bold mb-6">My Bids & Wins</h1>
 
+        <!-- Round selector -->
+        <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-6">
+            <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+            <select
+                v-model="selectedRoundId"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+            >
+                <option :value="null">All rounds</option>
+                <option v-for="r in allRounds" :key="r.id" :value="r.id">
+                    {{ r.name }}
+                </option>
+            </select>
+        </div>
+
         <div v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</div>
 
+        <template v-else-if="!hasAnything">
+            <p class="text-gray-500 dark:text-gray-400">No activity yet.</p>
+        </template>
+
         <template v-else>
-            <!-- Leftover Purchases -->
+            <!-- Purchased (leftover) -->
             <section v-if="purchased.length > 0" class="mb-10">
                 <h2 class="text-xl font-semibold mb-4 text-blue-700 dark:text-blue-400">
                     Purchased (Leftover)
@@ -166,12 +238,9 @@ function myBid(auction) {
             </section>
 
             <!-- Active Bids -->
-            <section class="mb-10">
+            <section v-if="active.length > 0" class="mb-10">
                 <h2 class="text-xl font-semibold mb-4">Active Bids</h2>
-                <p v-if="active.length === 0" class="text-gray-500 dark:text-gray-400">
-                    You aren't bidding on anything active right now.
-                </p>
-                <div v-else class="grid gap-4 sm:grid-cols-2">
+                <div class="grid gap-4 sm:grid-cols-2">
                     <router-link
                         v-for="auction in active"
                         :key="auction.id"
@@ -222,7 +291,7 @@ function myBid(auction) {
                 </div>
             </section>
 
-            <!-- Lost / Ended -->
+            <!-- Ended / Lost -->
             <section v-if="lost.length > 0">
                 <h2 class="text-xl font-semibold mb-4 text-gray-500 dark:text-gray-400">
                     Ended Auctions
@@ -244,8 +313,7 @@ function myBid(auction) {
                                 {{ auction.title }}
                             </h3>
                             <p class="text-xs text-gray-400">
-                                Ended
-                                {{ auction.ends_at.slice(0, 10) }}
+                                Ended {{ auction.ends_at.slice(0, 10) }}
                             </p>
                         </div>
                         <div class="text-right">

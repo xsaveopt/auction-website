@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Auction;
+use App\Models\AuctionRound;
 use App\Models\Bid;
 use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
@@ -11,6 +12,7 @@ use App\Models\User;
 use App\Support\AuctionService;
 use App\Support\BiddingSchedule;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -171,8 +173,11 @@ class QuotePdfController extends Controller
         return $pdf->download($filename);
     }
 
-    public function downloadForUser(User $user): Response
+    public function downloadForUser(Request $request, User $user): Response
     {
+        $roundId = $request->filled('round_id') ? $request->integer('round_id') : null;
+        $round = $roundId ? AuctionRound::query()->find($roundId) : null;
+
         $userBidAuctionIds = Bid::where('user_id', $user->id)->pluck('auction_id');
         $userPurchaseAuctionIds = LeftoverPurchase::where('user_id', $user->id)->pluck('auction_id');
         $userOfferAuctionIds = LeftoverPriceOffer::where('user_id', $user->id)
@@ -184,7 +189,7 @@ class QuotePdfController extends Controller
             ->unique()
             ->values();
 
-        $auctions = Auction::query()
+        $query = Auction::query()
             ->whereIn('id', $auctionIds)
             ->with([
                 'bids',
@@ -196,9 +201,13 @@ class QuotePdfController extends Controller
                     'user_id',
                     $user->id,
                 )->where('status', 'accepted'),
-            ])
-            ->get()
-            ->filter(fn($a) => !$a->isActive());
+            ]);
+
+        if ($roundId !== null) {
+            $query->where('auction_round_id', $roundId);
+        }
+
+        $auctions = $query->get()->filter(fn($a) => !$a->isActive());
 
         $items = [];
         $totalOwed = 0.0;
@@ -271,13 +280,15 @@ class QuotePdfController extends Controller
             'btw_percentage' => number_format($btwPercentage, 2),
             'btw_amount' => $btwAmount,
             'total' => $totalOwed,
+            'round_name' => $round?->name,
         ];
 
         /** @var \Barryvdh\DomPDF\PDF $pdf */
         $pdf = Pdf::loadView('pdf.quote', $data);
         $pdf->setPaper('a4');
 
-        $filename = 'quote_' . $user->username . '.pdf';
+        $roundSuffix = $round ? '_' . str_replace(' ', '_', $round->name) : '';
+        $filename = 'quote_' . $user->username . $roundSuffix . '.pdf';
 
         /** @var Response */
         return $pdf->download($filename);

@@ -88,6 +88,7 @@ class PresenceController extends Controller
                     'leftoverPurchases.user:id,username',
                     'leftoverPriceOffers.user:id,username',
                     'category',
+                    'round',
                 ])
                 ->find($auctionId);
 

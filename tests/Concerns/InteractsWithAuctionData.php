@@ -6,6 +6,7 @@ use App\Models\Announcement;
 use App\Models\Auction;
 use App\Models\AuctionImage;
 use App\Models\AuctionQuestion;
+use App\Models\AuctionRound;
 use App\Models\Bid;
 use App\Models\Category;
 use App\Models\LeftoverPriceOffer;
@@ -34,6 +35,14 @@ trait InteractsWithAuctionData
             'name' => $name,
             'slug' => Str::slug($name) . '-' . Str::lower(Str::random(4)),
             'sort_order' => 0,
+        ], $attributes));
+    }
+
+    protected function createRound(array $attributes = []): AuctionRound
+    {
+        return AuctionRound::query()->create(array_merge([
+            'name' => 'Round ' . Str::upper(Str::random(4)),
+            'status' => 'active',
         ], $attributes));
     }
 

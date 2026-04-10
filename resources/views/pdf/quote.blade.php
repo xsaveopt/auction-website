@@ -76,6 +76,12 @@
                 <td style="padding: 3px 0; font-size: 10px;">{{ $items[0]['title'] }}</td>
             </tr>
             @endif
+            @if(!empty($round_name))
+            <tr>
+                <td style="padding: 3px 0; font-size: 10px;">{{ __('quote.round') }}</td>
+                <td style="padding: 3px 0; font-size: 10px;">{{ $round_name }}</td>
+            </tr>
+            @endif
             @if(isset($payment_reference))
             <tr>
                 <td style="padding: 3px 0; font-size: 10px;">{{ __('quote.reference') }}</td>

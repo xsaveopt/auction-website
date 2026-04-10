@@ -44,6 +44,25 @@ class AdminAuditLogController extends Controller
         ]);
     }
 
+    public function bulkComment(Request $request): JsonResponse
+    {
+        /** @var array{ids: int[], comment: string|null} $validated */
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer'],
+            'comment' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        /** @var \App\Models\User $admin */
+        $admin = $request->user();
+
+        $updated = AuditLog::whereIn('id', $validated['ids'])
+            ->where('user_id', $admin->id)
+            ->update(['comment' => $validated['comment'] ?? null]);
+
+        return response()->json(['updated' => $updated]);
+    }
+
     public function updateComment(Request $request, AuditLog $auditLog): JsonResponse
     {
         /** @var \App\Models\User $admin */

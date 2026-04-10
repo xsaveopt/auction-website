@@ -1,34 +1,69 @@
 <script setup>
-import { ref, computed, inject, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed, inject, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../api.js";
+import ConfirmDialog from "../ConfirmDialog.vue";
 
 const router = useRouter();
+const route = useRoute();
 const user = inject("user");
 const questions = ref([]);
+const allRounds = ref([]);
 const loading = ref(true);
 const error = ref("");
 const editingQuestionId = ref(null);
 const answerDrafts = ref({});
 const savingAnswerId = ref(null);
 const deletingQuestionId = ref(null);
+const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
+const confirmDialog = ref(null);
 
 if (!user.value?.is_admin) {
     router.push("/");
 }
 
-onMounted(async () => {
-    await loadQuestions();
-});
+function syncRoundQuery(roundId) {
+    const query = { ...route.query };
+    if (roundId !== null) {
+        query.round_id = String(roundId);
+    } else {
+        delete query.round_id;
+    }
+    router.replace({ path: route.path, query });
+}
 
-async function loadQuestions() {
+async function loadQuestions(roundId = null) {
+    loading.value = true;
     try {
-        const data = await api("/questions");
+        const url = roundId !== null ? `/questions?round_id=${roundId}` : "/questions";
+        const data = await api(url);
         questions.value = data.questions;
     } finally {
         loading.value = false;
     }
 }
+
+let initialized = false;
+
+onMounted(async () => {
+    const [roundsData, currentData] = await Promise.all([api("/rounds"), api("/rounds/current")]);
+    allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
+
+    let roundId = selectedRoundId.value;
+    if (roundId === null) {
+        roundId = currentData?.active?.id ?? null;
+        selectedRoundId.value = roundId;
+    }
+    syncRoundQuery(roundId);
+    await loadQuestions(roundId);
+    initialized = true;
+});
+
+watch(selectedRoundId, async (roundId) => {
+    if (!initialized) return;
+    syncRoundQuery(roundId);
+    await loadQuestions(roundId);
+});
 
 const unansweredQuestions = computed(() => questions.value.filter((q) => !q.answer));
 const answeredQuestions = computed(() => questions.value.filter((q) => q.answer));
@@ -70,24 +105,30 @@ async function submitAnswer(question) {
     }
 }
 
-async function deleteQuestion(question) {
-    if (!confirm("Delete this question?")) return;
-    error.value = "";
-    try {
-        deletingQuestionId.value = question.id;
-        await api(`/questions/${question.id}`, { method: "DELETE" });
-        if (editingQuestionId.value === question.id) {
-            editingQuestionId.value = null;
-        }
-        const nextDrafts = { ...answerDrafts.value };
-        delete nextDrafts[question.id];
-        answerDrafts.value = nextDrafts;
-        await loadQuestions();
-    } catch (e) {
-        error.value = e.data?.message || "Failed to delete question.";
-    } finally {
-        deletingQuestionId.value = null;
-    }
+function deleteQuestion(question) {
+    confirmDialog.value = {
+        message: "Delete this question?",
+        confirmLabel: "Delete",
+        danger: true,
+        onConfirm: async () => {
+            error.value = "";
+            try {
+                deletingQuestionId.value = question.id;
+                await api(`/questions/${question.id}`, { method: "DELETE" });
+                if (editingQuestionId.value === question.id) {
+                    editingQuestionId.value = null;
+                }
+                const nextDrafts = { ...answerDrafts.value };
+                delete nextDrafts[question.id];
+                answerDrafts.value = nextDrafts;
+                await loadQuestions();
+            } catch (e) {
+                error.value = e.data?.message || "Failed to delete question.";
+            } finally {
+                deletingQuestionId.value = null;
+            }
+        },
+    };
 }
 
 function formatDate(d) {
@@ -98,7 +139,34 @@ function formatDate(d) {
 
 <template>
     <div>
+        <ConfirmDialog
+            v-if="confirmDialog"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-label="confirmDialog.confirmLabel"
+            :danger="confirmDialog.danger"
+            @confirm="
+                confirmDialog.onConfirm();
+                confirmDialog = null;
+            "
+            @cancel="confirmDialog = null"
+        />
+
         <h1 class="text-2xl font-bold mb-4">All Questions</h1>
+
+        <!-- Round filter -->
+        <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-4">
+            <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+            <select
+                v-model="selectedRoundId"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+            >
+                <option :value="null">All rounds</option>
+                <option v-for="r in allRounds" :key="r.id" :value="r.id">
+                    {{ r.name }}
+                </option>
+            </select>
+        </div>
 
         <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
 

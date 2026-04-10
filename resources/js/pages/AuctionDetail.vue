@@ -7,6 +7,7 @@ import {
     getLeftoverDiscountPercent,
     hasAvailableLeftovers,
 } from "../auctionPresentation.js";
+import ConfirmDialog from "../ConfirmDialog.vue";
 
 const router = useRouter();
 
@@ -67,6 +68,7 @@ const adminAuctionError = ref("");
 const adminAuctionSaving = ref(false);
 const allUsers = ref([]);
 const usersLoaded = ref(false);
+const confirmDialog = ref(null);
 
 const isSeller = computed(() => {
     if (!user.value || !auction.value) return false;
@@ -155,6 +157,12 @@ const offerTotal = computed(() => {
     return quantity * Number(offerPrice.value || 0);
 });
 
+const roundIsClosed = computed(() => auction.value?.round?.status === "ended");
+
+const effectiveLeftoverAvailable = computed(
+    () => hasLeftoversAvailable.value && !(roundIsClosed.value && !user.value?.is_admin),
+);
+
 const auctionStatus = computed(() => {
     if (!auction.value) return null;
     if (auction.value.is_active) {
@@ -164,14 +172,18 @@ const auctionStatus = computed(() => {
             summary: `Bidding closes ${formatDate(auction.value.ends_at)}.`,
         };
     }
-    if (hasLeftoversAvailable.value) {
+    if (effectiveLeftoverAvailable.value) {
         return {
             label: "Leftover sale",
             tone: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
             summary: `${getItemLabel(auction.value.leftover_quantity)} still available at ${currencySymbol.value}${formatMoney(auction.value.leftover_price)} each.`,
         };
     }
-    if (auction.value.leftover_enabled && auction.value.leftover_quantity === 0) {
+    if (
+        auction.value.leftover_enabled &&
+        auction.value.leftover_quantity === 0 &&
+        !roundIsClosed.value
+    ) {
         return {
             label: "Sold out",
             tone: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200",
@@ -189,7 +201,7 @@ const auctionStatus = computed(() => {
 const primaryPriceLabel = computed(() => {
     if (!auction.value) return "";
     if (auction.value.is_active) return "Current clearing price";
-    if (hasLeftoversAvailable.value) return "Buy now price";
+    if (effectiveLeftoverAvailable.value) return "Buy now price";
     if (auction.value.bid_count > 0) return "Final clearing price";
 
     return "Starting price";
@@ -198,13 +210,14 @@ const primaryPriceLabel = computed(() => {
 const primaryPriceValue = computed(() => {
     if (!auction.value) return 0;
 
-    return hasLeftoversAvailable.value && !auction.value.is_active
+    return effectiveLeftoverAvailable.value && !auction.value.is_active
         ? auction.value.leftover_price
         : auction.value.current_price;
 });
 
 const shouldShowLeftoverSection = computed(() => {
     if (!auction.value?.leftover_enabled) return false;
+    if (roundIsClosed.value && !user.value?.is_admin) return false;
 
     return Boolean(
         hasLeftoversAvailable.value ||
@@ -319,14 +332,21 @@ async function load(showLoading = false, resetForm = false) {
     loading.value = false;
 }
 
-async function deleteAuction() {
-    if (!confirm("Are you sure you want to delete this auction?")) return;
-    try {
-        await api(`/auctions/${props.id}`, { method: "DELETE" });
-        router.push("/");
-    } catch (e) {
-        error.value = e.data?.message || "Failed to delete auction.";
-    }
+function deleteAuction() {
+    confirmDialog.value = {
+        title: "Delete Auction",
+        message: "Are you sure you want to delete this auction? This cannot be undone.",
+        confirmLabel: "Delete",
+        danger: true,
+        onConfirm: async () => {
+            try {
+                await api(`/auctions/${props.id}`, { method: "DELETE" });
+                router.push("/");
+            } catch (e) {
+                error.value = e.data?.message || "Failed to delete auction.";
+            }
+        },
+    };
 }
 
 async function buyLeftover() {
@@ -372,35 +392,42 @@ async function submitPriceOffer() {
     }
 }
 
-async function acceptPriceOffer(offer) {
-    if (
-        !confirm(
-            `Accept offer of ${currencySymbol.value}${Number(offer.offered_price_per_item).toFixed(2)} × ${offer.quantity} from ${offer.user.username}?`,
-        )
-    )
-        return;
-    try {
-        const data = await api(`/admin/leftover-price-offers/${offer.id}/accept`, {
-            method: "POST",
-        });
-        updateAuction(data.auction);
-        notify?.("Offer accepted.", "success");
-    } catch (e) {
-        notify?.(e.data?.message || "Failed to accept offer.", "error");
-    }
+function acceptPriceOffer(offer) {
+    confirmDialog.value = {
+        message: `Accept offer of ${currencySymbol.value}${Number(offer.offered_price_per_item).toFixed(2)} × ${offer.quantity} from ${offer.user.username}?`,
+        confirmLabel: "Accept",
+        danger: false,
+        onConfirm: async () => {
+            try {
+                const data = await api(`/admin/leftover-price-offers/${offer.id}/accept`, {
+                    method: "POST",
+                });
+                updateAuction(data.auction);
+                notify?.("Offer accepted.", "success");
+            } catch (e) {
+                notify?.(e.data?.message || "Failed to accept offer.", "error");
+            }
+        },
+    };
 }
 
-async function rejectPriceOffer(offer) {
-    if (!confirm(`Reject offer from ${offer.user.username}?`)) return;
-    try {
-        const data = await api(`/admin/leftover-price-offers/${offer.id}/reject`, {
-            method: "POST",
-        });
-        updateAuction(data.auction);
-        notify?.("Offer rejected.", "success");
-    } catch (e) {
-        notify?.(e.data?.message || "Failed to reject offer.", "error");
-    }
+function rejectPriceOffer(offer) {
+    confirmDialog.value = {
+        message: `Reject offer from ${offer.user.username}?`,
+        confirmLabel: "Reject",
+        danger: true,
+        onConfirm: async () => {
+            try {
+                const data = await api(`/admin/leftover-price-offers/${offer.id}/reject`, {
+                    method: "POST",
+                });
+                updateAuction(data.auction);
+                notify?.("Offer rejected.", "success");
+            } catch (e) {
+                notify?.(e.data?.message || "Failed to reject offer.", "error");
+            }
+        },
+    };
 }
 
 async function submitAdminOffer() {
@@ -433,15 +460,23 @@ async function submitAdminOffer() {
     }
 }
 
-async function deletePriceOffer(offer) {
-    if (!confirm(`Delete offer from ${offer.user.username}?`)) return;
-    try {
-        const data = await api(`/admin/leftover-price-offers/${offer.id}`, { method: "DELETE" });
-        updateAuction(data.auction);
-        notify?.("Offer deleted.", "success");
-    } catch (e) {
-        notify?.(e.data?.message || "Failed to delete offer.", "error");
-    }
+function deletePriceOffer(offer) {
+    confirmDialog.value = {
+        message: `Delete offer from ${offer.user.username}?`,
+        confirmLabel: "Delete",
+        danger: true,
+        onConfirm: async () => {
+            try {
+                const data = await api(`/admin/leftover-price-offers/${offer.id}`, {
+                    method: "DELETE",
+                });
+                updateAuction(data.auction);
+                notify?.("Offer deleted.", "success");
+            } catch (e) {
+                notify?.(e.data?.message || "Failed to delete offer.", "error");
+            }
+        },
+    };
 }
 
 async function placeBid() {
@@ -539,26 +574,30 @@ async function submitAnswer(question) {
     }
 }
 
-async function deleteQuestion(question) {
-    if (!confirm("Delete this question?")) return;
-
-    questionError.value = "";
-
-    try {
-        deletingQuestionId.value = question.id;
-        await api(`/questions/${question.id}`, { method: "DELETE" });
-        if (editingQuestionId.value === question.id) {
-            editingQuestionId.value = null;
-        }
-        const nextDrafts = { ...answerDrafts.value };
-        delete nextDrafts[question.id];
-        answerDrafts.value = nextDrafts;
-        await load();
-    } catch (e) {
-        questionError.value = e.data?.message || "Failed to delete question.";
-    } finally {
-        deletingQuestionId.value = null;
-    }
+function deleteQuestion(question) {
+    confirmDialog.value = {
+        message: "Delete this question?",
+        confirmLabel: "Delete",
+        danger: true,
+        onConfirm: async () => {
+            questionError.value = "";
+            try {
+                deletingQuestionId.value = question.id;
+                await api(`/questions/${question.id}`, { method: "DELETE" });
+                if (editingQuestionId.value === question.id) {
+                    editingQuestionId.value = null;
+                }
+                const nextDrafts = { ...answerDrafts.value };
+                delete nextDrafts[question.id];
+                answerDrafts.value = nextDrafts;
+                await load();
+            } catch (e) {
+                questionError.value = e.data?.message || "Failed to delete question.";
+            } finally {
+                deletingQuestionId.value = null;
+            }
+        },
+    };
 }
 
 async function loadUsers() {
@@ -603,16 +642,22 @@ async function saveBid(bid) {
     }
 }
 
-async function deleteBid(bid) {
-    if (!confirm(`Delete bid by ${bid.user.username}?`)) return;
-    adminBidError.value = "";
-    try {
-        const data = await api(`/admin/bids/${bid.id}`, { method: "DELETE" });
-        updateAuction(data.auction);
-        notify?.("Bid deleted.", "success");
-    } catch (e) {
-        adminBidError.value = e.data?.message || "Failed to delete bid.";
-    }
+function deleteBid(bid) {
+    confirmDialog.value = {
+        message: `Delete bid by ${bid.user.username}?`,
+        confirmLabel: "Delete",
+        danger: true,
+        onConfirm: async () => {
+            adminBidError.value = "";
+            try {
+                const data = await api(`/admin/bids/${bid.id}`, { method: "DELETE" });
+                updateAuction(data.auction);
+                notify?.("Bid deleted.", "success");
+            } catch (e) {
+                adminBidError.value = e.data?.message || "Failed to delete bid.";
+            }
+        },
+    };
 }
 
 async function submitAddBid() {
@@ -644,20 +689,26 @@ async function submitAddBid() {
     }
 }
 
-async function endAuction(cancel = false) {
+function endAuction(cancel = false) {
     const label = cancel ? "cancel" : "end";
-    if (!confirm(`${cancel ? "Cancel" : "End"} this auction now?`)) return;
-    adminAuctionError.value = "";
-    adminAuctionSaving.value = true;
-    try {
-        const data = await api(`/admin/auctions/${props.id}/${label}`, { method: "POST" });
-        updateAuction(data.auction);
-        notify?.(`Auction ${cancel ? "cancelled" : "ended"}.`, "success");
-    } catch (e) {
-        adminAuctionError.value = e.data?.message || `Failed to ${label} auction.`;
-    } finally {
-        adminAuctionSaving.value = false;
-    }
+    confirmDialog.value = {
+        message: `${cancel ? "Cancel" : "End"} this auction now?`,
+        confirmLabel: cancel ? "Cancel Auction" : "End Auction",
+        danger: true,
+        onConfirm: async () => {
+            adminAuctionError.value = "";
+            adminAuctionSaving.value = true;
+            try {
+                const data = await api(`/admin/auctions/${props.id}/${label}`, { method: "POST" });
+                updateAuction(data.auction);
+                notify?.(`Auction ${cancel ? "cancelled" : "ended"}.`, "success");
+            } catch (e) {
+                adminAuctionError.value = e.data?.message || `Failed to ${label} auction.`;
+            } finally {
+                adminAuctionSaving.value = false;
+            }
+        },
+    };
 }
 
 async function reactivateAuction() {
@@ -706,15 +757,23 @@ async function extendAuction() {
     }
 }
 
-async function deleteLeftoverPurchase(purchase) {
-    if (!confirm(`Delete purchase by ${purchase.user.username}?`)) return;
-    try {
-        const data = await api(`/admin/leftover-purchases/${purchase.id}`, { method: "DELETE" });
-        updateAuction(data.auction);
-        notify?.("Purchase deleted.", "success");
-    } catch (e) {
-        notify?.("Failed to delete purchase.", "error");
-    }
+function deleteLeftoverPurchase(purchase) {
+    confirmDialog.value = {
+        message: `Delete purchase by ${purchase.user.username}?`,
+        confirmLabel: "Delete",
+        danger: true,
+        onConfirm: async () => {
+            try {
+                const data = await api(`/admin/leftover-purchases/${purchase.id}`, {
+                    method: "DELETE",
+                });
+                updateAuction(data.auction);
+                notify?.("Purchase deleted.", "success");
+            } catch (e) {
+                notify?.("Failed to delete purchase.", "error");
+            }
+        },
+    };
 }
 
 async function submitAddPurchase() {
@@ -810,6 +869,19 @@ watchEffect(() => {
 </script>
 
 <template>
+    <ConfirmDialog
+        v-if="confirmDialog"
+        :title="confirmDialog.title"
+        :message="confirmDialog.message"
+        :confirm-label="confirmDialog.confirmLabel"
+        :danger="confirmDialog.danger"
+        @confirm="
+            confirmDialog.onConfirm();
+            confirmDialog = null;
+        "
+        @cancel="confirmDialog = null"
+    />
+
     <div v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</div>
     <div
         v-else-if="auction"
@@ -1074,7 +1146,11 @@ watchEffect(() => {
             </div>
             <template v-else-if="!auction.is_active">
                 <div
-                    v-if="auction.leftover_enabled && auction.leftover_quantity === 0"
+                    v-if="
+                        auction.leftover_enabled &&
+                        auction.leftover_quantity === 0 &&
+                        !(roundIsClosed && !user?.is_admin)
+                    "
                     class="bg-gray-100 dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded p-4"
                 >
                     <span class="font-bold text-gray-800 dark:text-gray-100">Sold out</span>

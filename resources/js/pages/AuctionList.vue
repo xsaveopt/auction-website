@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, inject, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../api.js";
 import {
     getItemLabel,
@@ -7,18 +8,35 @@ import {
     hasAvailableLeftovers,
 } from "../auctionPresentation.js";
 
+const route = useRoute();
+const router = useRouter();
+
 const auctions = ref([]);
+const allRounds = ref([]);
 const categories = ref([]);
 const loading = ref(true);
 const heartbeatData = inject("heartbeatData");
 const currencySymbol = inject("currencySymbol");
 const user = inject("user");
 const now = inject("now");
+const currentRound = inject("currentRound");
+
+const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
 
 const announcement = ref(null);
 const editingAnnouncement = ref(false);
 const announcementDraft = ref("");
 const announcementSaving = ref(false);
+
+function syncRoundQuery(roundId) {
+    const query = { ...route.query };
+    if (roundId !== null) {
+        query.round_id = String(roundId);
+    } else {
+        delete query.round_id;
+    }
+    router.replace({ path: route.path, query });
+}
 
 async function loadAnnouncement() {
     const data = await api("/announcement").catch(() => null);
@@ -51,17 +69,49 @@ function startEditAnnouncement() {
     editingAnnouncement.value = true;
 }
 
-async function load() {
-    const [auctionData, categoryData] = await Promise.all([
-        api("/auctions"),
-        api("/categories"),
-        loadAnnouncement(),
-    ]);
-
-    auctions.value = auctionData.auctions;
-    if (categoryData) categories.value = categoryData.categories;
-    loading.value = false;
+async function loadAuctions(roundId = null) {
+    const url = roundId !== null ? `/auctions?round_id=${roundId}` : "/auctions";
+    const data = await api(url);
+    auctions.value = data.auctions;
 }
+
+let initialized = false;
+
+onMounted(async () => {
+    try {
+        const [currentData, categoryData] = await Promise.all([
+            api("/rounds/current"),
+            api("/categories"),
+            loadAnnouncement(),
+        ]);
+
+        // Build rounds list: active first, then all ended rounds
+        const rounds = [];
+        if (currentData?.active) rounds.push(currentData.active);
+        allRounds.value = [...rounds, ...(currentData?.ended ?? [])];
+
+        if (categoryData) categories.value = categoryData.categories;
+
+        let roundId = selectedRoundId.value;
+        if (roundId === null) {
+            roundId = currentData?.active?.id ?? null;
+            selectedRoundId.value = roundId;
+        }
+        syncRoundQuery(roundId);
+        await loadAuctions(roundId);
+    } finally {
+        loading.value = false;
+        initialized = true;
+    }
+});
+
+watch(selectedRoundId, async (roundId) => {
+    if (!initialized) return;
+    syncRoundQuery(roundId);
+    loading.value = true;
+    await loadAuctions(roundId);
+    loading.value = false;
+});
 
 watch(heartbeatData, (data) => {
     if (loading.value || !data?.auction_updates) return;
@@ -70,7 +120,7 @@ watch(heartbeatData, (data) => {
     const currentIds = new Set(auctions.value.map((a) => a.id));
     const serverIds = new Set(data.auction_ids ?? []);
     if (currentIds.size !== serverIds.size || [...serverIds].some((id) => !currentIds.has(id))) {
-        load();
+        loadAuctions(selectedRoundId.value);
         return;
     }
 
@@ -88,8 +138,12 @@ function watchingText(count) {
     return `${count} currently watching`;
 }
 
+function roundClosed(auction) {
+    return auction.round?.status === "ended";
+}
+
 function isLeftoverSale(auction) {
-    return !auction.is_active && hasAvailableLeftovers(auction);
+    return !auction.is_active && hasAvailableLeftovers(auction) && !roundClosed(auction);
 }
 
 function priceLabel(auction) {
@@ -113,20 +167,19 @@ function leftoverDiscountText(auction) {
 function statusText(auction) {
     if (auction.is_active) return "Live";
     if (isLeftoverSale(auction)) return "Leftover sale";
-    if (auction.leftover_enabled && auction.leftover_quantity === 0) return "Sold out";
+    if (auction.leftover_enabled && auction.leftover_quantity === 0 && !roundClosed(auction))
+        return "Sold out";
 
     return "Ended";
 }
-
-onMounted(async () => {
-    await load();
-});
 
 const showSoldOut = ref(false);
 const selectedLocation = ref(null);
 
 function shouldHideEnded(auction) {
-    return !auction.is_active && !(auction.leftover_enabled && auction.leftover_quantity > 0);
+    if (auction.is_active) return false;
+    if (roundClosed(auction)) return false; // closed round: show all as history
+    return !(auction.leftover_enabled && auction.leftover_quantity > 0);
 }
 
 const hiddenEndedCount = computed(() => auctions.value.filter((a) => shouldHideEnded(a)).length);
@@ -195,6 +248,45 @@ function timeLeft(endsAt) {
     <div>
         <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
         <template v-else>
+            <!-- Round ended banner -->
+            <div
+                v-if="currentRound && !currentRound.active && currentRound.ended?.length > 0"
+                class="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4 flex items-start gap-3"
+            >
+                <svg
+                    class="w-5 h-5 text-amber-500 dark:text-amber-400 mt-0.5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                </svg>
+                <div>
+                    <p class="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        The "{{ currentRound.ended[0].name }}" auction round has ended.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Round selector -->
+            <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-4">
+                <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+                <select
+                    v-model="selectedRoundId"
+                    class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                >
+                    <option :value="null">All rounds</option>
+                    <option v-for="r in allRounds" :key="r.id" :value="r.id">
+                        {{ r.name }}
+                    </option>
+                </select>
+            </div>
+
             <!-- Announcement Board -->
             <div
                 v-if="announcement && !editingAnnouncement"
@@ -350,7 +442,7 @@ function timeLeft(endsAt) {
 
             <!-- Auction groups by category — 3-column pane layout -->
             <div v-if="groupedAuctions.length === 0" class="text-gray-500 dark:text-gray-400">
-                No auctions yet.
+                No auctions yet{{ selectedRoundId !== null ? " for this round" : "" }}.
             </div>
             <div v-else class="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                 <section v-for="group in groupedAuctions" :key="group.slug" class="min-w-0">
@@ -385,7 +477,8 @@ function timeLeft(endsAt) {
                                                 : isLeftoverSale(auction)
                                                   ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                                                   : auction.leftover_enabled &&
-                                                      auction.leftover_quantity === 0
+                                                      auction.leftover_quantity === 0 &&
+                                                      !roundClosed(auction)
                                                     ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
                                                     : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                                         "

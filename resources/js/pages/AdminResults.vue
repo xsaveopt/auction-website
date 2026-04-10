@@ -13,12 +13,17 @@ const router = useRouter();
 const route = useRoute();
 const user = inject("user");
 const currencySymbol = inject("currencySymbol");
-const auctions = ref([]);
+const allAuctions = ref([]);
+const allRounds = ref([]);
 const summary = ref(null);
 const loading = ref(true);
 const expanded = ref({});
 const view = ref(route.query.view === "auctions" ? "auctions" : "users");
 const expandedUsers = ref({});
+const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
+
+// auctions is an alias for allAuctions — filtering is done server-side via round_id param
+const auctions = allAuctions;
 
 function syncViewQuery(v) {
     if (!props.active) {
@@ -27,6 +32,20 @@ function syncViewQuery(v) {
 
     const query = { ...route.query };
     query.view = v;
+    router.replace({ path: route.path, query });
+}
+
+function syncRoundQuery(roundId) {
+    if (!props.active) {
+        return;
+    }
+
+    const query = { ...route.query };
+    if (roundId !== null) {
+        query.round_id = String(roundId);
+    } else {
+        delete query.round_id;
+    }
     router.replace({ path: route.path, query });
 }
 
@@ -44,6 +63,11 @@ watch(
     (isActive) => {
         if (isActive) {
             syncViewQuery(view.value);
+            // Sync round_id from query when tab becomes active
+            const qRound = route.query.round_id ? Number(route.query.round_id) : null;
+            if (qRound !== selectedRoundId.value) {
+                selectedRoundId.value = qRound;
+            }
         }
     },
 );
@@ -52,11 +76,47 @@ if (!user.value?.is_admin) {
     router.push("/");
 }
 
+async function loadEnded(roundId = null) {
+    const url = roundId !== null ? `/auctions/ended?round_id=${roundId}` : "/auctions/ended";
+    const data = await api(url);
+    return data;
+}
+
+let initialized = false;
+
 onMounted(async () => {
     try {
-        const data = await api("/auctions/ended");
-        auctions.value = data.auctions;
+        const [roundsData, currentData] = await Promise.all([
+            api("/rounds"),
+            api("/rounds/current"),
+        ]);
+        allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
+
+        let roundId = selectedRoundId.value;
+        // Default to active round if no round is specified in the URL
+        if (roundId === null) {
+            roundId = currentData?.active?.id ?? null;
+            selectedRoundId.value = roundId;
+        }
+        syncRoundQuery(roundId);
+        const data = await loadEnded(roundId);
+        allAuctions.value = data.auctions;
         summary.value = data.summary;
+    } finally {
+        loading.value = false;
+        initialized = true;
+    }
+});
+
+watch(selectedRoundId, async (roundId) => {
+    if (!initialized) return;
+    syncRoundQuery(roundId);
+    loading.value = true;
+    try {
+        const data = await loadEnded(roundId);
+        allAuctions.value = data.auctions;
+        summary.value = data.summary;
+        expanded.value = {};
     } finally {
         loading.value = false;
     }
@@ -80,7 +140,8 @@ function quoteUrl(auctionId, bidId) {
 }
 
 function userQuoteUrl(userId) {
-    return `/api/users/${userId}/quotes`;
+    const base = `/api/users/${userId}/quotes`;
+    return selectedRoundId.value !== null ? `${base}?round_id=${selectedRoundId.value}` : base;
 }
 
 function leftoverQuoteUrl(auctionId, purchaseId) {
@@ -301,6 +362,20 @@ const statsCards = computed(() => {
                 Download all quotes
             </button>
         </div>
+        <!-- Round filter -->
+        <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-4">
+            <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+            <select
+                v-model="selectedRoundId"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+            >
+                <option :value="null">All rounds</option>
+                <option v-for="r in allRounds" :key="r.id" :value="r.id">
+                    {{ r.name }}
+                </option>
+            </select>
+        </div>
+
         <div class="flex gap-1 mb-4 border-b dark:border-gray-700">
             <button
                 @click="view = 'auctions'"

@@ -19,13 +19,17 @@ class LeftoverPriceOfferController extends Controller
         protected AuctionNotificationService $notificationService,
     ) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         /** @var float $leftoverPriceFactor */
         $leftoverPriceFactor = SiteSetting::instance()->leftover_price_factor ?? 0.75;
 
         $offers = LeftoverPriceOffer::with(['auction.images', 'user:id,username'])
-            ->whereHas('auction')
+            ->whereHas('auction', function ($q) use ($request) {
+                if ($request->filled('round_id')) {
+                    $q->where('auction_round_id', $request->integer('round_id'));
+                }
+            })
             ->where('status', 'pending')
             ->orderBy('created_at')
             ->get();
@@ -71,6 +75,11 @@ class LeftoverPriceOfferController extends Controller
 
         if ($auction->isActive()) {
             return response()->json(['message' => 'This auction is still active.'], 422);
+        }
+
+        $auction->loadMissing('round');
+        if ($auction->round && $auction->round->status === 'ended') {
+            return response()->json(['message' => 'This auction\'s round has been closed.'], 422);
         }
 
         /** @var \App\Models\User $user */

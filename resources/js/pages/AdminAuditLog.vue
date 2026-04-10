@@ -23,6 +23,11 @@ const editingCommentId = ref(null);
 const editingCommentText = ref("");
 const savingComment = ref(false);
 
+const selectedLogIds = ref(new Set());
+const bulkCommentText = ref("");
+const savingBulk = ref(false);
+const bulkError = ref("");
+
 if (!user.value?.is_admin) {
     router.push("/");
 }
@@ -136,6 +141,49 @@ function formatData(data) {
         .join(" · ");
 }
 
+function toggleSelect(logId) {
+    const next = new Set(selectedLogIds.value);
+    if (next.has(logId)) {
+        next.delete(logId);
+    } else {
+        next.add(logId);
+    }
+    selectedLogIds.value = next;
+}
+
+function clearSelection() {
+    selectedLogIds.value = new Set();
+    bulkCommentText.value = "";
+    bulkError.value = "";
+}
+
+async function saveBulkComment() {
+    if (selectedLogIds.value.size === 0) return;
+    savingBulk.value = true;
+    bulkError.value = "";
+    try {
+        await api("/admin/audit-log/bulk-comment", {
+            method: "PATCH",
+            body: JSON.stringify({
+                ids: [...selectedLogIds.value],
+                comment: bulkCommentText.value || null,
+            }),
+        });
+        // Update the local logs
+        const text = bulkCommentText.value || null;
+        logs.value.forEach((log) => {
+            if (selectedLogIds.value.has(log.id)) {
+                log.comment = text;
+            }
+        });
+        clearSelection();
+    } catch (e) {
+        bulkError.value = "Failed to save comments.";
+    } finally {
+        savingBulk.value = false;
+    }
+}
+
 function startEditComment(log) {
     editingCommentId.value = log.id;
     editingCommentText.value = log.comment ?? "";
@@ -183,9 +231,48 @@ async function saveComment(log) {
             </p>
 
             <template v-else>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                    {{ total }} total entries
-                </p>
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ total }} total entries
+                    </p>
+                    <button
+                        v-if="selectedLogIds.size > 0"
+                        @click="clearSelection"
+                        class="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    >
+                        Clear selection ({{ selectedLogIds.size }})
+                    </button>
+                </div>
+
+                <!-- Bulk comment panel -->
+                <div
+                    v-if="selectedLogIds.size > 0"
+                    class="mb-4 p-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20"
+                >
+                    <p class="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">
+                        Add comment to {{ selectedLogIds.size }} selected
+                        {{ selectedLogIds.size === 1 ? "entry" : "entries" }}
+                    </p>
+                    <textarea
+                        v-model="bulkCommentText"
+                        rows="2"
+                        maxlength="1000"
+                        placeholder="Comment to apply to all selected entries…"
+                        class="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    ></textarea>
+                    <div class="flex items-center gap-2 mt-2">
+                        <button
+                            @click="saveBulkComment"
+                            :disabled="savingBulk"
+                            class="px-3 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {{ savingBulk ? "Saving…" : "Apply to all" }}
+                        </button>
+                        <p v-if="bulkError" class="text-xs text-red-600 dark:text-red-400">
+                            {{ bulkError }}
+                        </p>
+                    </div>
+                </div>
 
                 <div class="overflow-x-auto rounded shadow">
                     <table class="w-full text-sm bg-white dark:bg-gray-800">
@@ -193,6 +280,7 @@ async function saveComment(log) {
                             <tr
                                 class="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700"
                             >
+                                <th class="px-3 py-2 w-8"></th>
                                 <th class="px-4 py-2 font-medium">Time</th>
                                 <th class="px-4 py-2 font-medium">Admin</th>
                                 <th class="px-4 py-2 font-medium">Action</th>
@@ -206,7 +294,21 @@ async function saveComment(log) {
                                 v-for="log in logs"
                                 :key="log.id"
                                 class="hover:bg-gray-50 dark:hover:bg-gray-700/40"
+                                :class="
+                                    selectedLogIds.has(log.id)
+                                        ? 'bg-blue-50 dark:bg-blue-900/20'
+                                        : ''
+                                "
                             >
+                                <td class="px-3 py-2">
+                                    <input
+                                        v-if="log.admin?.id === user?.id"
+                                        type="checkbox"
+                                        :checked="selectedLogIds.has(log.id)"
+                                        @change="toggleSelect(log.id)"
+                                        class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                                    />
+                                </td>
                                 <td
                                     class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
                                 >

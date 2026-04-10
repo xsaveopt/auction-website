@@ -9,6 +9,7 @@ return [
     'title' => 'Delivery Note',
     'date' => 'Date:',
     'item' => 'Item:',
+    'round' => 'Round:',
     'reference' => 'Reference:',
     'description' => 'Description',
     'total' => 'Total',

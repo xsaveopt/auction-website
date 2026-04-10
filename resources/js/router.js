@@ -12,6 +12,8 @@ const adminTabPaths = {
     questions: "/admin/questions",
     priceOffers: "/admin/price-offers",
     leftovers: "/admin/leftovers",
+    auctions: "/admin/auctions",
+    rounds: "/admin/rounds",
     categories: "/admin/categories",
     auditLog: "/admin/audit-log",
     sell: "/admin/sell",
@@ -19,10 +21,12 @@ const adminTabPaths = {
 };
 
 const adminTabQueryKeys = {
-    results: ["view"],
+    results: ["view", "round_id"],
     questions: [],
     priceOffers: [],
     leftovers: [],
+    auctions: [],
+    rounds: [],
     categories: [],
     auditLog: ["page"],
     sell: [],
@@ -51,6 +55,8 @@ const routes = [
     { path: "/admin/questions", name: "admin-questions", component: AdminPanel },
     { path: "/admin/price-offers", name: "admin-price-offers", component: AdminPanel },
     { path: "/admin/leftovers", name: "admin-leftovers", component: AdminPanel },
+    { path: "/admin/auctions", name: "admin-auctions", component: AdminPanel },
+    { path: "/admin/rounds", name: "admin-rounds", component: AdminPanel },
     { path: "/admin/categories", name: "admin-categories", component: AdminPanel },
     { path: "/admin/audit-log", name: "admin-audit-log", component: AdminPanel },
     { path: "/admin/sell", name: "admin-sell", component: AdminPanel },

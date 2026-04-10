@@ -1,21 +1,70 @@
 <script setup>
-import { ref, inject, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, inject, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../api.js";
 
 const router = useRouter();
+const route = useRoute();
 const user = inject("user");
 const currencySymbol = inject("currencySymbol");
 const auctions = ref([]);
+const allRounds = ref([]);
 const loading = ref(true);
+const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
 
 if (!user.value?.is_admin) {
     router.push("/");
 }
 
+function syncRoundQuery(roundId) {
+    const query = { ...route.query };
+    if (roundId !== null) {
+        query.round_id = String(roundId);
+    } else {
+        delete query.round_id;
+    }
+    router.replace({ path: route.path, query });
+}
+
+async function loadLeftovers(roundId = null) {
+    const url =
+        roundId !== null ? `/auctions/leftovers?round_id=${roundId}` : "/auctions/leftovers";
+    const data = await api(url);
+    return data;
+}
+
+let initialized = false;
+
 onMounted(async () => {
     try {
-        const data = await api("/auctions/leftovers");
+        const [roundsData, currentData] = await Promise.all([
+            api("/rounds"),
+            api("/rounds/current"),
+        ]);
+        allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
+
+        let roundId = selectedRoundId.value;
+        // Default to active round if no round is specified in the URL
+        if (roundId === null) {
+            roundId = currentData?.active?.id ?? null;
+            selectedRoundId.value = roundId;
+        }
+        syncRoundQuery(roundId);
+
+        const data = await loadLeftovers(roundId);
+        auctions.value = data.auctions;
+    } finally {
+        loading.value = false;
+        initialized = true;
+    }
+});
+
+watch(selectedRoundId, async (roundId) => {
+    if (!initialized) return;
+    syncRoundQuery(roundId);
+    loading.value = true;
+    try {
+        const data = await loadLeftovers(roundId);
         auctions.value = data.auctions;
     } finally {
         loading.value = false;
@@ -30,6 +79,31 @@ function formatDate(d) {
 function formatMoney(amount) {
     return `${currencySymbol.value}${Number(amount ?? 0).toFixed(2)}`;
 }
+
+function exportCsv() {
+    const rows = [
+        ["Auction", "Ended", "Location", "Total qty", "Sold", "Leftover", "Starting price"],
+        ...auctions.value.map((a) => [
+            a.title,
+            formatDate(a.ends_at),
+            a.location ?? "",
+            a.quantity,
+            a.quantity - a.leftover_quantity,
+            a.leftover_quantity,
+            Number(a.starting_price ?? 0).toFixed(2),
+        ]),
+    ];
+    const csv = rows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "leftovers.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+}
 </script>
 
 <template>
@@ -39,6 +113,29 @@ function formatMoney(amount) {
             Ended auctions with unsold stock — items that can be thrown away or otherwise disposed
             of.
         </p>
+
+        <!-- Round filter + export -->
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+            <template v-if="allRounds.length > 0">
+                <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+                <select
+                    v-model="selectedRoundId"
+                    class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                >
+                    <option :value="null">All rounds</option>
+                    <option v-for="r in allRounds" :key="r.id" :value="r.id">
+                        {{ r.name }}
+                    </option>
+                </select>
+            </template>
+            <button
+                v-if="auctions.length > 0"
+                @click="exportCsv"
+                class="ml-auto text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+                Export CSV
+            </button>
+        </div>
 
         <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
 

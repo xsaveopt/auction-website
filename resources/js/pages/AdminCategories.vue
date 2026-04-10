@@ -2,6 +2,7 @@
 import { ref, inject, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { api } from "../api.js";
+import ConfirmDialog from "../ConfirmDialog.vue";
 
 const router = useRouter();
 const user = inject("user");
@@ -13,6 +14,7 @@ const editingId = ref(null);
 const editName = ref("");
 const editOrder = ref(0);
 const saving = ref(false);
+const confirmDialog = ref(null);
 
 onMounted(async () => {
     if (!user.value?.is_admin) {
@@ -70,17 +72,34 @@ async function saveEdit() {
     await loadCategories();
 }
 
-async function deleteCategory(cat) {
-    if (!confirm(`Delete "${cat.name}"? Auctions in this category will become uncategorized.`)) {
-        return;
-    }
-    await api(`/categories/${cat.id}`, { method: "DELETE" }).catch(() => null);
-    await loadCategories();
+function deleteCategory(cat) {
+    confirmDialog.value = {
+        title: `Delete "${cat.name}"?`,
+        message: "Auctions in this category will become uncategorized.",
+        confirmLabel: "Delete",
+        danger: true,
+        onConfirm: async () => {
+            await api(`/categories/${cat.id}`, { method: "DELETE" }).catch(() => null);
+            await loadCategories();
+        },
+    };
 }
 </script>
 
 <template>
     <div class="max-w-lg mx-auto">
+        <ConfirmDialog
+            v-if="confirmDialog"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-label="confirmDialog.confirmLabel"
+            :danger="confirmDialog.danger"
+            @confirm="
+                confirmDialog.onConfirm();
+                confirmDialog = null;
+            "
+            @cancel="confirmDialog = null"
+        />
         <h1 class="text-2xl font-bold mb-4">Manage Categories</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
             Categories group auctions on the main page. Lower sort order appears first.

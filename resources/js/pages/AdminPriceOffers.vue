@@ -1,34 +1,69 @@
 <script setup>
-import { ref, computed, inject, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, computed, inject, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../api.js";
 
 const router = useRouter();
+const route = useRoute();
 const user = inject("user");
 const currencySymbol = inject("currencySymbol");
 const offers = ref([]);
+const allRounds = ref([]);
 const loading = ref(true);
 const processingId = ref(null);
 const rebidProcessingKey = ref(null);
 const error = ref("");
+const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
 
 if (!user.value?.is_admin) {
     router.push("/");
 }
 
-onMounted(async () => {
-    await load();
-});
+function syncRoundQuery(roundId) {
+    const query = { ...route.query };
+    if (roundId !== null) {
+        query.round_id = String(roundId);
+    } else {
+        delete query.round_id;
+    }
+    router.replace({ path: route.path, query });
+}
 
-async function load() {
+async function load(roundId = null) {
     loading.value = true;
     try {
-        const data = await api("/admin/leftover-price-offers");
+        const url =
+            roundId !== null
+                ? `/admin/leftover-price-offers?round_id=${roundId}`
+                : "/admin/leftover-price-offers";
+        const data = await api(url);
         offers.value = data.offers;
     } finally {
         loading.value = false;
     }
 }
+
+let initialized = false;
+
+onMounted(async () => {
+    const [roundsData, currentData] = await Promise.all([api("/rounds"), api("/rounds/current")]);
+    allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
+
+    let roundId = selectedRoundId.value;
+    if (roundId === null) {
+        roundId = currentData?.active?.id ?? null;
+        selectedRoundId.value = roundId;
+    }
+    syncRoundQuery(roundId);
+    await load(roundId);
+    initialized = true;
+});
+
+watch(selectedRoundId, async (roundId) => {
+    if (!initialized) return;
+    syncRoundQuery(roundId);
+    await load(roundId);
+});
 
 function formatDate(d) {
     if (!d) return "";
@@ -145,6 +180,20 @@ async function deleteOffer(offer) {
 <template>
     <div>
         <h1 class="text-2xl font-bold mb-4">Price Offers</h1>
+
+        <!-- Round filter -->
+        <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-4">
+            <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+            <select
+                v-model="selectedRoundId"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+            >
+                <option :value="null">All rounds</option>
+                <option v-for="r in allRounds" :key="r.id" :value="r.id">
+                    {{ r.name }}
+                </option>
+            </select>
+        </div>
 
         <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
 
