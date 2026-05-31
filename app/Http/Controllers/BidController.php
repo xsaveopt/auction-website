@@ -104,7 +104,6 @@ class BidController extends Controller
             $auction->bids()->save($bid);
         }
 
-        // Anti-sniping: extend auction if bid placed near the end
         $antiSniping = BiddingSchedule::antiSniping();
 
         if ($antiSniping['enabled'] && now()->diffInSeconds($auction->ends_at, false) < $antiSniping['window']) {

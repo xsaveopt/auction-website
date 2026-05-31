@@ -38,7 +38,6 @@ class AnnouncementController extends Controller
             'message' => ['required', 'string', 'max:1000'],
         ]);
 
-        // Deactivate all existing announcements
         Announcement::query()->where('is_active', true)->update(['is_active' => false]);
 
         /** @var \App\Models\User $user */

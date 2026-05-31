@@ -35,20 +35,17 @@ class LeftoverPriceOfferControllerTest extends TestCase
             'offered_price_per_item' => '5.00',
         ]);
 
-        // Accept offer1 — exhausts the only leftover item
         $this
             ->actingAs($admin)
             ->postJson("/api/admin/leftover-price-offers/{$offer1->id}/accept")
             ->assertOk();
 
-        // offer1 is accepted (not deleted)
         $this->assertDatabaseHas('leftover_price_offers', [
             'id' => $offer1->id,
             'status' => 'accepted',
         ]);
         $this->assertNotSoftDeleted('leftover_price_offers', ['id' => $offer1->id]);
 
-        // offer2 is rejected because stock is gone
         $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer2->id, 'status' => 'rejected']);
     }
 
@@ -76,13 +73,11 @@ class LeftoverPriceOfferControllerTest extends TestCase
             'offered_price_per_item' => '5.00',
         ]);
 
-        // Accept offer1 — one item remains
         $this
             ->actingAs($admin)
             ->postJson("/api/admin/leftover-price-offers/{$offer1->id}/accept")
             ->assertOk();
 
-        // offer2 should still be pending and not deleted
         $this->assertNotSoftDeleted('leftover_price_offers', ['id' => $offer2->id]);
         $this->assertDatabaseHas('leftover_price_offers', [
             'id' => $offer2->id,

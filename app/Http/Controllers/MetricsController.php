@@ -27,7 +27,6 @@ class MetricsController extends Controller
 
         $now = now();
 
-        // Load all non-cancelled auctions with bids; filter active ones in memory
         $allAuctionsWithBids = Auction::whereIn('status', ['active', 'ended'])->with('bids.user:id,username')->get();
 
         $activeAuctionsList = $allAuctionsWithBids
@@ -38,7 +37,6 @@ class MetricsController extends Controller
         $totalBids = Bid::count();
         $onlineUsers = Presence::onlineUsers();
 
-        // Calculate winning bid total using per-bid pricing from AuctionService
         $winningBidTotal = 0.0;
         foreach ($activeAuctionsList as $auction) {
             $result = $auctionService->allocate($auction);
@@ -78,7 +76,6 @@ class MetricsController extends Controller
 
         $output = $prometheus->renderMetrics();
 
-        // Online users (per-user presence)
         $onlineUserDetails = Presence::onlineUserDetails();
         $output .= "# HELP app_online_user_last_seen Last-seen timestamp in milliseconds for online users\n";
         $output .= "# TYPE app_online_user_last_seen gauge\n";
@@ -88,7 +85,6 @@ class MetricsController extends Controller
             $output .= "app_online_user_last_seen{username=\"{$username}\",path=\"{$path}\"} {$detail['last_seen_at']}\n";
         }
 
-        // Total unique viewers per auction (all-time)
         $auctionViews = Presence::totalViewsByAuction();
         $output .= "# HELP app_auction_total_views Total unique viewers per auction (all-time)\n";
         $output .= "# TYPE app_auction_total_views gauge\n";
@@ -97,7 +93,6 @@ class MetricsController extends Controller
             $output .= "app_auction_total_views{auction=\"{$title}\"} {$row['view_count']}\n";
         }
 
-        // Recent user signups (last 25)
         $recentUsers = User::orderByDesc('created_at')->limit(25)->get(['username', 'created_at']);
         $output .= "# HELP app_user_signup_timestamp User signup timestamp in milliseconds\n";
         $output .= "# TYPE app_user_signup_timestamp gauge\n";
@@ -107,7 +102,6 @@ class MetricsController extends Controller
             $output .= "app_user_signup_timestamp{username=\"{$username}\"} {$ts}\n";
         }
 
-        // Bids (all non-cancelled auctions) and instant buys
         $output .= "# HELP app_auction_bid_info Bid and instant buy info, value is timestamp in milliseconds\n";
         $output .= "# TYPE app_auction_bid_info gauge\n";
         foreach ($allAuctionsWithBids as $auction) {
@@ -139,7 +133,6 @@ class MetricsController extends Controller
             $output .= "app_auction_bid_info{auction=\"{$auctionTitle}\",username=\"{$username}\",amount=\"{$amount}\",quantity=\"{$qty}\",type=\"{$type}\"} {$ts}\n";
         }
 
-        // Pending price offers
         $pendingOffers = LeftoverPriceOffer::with(['auction:id,title', 'user:id,username'])->where(
             'status',
             'pending',

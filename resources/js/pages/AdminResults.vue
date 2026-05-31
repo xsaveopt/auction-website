@@ -22,7 +22,6 @@ const view = ref(route.query.view === "auctions" ? "auctions" : "users");
 const expandedUsers = ref({});
 const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
 
-// auctions is an alias for allAuctions — filtering is done server-side via round_id param
 const auctions = allAuctions;
 
 function syncViewQuery(v) {
@@ -63,7 +62,6 @@ watch(
     (isActive) => {
         if (isActive) {
             syncViewQuery(view.value);
-            // Sync round_id from query when tab becomes active
             const qRound = route.query.round_id ? Number(route.query.round_id) : null;
             if (qRound !== selectedRoundId.value) {
                 selectedRoundId.value = qRound;
@@ -93,7 +91,6 @@ onMounted(async () => {
         allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
 
         let roundId = selectedRoundId.value;
-        // Default to active round if no round is specified in the URL
         if (roundId === null) {
             roundId = currentData?.active?.id ?? null;
             selectedRoundId.value = roundId;

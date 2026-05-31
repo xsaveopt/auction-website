@@ -46,7 +46,6 @@ onMounted(async () => {
     try {
         const currentData = await api("/rounds/current");
 
-        // Build rounds list: active first, then all ended rounds
         const rounds = [];
         if (currentData?.active) rounds.push(currentData.active);
         allRounds.value = [...rounds, ...(currentData?.ended ?? [])];

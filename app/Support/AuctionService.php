@@ -65,7 +65,6 @@ class AuctionService
             $lastWinnerIndex = $index;
         }
 
-        // Determine pricing mode: uniform if the lowest winner got everything they wanted
         $uniform = true;
         if ($lastWinnerIndex !== null) {
             /** @var Bid $lastWinner */
@@ -220,7 +219,6 @@ class AuctionService
             }
 
             if ($auction->relationLoaded('leftoverPriceOffers')) {
-                // Admins see all offers; regular users only see their own
                 $offers = $isAdmin
                     ? $auction->leftoverPriceOffers
                     : $auction->leftoverPriceOffers->filter(

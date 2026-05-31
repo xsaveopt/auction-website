@@ -97,14 +97,12 @@ const grouped = computed(() => {
             (a, b) => Number(b.offered_price_per_item) - Number(a.offered_price_per_item),
         );
 
-        // Find groups of 2+ offers with the same price (ties)
         const priceMap = new Map();
         for (const offer of sortedOffers) {
             const key = Number(offer.offered_price_per_item).toFixed(2);
             if (!priceMap.has(key)) priceMap.set(key, []);
             priceMap.get(key).push(offer.id);
         }
-        // tiedPrices: map of price string → offer IDs for groups with 2+ tied offers
         const tiedPrices = new Map([...priceMap.entries()].filter(([, ids]) => ids.length >= 2));
 
         return { auction: group.auction, offers: sortedOffers, tiedPrices };

@@ -42,7 +42,6 @@ const offerPrice = ref("");
 const offerError = ref("");
 const submittingOffer = ref(false);
 
-// Admin state
 const showAdminOfferForm = ref(false);
 const adminOfferUsername = ref("");
 const adminOfferQuantity = ref(1);
@@ -252,7 +251,6 @@ function clampBidQuantity(quantity, maxPerBidder) {
 function updateAuction(newAuction, resetForm = false) {
     if (!newAuction) return;
 
-    // Detect new or changed bids for highlight animation
     if (auction.value?.bids) {
         const oldKeys = new Set(auction.value.bids.map(bidKey));
         const newHighlights = newAuction.bids
@@ -266,7 +264,6 @@ function updateAuction(newAuction, resetForm = false) {
         }
     }
 
-    // Overbid detection
     if (notify && user.value && auction.value?.bids) {
         const oldMyBid = auction.value.bids.find((b) => b.user.id === user.value.id);
         const newMyBid = newAuction.bids.find((b) => b.user.id === user.value.id);
@@ -280,7 +277,6 @@ function updateAuction(newAuction, resetForm = false) {
         }
     }
 
-    // Auction ended detection
     if (notify && auction.value?.is_active && !newAuction.is_active) {
         if (user.value) {
             const myBid = newAuction.bids.find((b) => b.user.id === user.value.id);
@@ -297,7 +293,6 @@ function updateAuction(newAuction, resetForm = false) {
         endingSoonNotified.value = true;
     }
 
-    // Question answered detection
     if (notify && user.value && auction.value?.questions) {
         const prevAnswered = new Set(
             auction.value.questions
@@ -848,7 +843,6 @@ watch(
     },
 );
 
-// Ending-soon alert: fires once when < 5 minutes remain for an auction the user has bid on
 watchEffect(() => {
     if (
         !notify ||
@@ -2442,7 +2436,6 @@ watchEffect(() => {
 </template>
 
 <style scoped>
-/* New bids slide in and fade */
 .bid-list-enter-from {
     opacity: 0;
     transform: translateY(-20px);
@@ -2450,7 +2443,6 @@ watchEffect(() => {
 .bid-list-enter-active {
     transition: all 0.4s ease-out;
 }
-/* Removed bids fade out */
 .bid-list-leave-active {
     transition: all 0.3s ease-in;
     position: absolute;
@@ -2460,11 +2452,9 @@ watchEffect(() => {
     opacity: 0;
     transform: translateX(30px);
 }
-/* Reorder animation */
 .bid-list-move {
     transition: transform 0.4s ease;
 }
-/* Flash highlight for new or updated bids */
 @keyframes bid-highlight {
     0% {
         background-color: rgb(254 243 199);

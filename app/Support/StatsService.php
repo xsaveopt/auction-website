@@ -46,7 +46,6 @@ class StatsService
             ->where('auctions.ends_at', '>', $now)
             ->sum(DB::raw('bids.amount * bids.quantity'));
 
-        // Bids per day for the last 7 days
         $bidsPerDay = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = $now->copy()->subDays($i);
@@ -58,7 +57,6 @@ class StatsService
             ];
         }
 
-        // Top 5 most competitive auctions (by bid count, active only)
         $hotAuctions = Auction::where('status', 'active')
             ->where('ends_at', '>', $now)
             ->withCount('bids')
@@ -71,7 +69,6 @@ class StatsService
                 'bid_count' => (int) $a->bids_count,
             ]);
 
-        // Top 5 bidders by number of auctions they've bid on
         $topBidders = Bid::select(
             'user_id',
             DB::raw('COUNT(DISTINCT auction_id) as auction_count'),

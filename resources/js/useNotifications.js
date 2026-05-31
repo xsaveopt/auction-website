@@ -1,6 +1,5 @@
 import { ref } from "vue";
 
-// Module-level singleton so all components share the same notification list
 const notifications = ref([]);
 let nextId = 0;
 

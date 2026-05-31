@@ -26,9 +26,9 @@ const saveSuccess = ref("");
 const confirmDialog = ref(null);
 
 const selected = ref(/** @type {Set<number>} */ (new Set()));
-const filterStatus = ref("all"); // all | active | ended | cancelled
-const filterRound = ref(route.query.round_id ? String(route.query.round_id) : "all"); // all | unassigned | <round id as string>
-const bulkAction = ref("assign_round"); // assign_round | assign_category | assign_location | end | cancel
+const filterStatus = ref("all");
+const filterRound = ref(route.query.round_id ? String(route.query.round_id) : "all");
+const bulkAction = ref("assign_round");
 const assignRoundId = ref(/** @type {number|null} */ (null));
 const assignCategoryId = ref(/** @type {number|null} */ (null));
 const assignLocation = ref("");
@@ -139,7 +139,6 @@ async function executeBulk() {
             body: JSON.stringify(body),
         });
 
-        // Update local state
         if (bulkAction.value === "assign_round") {
             const roundObj = assignRoundId.value
                 ? (rounds.value.find((r) => r.id === assignRoundId.value) ?? null)

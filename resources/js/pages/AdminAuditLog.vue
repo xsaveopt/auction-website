@@ -169,7 +169,6 @@ async function saveBulkComment() {
                 comment: bulkCommentText.value || null,
             }),
         });
-        // Update the local logs
         const text = bulkCommentText.value || null;
         logs.value.forEach((log) => {
             if (selectedLogIds.value.has(log.id)) {
@@ -205,7 +204,6 @@ async function saveComment(log) {
         editingCommentId.value = null;
         editingCommentText.value = "";
     } catch (e) {
-        // leave edit mode open so the user can retry
     } finally {
         savingComment.value = false;
     }

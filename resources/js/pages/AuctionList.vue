@@ -85,7 +85,6 @@ onMounted(async () => {
             loadAnnouncement(),
         ]);
 
-        // Build rounds list: active first, then all ended rounds
         const rounds = [];
         if (currentData?.active) rounds.push(currentData.active);
         allRounds.value = [...rounds, ...(currentData?.ended ?? [])];
@@ -116,7 +115,6 @@ watch(selectedRoundId, async (roundId) => {
 watch(heartbeatData, (data) => {
     if (loading.value || !data?.auction_updates) return;
 
-    // Detect new or removed auctions — re-fetch full data
     const currentIds = new Set(auctions.value.map((a) => a.id));
     const serverIds = new Set(data.auction_ids ?? []);
     if (currentIds.size !== serverIds.size || [...serverIds].some((id) => !currentIds.has(id))) {
@@ -124,7 +122,6 @@ watch(heartbeatData, (data) => {
         return;
     }
 
-    // Merge lightweight updates into existing auction objects
     const updateMap = new Map(data.auction_updates.map((u) => [u.id, u]));
     for (const auction of auctions.value) {
         const update = updateMap.get(auction.id);
@@ -178,7 +175,7 @@ const selectedLocation = ref(null);
 
 function shouldHideEnded(auction) {
     if (auction.is_active) return false;
-    if (roundClosed(auction)) return false; // closed round: show all as history
+    if (roundClosed(auction)) return false;
     return !(auction.leftover_enabled && auction.leftover_quantity > 0);
 }
 
@@ -219,7 +216,6 @@ const groupedAuctions = computed(() => {
         }
     }
 
-    // Filter out empty categories
     const result = groups.filter((g) => g.auctions.length > 0);
 
     if (uncategorized.length > 0) {

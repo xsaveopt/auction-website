@@ -32,7 +32,6 @@ class CleanupImagesCommand extends Command
         $disk = Storage::disk('public');
         $dryRun = $this->option('dry-run');
 
-        // Find DB records pointing to missing files
         $missingFiles = [];
         AuctionImage::chunk(200, function ($images) use ($disk, &$missingFiles) {
             foreach ($images as $image) {
@@ -42,7 +41,6 @@ class CleanupImagesCommand extends Command
             }
         });
 
-        // Find files on disk not referenced by any DB record
         $dbPaths = AuctionImage::pluck('path');
         $allDiskFiles = array_filter($disk->allFiles('auctions'), 'is_string');
         $orphanedFiles = array_values(array_filter($allDiskFiles, fn(string $file) => !$dbPaths->contains($file)));

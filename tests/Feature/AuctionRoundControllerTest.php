@@ -50,7 +50,6 @@ class AuctionRoundControllerTest extends TestCase
         $endedIds = collect($response->json('ended'))->pluck('id');
         $this->assertContains($ended1->id, $endedIds);
         $this->assertContains($ended2->id, $endedIds);
-        // Newest ended first
         $this->assertSame($ended2->id, $endedIds->first());
     }
 

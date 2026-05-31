@@ -86,8 +86,6 @@ class BulkUpdateAuctionsCommand extends Command
 
                 if ($addTime) {
                     try {
-                        // Use modify directly with user input (e.g., "+1 hour")
-                        // If user omits sign (e.g., "1 hour"), prepend '+'
                         $modifier = trim($addTime);
                         if (!str_starts_with($modifier, '+') && !str_starts_with($modifier, '-')) {
                             $modifier = "+{$modifier}";

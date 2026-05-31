@@ -116,8 +116,6 @@ const inactiveTabClasses =
     "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200";
 const activeTab = computed(() => tabByRouteName[route.name] ?? "results");
 
-// Tracks which tabs have been opened at least once (lazy mount, keeps alive)
-// Sell is excluded — it always remounts to give a fresh form
 const lazyTabs = [
     "results",
     "questions",

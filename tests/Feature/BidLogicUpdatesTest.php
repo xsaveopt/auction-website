@@ -31,7 +31,6 @@ class BidLogicUpdatesTest extends TestCase
         $user1 = $this->createUser(['username' => 'user1']);
         $user2 = $this->createUser(['username' => 'user2']);
 
-        // User 1 bids first
         $this
             ->actingAs($user1)
             ->postJson("/api/auctions/{$auction->id}/bids", [
@@ -40,7 +39,6 @@ class BidLogicUpdatesTest extends TestCase
             ])
             ->assertCreated();
 
-        // User 2 bids same amount later
         $this
             ->actingAs($user2)
             ->postJson("/api/auctions/{$auction->id}/bids", [
@@ -51,7 +49,6 @@ class BidLogicUpdatesTest extends TestCase
 
         $response = $this->getJson("/api/auctions/{$auction->id}")->json('auction');
 
-        // User 1 should have won_quantity 1, User 2 should have 0
         $bids = collect($response['bids']);
         $bid1 = $bids->firstWhere('user.id', $user1->id);
         $bid2 = $bids->firstWhere('user.id', $user2->id);
@@ -70,7 +67,6 @@ class BidLogicUpdatesTest extends TestCase
             'starting_price' => '10.00',
         ]);
 
-        // Initial bid
         $this
             ->actingAs($bidder)
             ->postJson("/api/auctions/{$auction->id}/bids", [
@@ -79,7 +75,6 @@ class BidLogicUpdatesTest extends TestCase
             ])
             ->assertCreated();
 
-        // Try same amount, lower quantity
         $this
             ->actingAs($bidder)
             ->postJson("/api/auctions/{$auction->id}/bids", [
@@ -91,7 +86,6 @@ class BidLogicUpdatesTest extends TestCase
                 'message' => 'New bid must have a higher amount or a higher quantity than your current bid.',
             ]);
 
-        // Try higher amount, lower quantity
         $this
             ->actingAs($bidder)
             ->postJson("/api/auctions/{$auction->id}/bids", [
@@ -101,7 +95,6 @@ class BidLogicUpdatesTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonFragment(['message' => 'You cannot lower your bid quantity, even with a higher amount.']);
 
-        // Try same amount, higher quantity - SHOULD WORK
         $this
             ->actingAs($bidder)
             ->postJson("/api/auctions/{$auction->id}/bids", [
@@ -128,7 +121,6 @@ class BidLogicUpdatesTest extends TestCase
 
         Auth::logout();
 
-        // Public view (unauthenticated)
         $response = $this->getJson("/api/auctions/{$auction->id}");
         $data = $response->json('auction');
         if ($data['bids'][0]['user']['username'] !== 'real_user_1') {
@@ -136,7 +128,6 @@ class BidLogicUpdatesTest extends TestCase
         }
         $this->assertEquals('real_user_1', $data['bids'][0]['user']['username']);
 
-        // User 2 viewing User 1's bid
         $response = $this->actingAs($user2)->getJson("/api/auctions/{$auction->id}");
         $data = $response->json('auction');
         if ($data['bids'][0]['user']['username'] !== 'real_user_1') {
@@ -144,7 +135,6 @@ class BidLogicUpdatesTest extends TestCase
         }
         $this->assertEquals('real_user_1', $data['bids'][0]['user']['username']);
 
-        // User 1 viewing their own bid
         $response = $this->actingAs($user1)->getJson("/api/auctions/{$auction->id}");
         $data = $response->json('auction');
         if ($data['bids'][0]['user']['username'] !== 'real_user_1') {
@@ -152,7 +142,6 @@ class BidLogicUpdatesTest extends TestCase
         }
         $this->assertEquals('real_user_1', $data['bids'][0]['user']['username']);
 
-        // Admin viewing
         $admin = $this->createAdmin();
         $response = $this->actingAs($admin)->getJson("/api/auctions/{$auction->id}");
         $data = $response->json('auction');

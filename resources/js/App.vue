@@ -48,8 +48,8 @@ const heartbeatData = ref(null);
 const siteLocked = ref(false);
 const lockMessage = ref(null);
 const currentRound = ref({ active: null, ended: [] });
-let serverOffsetMs = 0; // server time minus browser time
-const serverClockSeconds = ref(0); // seconds since midnight in server-local time
+let serverOffsetMs = 0;
+const serverClockSeconds = ref(0);
 
 function parseTime(str) {
     const [h, m] = str.split(":").map(Number);
@@ -101,7 +101,6 @@ const scheduleBar = computed(() => {
     const weekendsOpen = rawSchedule.value.weekends_open;
 
     if (!isOpen) {
-        // Closed: progress from closed_start → closed_end
         const total = end - start;
         const elapsed = current - start;
         const remaining = end - current;
@@ -112,9 +111,6 @@ const scheduleBar = computed(() => {
         };
     }
 
-    // --- Market is open ---
-
-    // Weekend with weekends_open: window is Friday closed_end → Monday closed_start
     if (weekendsOpen && isWeekend(date)) {
         const total = 1440 - end + 2 * 1440 + start;
         const daysSinceFriday = day === 6 ? 1 : 2;
@@ -127,12 +123,10 @@ const scheduleBar = computed(() => {
         };
     }
 
-    // Open before work hours
     if (current < start) {
         const remaining = start - current;
 
         if (day === 1 && weekendsOpen) {
-            // Monday morning, weekends were open: window started at Friday's closed_end
             const total = 1440 - end + 2 * 1440 + start;
             const elapsed = 1440 - end + 2 * 1440 + current;
             return {
@@ -142,7 +136,6 @@ const scheduleBar = computed(() => {
             };
         }
 
-        // Regular weekday morning: window started at previous day's closed_end
         const total = 1440 - end + start;
         const elapsed = 1440 - end + current;
         return {
@@ -152,10 +145,8 @@ const scheduleBar = computed(() => {
         };
     }
 
-    // Open after work hours — next close depends on weekends_open
     const isFriday = day === 5;
     if (isFriday && weekendsOpen) {
-        // Friday evening: open until Monday's closed_start
         const total = 1440 - end + 2 * 1440 + start;
         const elapsed = current - end;
         const remaining = total - elapsed;
@@ -166,7 +157,6 @@ const scheduleBar = computed(() => {
         };
     }
 
-    // Regular weekday evening: open until tomorrow's closed_start
     const total = 1440 - end + start;
     const elapsed = current - end;
     const remaining = total - elapsed;
@@ -215,9 +205,7 @@ async function fetchSchedule() {
         }
         siteLocked.value = !!data.schedule?.site_locked;
         lockMessage.value = data.schedule?.lock_message || null;
-    } catch {
-        // ignore
-    }
+    } catch {}
 }
 
 async function fetchSsoEnabled() {
@@ -233,9 +221,7 @@ async function fetchCurrentRound() {
     try {
         const data = await api("/rounds/current");
         currentRound.value = data;
-    } catch {
-        // ignore — rounds are optional
-    }
+    } catch {}
 }
 
 async function sendPresenceHeartbeat() {
@@ -245,18 +231,14 @@ async function sendPresenceHeartbeat() {
             body: JSON.stringify(presencePayload(route)),
         });
         heartbeatData.value = data;
-    } catch {
-        // ignore presence failures so navigation stays responsive
-    }
+    } catch {}
 }
 
-// Cross-page bid state tracking for notifications
 const trackedAuctionStates = ref({});
 let myAuctionsInterval;
 
 async function pollMyAuctions() {
     if (!user.value || user.value.is_admin) return;
-    // Skip notifications for the auction currently open in AuctionDetail
     const viewingAuctionId = route.params.id ? String(route.params.id) : null;
     try {
         const data = await api("/my-auctions");
@@ -297,12 +279,9 @@ async function pollMyAuctions() {
         }
 
         trackedAuctionStates.value = newStates;
-    } catch {
-        // ignore
-    }
+    } catch {}
 }
 
-// Poll schedule every 60s to keep is_open in sync
 let scheduleInterval;
 let presenceInterval;
 let clockInterval;

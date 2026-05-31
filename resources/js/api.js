@@ -12,7 +12,6 @@ export async function api(url, options = {}) {
         ...options.headers,
     };
 
-    // Only set Content-Type for non-FormData bodies
     if (!(options.body instanceof FormData)) {
         headers["Content-Type"] = "application/json";
     }

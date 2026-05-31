@@ -65,7 +65,7 @@ class ListUsersCommand extends Command
             $this->info('No users found.');
         } else {
             $count = $users->count();
-            $total = User::count(); // Approximate total
+            $total = User::count();
             $this->info("Showing {$count} of approximately {$total} users.");
         }
     }

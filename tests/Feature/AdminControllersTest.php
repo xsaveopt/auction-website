@@ -7,8 +7,6 @@ use App\Models\Bid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-// Note: AuctionRound tests live in AuctionRoundControllerTest.php
-
 class AdminControllersTest extends TestCase
 {
     use RefreshDatabase;
@@ -241,7 +239,6 @@ class AdminControllersTest extends TestCase
             ->assertOk();
 
         $this->assertDatabaseHas('auctions', ['id' => $active->id, 'status' => 'ended']);
-        // Already-ended auction stays ended, was not re-processed
         $this->assertDatabaseHas('auctions', ['id' => $alreadyEnded->id, 'status' => 'ended']);
     }
 
@@ -260,7 +257,6 @@ class AdminControllersTest extends TestCase
             ->assertOk();
 
         $this->assertDatabaseHas('auctions', ['id' => $active->id, 'status' => 'cancelled']);
-        // Ended auction is not cancelled
         $this->assertDatabaseHas('auctions', ['id' => $alreadyEnded->id, 'status' => 'ended']);
     }
 

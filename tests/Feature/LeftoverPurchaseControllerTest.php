@@ -231,7 +231,6 @@ class LeftoverPurchaseControllerTest extends TestCase
             'offered_price_per_item' => '5.00',
         ]);
 
-        // Buying the last remaining leftover item should close the pending offer
         $this
             ->actingAs($buyer)
             ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 1])
@@ -260,7 +259,6 @@ class LeftoverPurchaseControllerTest extends TestCase
             'offered_price_per_item' => '5.00',
         ]);
 
-        // Only buys 2 of 3 — one item remains, offer should stay
         $this
             ->actingAs($buyer)
             ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 2])

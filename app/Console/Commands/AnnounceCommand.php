@@ -41,7 +41,6 @@ class AnnounceCommand extends Command
             return;
         }
 
-        // Deactivate existing announcements
         Announcement::where('is_active', true)->update(['is_active' => false]);
 
         /** @var string $message */

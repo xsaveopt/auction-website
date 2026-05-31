@@ -45,10 +45,8 @@ class LogRequest
 
         $message = sprintf('%s %s %d', $method, $path, $status);
 
-        // access.log (plain text) + stdout for docker logs
         Log::channel('access')->info($message, $context);
 
-        // debug.log (JSON structured)
         Log::channel('debug')->info($message, $context);
     }
 }

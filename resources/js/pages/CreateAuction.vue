@@ -32,7 +32,6 @@ api("/categories")
     })
     .catch(() => {});
 
-// Default to 7 days from server time; schedule response will have set now by the time this mounts
 const d = new Date(now.value.getTime() + 7 * 86400000);
 const pad = (n) => String(n).padStart(2, "0");
 endsAt.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;

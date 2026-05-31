@@ -12,9 +12,7 @@ onMounted(async () => {
     try {
         const data = await api("/auth/sso/enabled");
         ssoEnabled.value = data.enabled;
-    } catch (e) {
-        // Fallback to false
-    }
+    } catch (e) {}
 });
 
 async function submit() {

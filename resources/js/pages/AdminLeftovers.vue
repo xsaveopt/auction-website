@@ -44,7 +44,6 @@ onMounted(async () => {
         allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
 
         let roundId = selectedRoundId.value;
-        // Default to active round if no round is specified in the URL
         if (roundId === null) {
             roundId = currentData?.active?.id ?? null;
             selectedRoundId.value = roundId;

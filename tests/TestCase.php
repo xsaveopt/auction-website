@@ -30,7 +30,6 @@ abstract class TestCase extends BaseTestCase
             'services.webpush.subject' => null,
         ]);
 
-        // Disable schedule-dependent features by default for all tests that have a DB
         try {
             $settings = SiteSetting::instance();
             $settings->anti_sniping_enabled = false;
@@ -39,7 +38,6 @@ abstract class TestCase extends BaseTestCase
             $settings->leftover_price_factor = 0.75;
             $settings->save();
         } catch (\Illuminate\Database\QueryException $e) {
-            // Table not available in unit tests without RefreshDatabase
         }
     }
 }

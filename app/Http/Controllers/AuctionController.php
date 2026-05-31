@@ -104,7 +104,6 @@ class AuctionController extends Controller
             foreach ($allocations as $bidId => $wonQty) {
                 $auctionTotalValue += round($wonQty * ($prices[$bidId] ?? 0.0), 2);
             }
-            // For unsold items, use starting price as potential value
             $unsoldItems = $auction->quantity - array_sum($allocations);
             $auctionTotalValue += round($unsoldItems * (float) $auction->starting_price, 2);
 
