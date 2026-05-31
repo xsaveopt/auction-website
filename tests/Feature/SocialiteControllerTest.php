@@ -44,10 +44,7 @@ class SocialiteControllerTest extends TestCase
         $provider = Mockery::mock();
         $provider->shouldReceive('redirect')->once()->andReturn(redirect('https://microsoft.test/oauth'));
 
-        Socialite::shouldReceive('driver')
-            ->once()
-            ->with('microsoft')
-            ->andReturn($provider);
+        Socialite::shouldReceive('driver')->once()->with('microsoft')->andReturn($provider);
 
         $this->get('/auth/microsoft/redirect')->assertRedirect('https://microsoft.test/oauth');
     }
@@ -81,10 +78,7 @@ class SocialiteControllerTest extends TestCase
                 }
             });
 
-        Socialite::shouldReceive('driver')
-            ->once()
-            ->with('microsoft')
-            ->andReturn($provider);
+        Socialite::shouldReceive('driver')->once()->with('microsoft')->andReturn($provider);
 
         $this->get('/api/auth/microsoft/callback')->assertRedirect('/');
 
@@ -108,10 +102,7 @@ class SocialiteControllerTest extends TestCase
             ->once()
             ->andThrow(new \Exception('boom'));
 
-        Socialite::shouldReceive('driver')
-            ->once()
-            ->with('microsoft')
-            ->andReturn($provider);
+        Socialite::shouldReceive('driver')->once()->with('microsoft')->andReturn($provider);
 
         $this->get('/api/auth/microsoft/callback')->assertRedirect('/login?error=sso_failed');
     }
@@ -139,10 +130,7 @@ class SocialiteControllerTest extends TestCase
                 }
             });
 
-        Socialite::shouldReceive('driver')
-            ->once()
-            ->with('microsoft')
-            ->andReturn($invalidProvider);
+        Socialite::shouldReceive('driver')->once()->with('microsoft')->andReturn($invalidProvider);
 
         $this->get('/api/auth/microsoft/callback')->assertRedirect('/login?error=sso_profile_invalid');
 
@@ -167,10 +155,7 @@ class SocialiteControllerTest extends TestCase
                 }
             });
 
-        Socialite::shouldReceive('driver')
-            ->once()
-            ->with('microsoft')
-            ->andReturn($updateProvider);
+        Socialite::shouldReceive('driver')->once()->with('microsoft')->andReturn($updateProvider);
 
         $this->get('/api/auth/microsoft/callback')->assertRedirect('/');
 

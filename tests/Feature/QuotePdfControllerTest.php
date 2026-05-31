@@ -69,11 +69,7 @@ class QuotePdfControllerTest extends TestCase
         file_put_contents("{$quotesPath}/{$filename}", 'pdf');
 
         try {
-            $this
-                ->actingAs($admin)
-                ->get("/api/quotes/{$filename}")
-                ->assertOk()
-                ->assertDownload($filename);
+            $this->actingAs($admin)->get("/api/quotes/{$filename}")->assertOk()->assertDownload($filename);
 
             $this->actingAs($admin)->get('/api/quotes/not-a-pdf.txt')->assertNotFound();
         } finally {
@@ -107,17 +103,8 @@ class QuotePdfControllerTest extends TestCase
             'quantity' => 1,
         ]);
 
-        $this
-            ->actingAs($admin)
-            ->get("/api/auctions/{$auction->id}/quotes/{$otherBid->id}")
-            ->assertNotFound();
-        $this
-            ->actingAs($admin)
-            ->get("/api/auctions/{$auction->id}/quotes/{$losingBid->id}")
-            ->assertNotFound();
-        $this
-            ->actingAs($admin)
-            ->get("/api/auctions/{$auction->id}/quotes/{$winningBid->id}")
-            ->assertOk();
+        $this->actingAs($admin)->get("/api/auctions/{$auction->id}/quotes/{$otherBid->id}")->assertNotFound();
+        $this->actingAs($admin)->get("/api/auctions/{$auction->id}/quotes/{$losingBid->id}")->assertNotFound();
+        $this->actingAs($admin)->get("/api/auctions/{$auction->id}/quotes/{$winningBid->id}")->assertOk();
     }
 }

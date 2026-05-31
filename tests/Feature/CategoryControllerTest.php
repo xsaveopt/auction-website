@@ -41,14 +41,10 @@ class CategoryControllerTest extends TestCase
         $first->assertCreated()->assertJsonPath('category.slug', 'heavy-machinery');
         $second->assertCreated()->assertJsonPath('category.slug', 'heavy-machinery-1');
 
-        $this
-            ->actingAs($admin)
-            ->putJson("/api/categories/{$firstId}", [
-                'name' => 'Industrial Equipment',
-                'sort_order' => 9,
-            ])
-            ->assertOk()
-            ->assertJsonPath('category.slug', 'industrial-equipment');
+        $this->actingAs($admin)->putJson("/api/categories/{$firstId}", [
+            'name' => 'Industrial Equipment',
+            'sort_order' => 9,
+        ])->assertOk()->assertJsonPath('category.slug', 'industrial-equipment');
 
         $this
             ->actingAs($admin)

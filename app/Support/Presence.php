@@ -64,11 +64,7 @@ class Presence
 
     public static function onlineUsers(): int
     {
-        return PresenceHeartbeat::query()
-            ->recent()
-            ->select('client_id')
-            ->distinct()
-            ->count('client_id');
+        return PresenceHeartbeat::query()->recent()->select('client_id')->distinct()->count('client_id');
     }
 
     /**

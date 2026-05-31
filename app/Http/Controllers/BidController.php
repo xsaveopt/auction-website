@@ -64,10 +64,7 @@ class BidController extends Controller
         $amount = $request->float('amount');
         $quantity = $request->integer('quantity');
 
-        $existingBid = Bid::where('auction_id', $auction->id)
-            ->where('user_id', $user->id)
-            ->orderByDesc('id')
-            ->first();
+        $existingBid = Bid::where('auction_id', $auction->id)->where('user_id', $user->id)->orderByDesc('id')->first();
 
         if ($existingBid) {
             $existingAmount = floatval($existingBid->amount);

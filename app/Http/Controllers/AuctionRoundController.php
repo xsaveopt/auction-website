@@ -27,10 +27,7 @@ class AuctionRoundController extends Controller
 
     public function index(): JsonResponse
     {
-        $rounds = AuctionRound::query()
-            ->withCount(['auctions'])
-            ->latest()
-            ->get();
+        $rounds = AuctionRound::query()->withCount(['auctions'])->latest()->get();
 
         return response()->json([
             'rounds' => $rounds->map(fn(AuctionRound $round) => array_merge($this->roundResponse($round), [

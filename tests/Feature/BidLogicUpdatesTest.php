@@ -31,21 +31,15 @@ class BidLogicUpdatesTest extends TestCase
         $user1 = $this->createUser(['username' => 'user1']);
         $user2 = $this->createUser(['username' => 'user2']);
 
-        $this
-            ->actingAs($user1)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 15,
-                'quantity' => 1,
-            ])
-            ->assertCreated();
+        $this->actingAs($user1)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 15,
+            'quantity' => 1,
+        ])->assertCreated();
 
-        $this
-            ->actingAs($user2)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 15,
-                'quantity' => 1,
-            ])
-            ->assertCreated();
+        $this->actingAs($user2)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 15,
+            'quantity' => 1,
+        ])->assertCreated();
 
         $response = $this->getJson("/api/auctions/{$auction->id}")->json('auction');
 
@@ -67,41 +61,27 @@ class BidLogicUpdatesTest extends TestCase
             'starting_price' => '10.00',
         ]);
 
-        $this
-            ->actingAs($bidder)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 15,
-                'quantity' => 5,
-            ])
-            ->assertCreated();
+        $this->actingAs($bidder)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 15,
+            'quantity' => 5,
+        ])->assertCreated();
 
-        $this
-            ->actingAs($bidder)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 15,
-                'quantity' => 4,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonFragment([
-                'message' => 'New bid must have a higher amount or a higher quantity than your current bid.',
-            ]);
+        $this->actingAs($bidder)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 15,
+            'quantity' => 4,
+        ])->assertUnprocessable()->assertJsonFragment([
+            'message' => 'New bid must have a higher amount or a higher quantity than your current bid.',
+        ]);
 
-        $this
-            ->actingAs($bidder)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 20,
-                'quantity' => 4,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonFragment(['message' => 'You cannot lower your bid quantity, even with a higher amount.']);
+        $this->actingAs($bidder)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 20,
+            'quantity' => 4,
+        ])->assertUnprocessable()->assertJsonFragment(['message' => 'You cannot lower your bid quantity, even with a higher amount.']);
 
-        $this
-            ->actingAs($bidder)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 15,
-                'quantity' => 6,
-            ])
-            ->assertOk();
+        $this->actingAs($bidder)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 15,
+            'quantity' => 6,
+        ])->assertOk();
     }
 
     public function test_usernames_are_masked_for_public_and_other_users(): void
@@ -111,13 +91,10 @@ class BidLogicUpdatesTest extends TestCase
         $user2 = $this->createUser(['username' => 'real_user_2']);
         $auction = $this->createAuction($seller);
 
-        $this
-            ->actingAs($user1)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 20,
-                'quantity' => 1,
-            ])
-            ->assertCreated();
+        $this->actingAs($user1)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 20,
+            'quantity' => 1,
+        ])->assertCreated();
 
         Auth::logout();
 

@@ -107,31 +107,18 @@ class AuthorizationMatrixTest extends TestCase
 
         $this->actingAs($user)->getJson('/api/announcement')->assertOk();
         $this->actingAs($user)->getJson('/api/categories')->assertOk();
-        $this
-            ->actingAs($user)
-            ->getJson("/api/auctions/{$auction->id}")
-            ->assertOk();
+        $this->actingAs($user)->getJson("/api/auctions/{$auction->id}")->assertOk();
         $this->actingAs($user)->getJson('/api/auctions')->assertOk();
-        $this
-            ->actingAs($user)
-            ->getJson('/api/user')
-            ->assertOk()
-            ->assertJsonPath('user.id', $user->id);
+        $this->actingAs($user)->getJson('/api/user')->assertOk()->assertJsonPath('user.id', $user->id);
         $this->actingAs($user)->getJson('/api/push/config')->assertOk();
         $this->actingAs($user)->getJson('/api/my-auctions')->assertOk();
-        $this
-            ->actingAs($user)
-            ->postJson("/api/auctions/{$activeAuction->id}/questions", [
-                'question' => 'Allowed question',
-            ])
-            ->assertCreated();
-        $this
-            ->actingAs($user)
-            ->postJson("/api/auctions/{$activeAuction->id}/bids", [
-                'amount' => 20,
-                'quantity' => 1,
-            ])
-            ->assertCreated();
+        $this->actingAs($user)->postJson("/api/auctions/{$activeAuction->id}/questions", [
+            'question' => 'Allowed question',
+        ])->assertCreated();
+        $this->actingAs($user)->postJson("/api/auctions/{$activeAuction->id}/bids", [
+            'amount' => 20,
+            'quantity' => 1,
+        ])->assertCreated();
         $this
             ->actingAs($user)
             ->postJson('/api/presence/heartbeat', [

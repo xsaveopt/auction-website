@@ -22,15 +22,10 @@ class BidControllerTest extends TestCase
             'max_per_bidder' => 2,
         ]);
 
-        $this
-            ->actingAs($bidder)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 12,
-                'quantity' => 2,
-            ])
-            ->assertCreated()
-            ->assertJsonPath('bid.amount', '12.00')
-            ->assertJsonPath('bid.quantity', 2);
+        $this->actingAs($bidder)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 12,
+            'quantity' => 2,
+        ])->assertCreated()->assertJsonPath('bid.amount', '12.00')->assertJsonPath('bid.quantity', 2);
 
         $this->assertDatabaseHas('bids', [
             'auction_id' => $auction->id,
@@ -85,15 +80,10 @@ class BidControllerTest extends TestCase
             'quantity' => 1,
         ]);
 
-        $this
-            ->actingAs($bidder)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 16,
-                'quantity' => 5,
-            ])
-            ->assertOk()
-            ->assertJsonPath('bid.id', $bid->id)
-            ->assertJsonPath('bid.quantity', 1);
+        $this->actingAs($bidder)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 16,
+            'quantity' => 5,
+        ])->assertOk()->assertJsonPath('bid.id', $bid->id)->assertJsonPath('bid.quantity', 1);
 
         $this->assertDatabaseHas('bids', [
             'id' => $bid->id,
@@ -107,14 +97,10 @@ class BidControllerTest extends TestCase
         $seller = $this->createUser();
         $auction = $this->createAuction($seller);
 
-        $this
-            ->actingAs($seller)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 12,
-                'quantity' => 1,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'You cannot bid on your own auction.');
+        $this->actingAs($seller)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 12,
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonPath('message', 'You cannot bid on your own auction.');
     }
 
     public function test_bidding_is_blocked_when_the_site_is_locked(): void
@@ -125,14 +111,10 @@ class BidControllerTest extends TestCase
             'lock_message' => 'Maintenance',
         ]);
 
-        $this
-            ->actingAs($this->createUser())
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 12,
-                'quantity' => 1,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'The site is temporarily closed for maintenance.');
+        $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 12,
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonPath('message', 'The site is temporarily closed for maintenance.');
     }
 
     public function test_bidding_is_blocked_when_the_schedule_is_closed(): void
@@ -151,14 +133,10 @@ class BidControllerTest extends TestCase
                 'ends_at' => now()->addHour(),
             ]);
 
-            $this
-                ->actingAs($this->createUser())
-                ->postJson("/api/auctions/{$auction->id}/bids", [
-                    'amount' => 12,
-                    'quantity' => 1,
-                ])
-                ->assertUnprocessable()
-                ->assertSee('Bidding is closed during office hours', false);
+            $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/bids", [
+                'amount' => 12,
+                'quantity' => 1,
+            ])->assertUnprocessable()->assertSee('Bidding is closed during office hours', false);
         } finally {
             Carbon::setTestNow();
             $settings = SiteSetting::instance();
@@ -174,14 +152,10 @@ class BidControllerTest extends TestCase
             'ends_at' => now()->subMinute(),
         ]);
 
-        $this
-            ->actingAs($this->createUser())
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 12,
-                'quantity' => 1,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'This auction is no longer active.');
+        $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 12,
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonPath('message', 'This auction is no longer active.');
     }
 
     public function test_existing_bids_cannot_be_lowered_or_resubmitted_without_a_change(): void
@@ -197,26 +171,15 @@ class BidControllerTest extends TestCase
             'quantity' => 2,
         ]);
 
-        $this
-            ->actingAs($bidder)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 14,
-                'quantity' => 2,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'You cannot lower your bid amount.');
+        $this->actingAs($bidder)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 14,
+            'quantity' => 2,
+        ])->assertUnprocessable()->assertJsonPath('message', 'You cannot lower your bid amount.');
 
-        $this
-            ->actingAs($bidder)
-            ->postJson("/api/auctions/{$auction->id}/bids", [
-                'amount' => 15,
-                'quantity' => 2,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath(
-                'message',
-                'New bid must have a higher amount or a higher quantity than your current bid.',
-            );
+        $this->actingAs($bidder)->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 15,
+            'quantity' => 2,
+        ])->assertUnprocessable()->assertJsonPath('message', 'New bid must have a higher amount or a higher quantity than your current bid.');
     }
 
     public function test_anti_sniping_extends_the_auction_when_enabled(): void
@@ -235,13 +198,10 @@ class BidControllerTest extends TestCase
                 'ends_at' => now()->addSeconds(30),
             ]);
 
-            $this
-                ->actingAs($this->createUser())
-                ->postJson("/api/auctions/{$auction->id}/bids", [
-                    'amount' => 12,
-                    'quantity' => 1,
-                ])
-                ->assertCreated();
+            $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/bids", [
+                'amount' => 12,
+                'quantity' => 1,
+            ])->assertCreated();
 
             $this->assertTrue($auction->fresh()->ends_at->equalTo(now()->addSeconds(330)));
         } finally {

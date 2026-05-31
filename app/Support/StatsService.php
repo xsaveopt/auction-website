@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * @phpstan-type BidCountData array{label: string, date: string, count: int}
- * @phpstan-type HotAuctionData array{id: int, title: string, bid_count: int}
- * @phpstan-type TopBidderData array{username: string, auction_count: int}
+ * @phpstan-type HotAuctionData array{id: int, title: string, bid_count: int<0, max>}
+ * @phpstan-type TopBidderData array{username: string, auction_count: int<0, max>}
  * @phpstan-type StatsData array{
  *     active_auctions: int,
  *     ended_auctions: int,

@@ -45,10 +45,7 @@ class SocialiteController extends Controller
             return redirect('/login?error=sso_profile_invalid');
         }
 
-        $user = User::query()
-            ->where('microsoft_id', $microsoftId)
-            ->orWhere('username', $username)
-            ->first();
+        $user = User::query()->where('microsoft_id', $microsoftId)->orWhere('username', $username)->first();
 
         if ($user) {
             $user->username = $username;

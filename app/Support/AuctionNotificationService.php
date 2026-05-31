@@ -16,10 +16,7 @@ class AuctionNotificationService
 
     public function sendNewAuctionNotification(Auction $auction): void
     {
-        $subscribedUsers = User::query()
-            ->whereHas('pushSubscriptions')
-            ->where('id', '!=', $auction->seller_id)
-            ->get();
+        $subscribedUsers = User::query()->whereHas('pushSubscriptions')->where('id', '!=', $auction->seller_id)->get();
 
         if ($subscribedUsers->isEmpty()) {
             return;

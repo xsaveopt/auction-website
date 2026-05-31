@@ -63,10 +63,7 @@ class PushSubscriptionController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        PushSubscription::query()
-            ->where('user_id', $user->id)
-            ->where('endpoint', $validated['endpoint'])
-            ->delete();
+        PushSubscription::query()->where('user_id', $user->id)->where('endpoint', $validated['endpoint'])->delete();
 
         return response()->json(['message' => 'Push subscription removed.']);
     }

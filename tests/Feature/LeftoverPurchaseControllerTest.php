@@ -31,21 +31,13 @@ class LeftoverPurchaseControllerTest extends TestCase
             'quantity' => 1,
         ]);
 
-        $this
-            ->actingAs($buyer)
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
-                'quantity' => 2,
-            ])
-            ->assertCreated()
-            ->assertJsonPath('auction.leftover_purchases.0.quantity', 2);
+        $this->actingAs($buyer)->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 2,
+        ])->assertCreated()->assertJsonPath('auction.leftover_purchases.0.quantity', 2);
 
-        $this
-            ->actingAs($buyer)
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
-                'quantity' => 1,
-            ])
-            ->assertCreated()
-            ->assertJsonPath('auction.leftover_purchases.0.quantity', 3);
+        $this->actingAs($buyer)->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 1,
+        ])->assertCreated()->assertJsonPath('auction.leftover_purchases.0.quantity', 3);
 
         $this->assertDatabaseHas('leftover_purchases', [
             'auction_id' => $auction->id,
@@ -55,10 +47,7 @@ class LeftoverPurchaseControllerTest extends TestCase
         ]);
         $this->assertSame(
             1,
-            LeftoverPurchase::query()
-                ->where('auction_id', $auction->id)
-                ->where('user_id', $buyer->id)
-                ->count(),
+            LeftoverPurchase::query()->where('auction_id', $auction->id)->where('user_id', $buyer->id)->count(),
         );
     }
 
@@ -74,31 +63,22 @@ class LeftoverPurchaseControllerTest extends TestCase
             'ends_at' => now()->subHour(),
         ]);
 
-        $this
-            ->actingAs($admin)
-            ->postJson("/api/admin/auctions/{$auction->id}/leftover-purchases", [
-                'username' => $buyer->username,
-                'quantity' => 1,
-            ])
-            ->assertCreated();
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/leftover-purchases", [
+            'username' => $buyer->username,
+            'quantity' => 1,
+        ])->assertCreated();
 
-        $this
-            ->actingAs($admin)
-            ->postJson("/api/admin/auctions/{$auction->id}/leftover-purchases", [
-                'username' => $buyer->username,
-                'quantity' => 2,
-            ])
-            ->assertCreated();
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/leftover-purchases", [
+            'username' => $buyer->username,
+            'quantity' => 2,
+        ])->assertCreated();
 
         $purchase = LeftoverPurchase::query()->where('auction_id', $auction->id)->firstOrFail();
 
         $this->assertSame(3, $purchase->quantity);
         $this->assertSame(15.0, (float) $purchase->price_per_item);
 
-        $this
-            ->actingAs($admin)
-            ->deleteJson("/api/admin/leftover-purchases/{$purchase->id}")
-            ->assertOk();
+        $this->actingAs($admin)->deleteJson("/api/admin/leftover-purchases/{$purchase->id}")->assertOk();
 
         $this->assertSoftDeleted('leftover_purchases', ['id' => $purchase->id]);
     }
@@ -124,13 +104,9 @@ class LeftoverPurchaseControllerTest extends TestCase
         ]);
         $oldPurchase->delete();
 
-        $this
-            ->actingAs($buyer)
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
-                'quantity' => 1,
-            ])
-            ->assertCreated()
-            ->assertJsonPath('auction.leftover_purchases.0.user.username', $buyer->username);
+        $this->actingAs($buyer)->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 1,
+        ])->assertCreated()->assertJsonPath('auction.leftover_purchases.0.user.username', $buyer->username);
 
         $this->assertSoftDeleted('leftover_purchases', ['id' => $oldPurchase->id]);
         $this->assertDatabaseHas('leftover_purchases', [
@@ -142,10 +118,7 @@ class LeftoverPurchaseControllerTest extends TestCase
         ]);
         $this->assertSame(
             2,
-            LeftoverPurchase::withTrashed()
-                ->where('auction_id', $auction->id)
-                ->where('user_id', $buyer->id)
-                ->count(),
+            LeftoverPurchase::withTrashed()->where('auction_id', $auction->id)->where('user_id', $buyer->id)->count(),
         );
     }
 
@@ -155,25 +128,17 @@ class LeftoverPurchaseControllerTest extends TestCase
         $buyer = $this->createUser();
         $auction = $this->createAuction($seller);
 
-        $this
-            ->actingAs($buyer)
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
-                'quantity' => 1,
-            ])
-            ->assertForbidden()
-            ->assertJsonPath('message', 'Leftover sales are not enabled.');
+        $this->actingAs($buyer)->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 1,
+        ])->assertForbidden()->assertJsonPath('message', 'Leftover sales are not enabled.');
 
         $siteSettings = SiteSetting::instance();
         $siteSettings->leftover_sales_enabled = true;
         $siteSettings->save();
 
-        $this
-            ->actingAs($buyer)
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
-                'quantity' => 1,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'This auction is still active.');
+        $this->actingAs($buyer)->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonPath('message', 'This auction is still active.');
     }
 
     public function test_leftover_purchases_reject_the_seller_or_fully_allocated_auctions(): void
@@ -193,21 +158,13 @@ class LeftoverPurchaseControllerTest extends TestCase
             'quantity' => 1,
         ]);
 
-        $this
-            ->actingAs($seller)
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
-                'quantity' => 1,
-            ])
-            ->assertForbidden()
-            ->assertJsonPath('message', 'You cannot purchase from your own auction.');
+        $this->actingAs($seller)->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 1,
+        ])->assertForbidden()->assertJsonPath('message', 'You cannot purchase from your own auction.');
 
-        $this
-            ->actingAs($this->createUser())
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
-                'quantity' => 1,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'No leftover items are available.');
+        $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonPath('message', 'No leftover items are available.');
     }
 
     public function test_buying_last_leftover_item_rejects_pending_price_offers(): void
@@ -231,10 +188,9 @@ class LeftoverPurchaseControllerTest extends TestCase
             'offered_price_per_item' => '5.00',
         ]);
 
-        $this
-            ->actingAs($buyer)
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 1])
-            ->assertCreated();
+        $this->actingAs($buyer)->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 1,
+        ])->assertCreated();
 
         $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer->id, 'status' => 'rejected']);
     }
@@ -259,10 +215,9 @@ class LeftoverPurchaseControllerTest extends TestCase
             'offered_price_per_item' => '5.00',
         ]);
 
-        $this
-            ->actingAs($buyer)
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 2])
-            ->assertCreated();
+        $this->actingAs($buyer)->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 2,
+        ])->assertCreated();
 
         $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer->id, 'status' => 'pending']);
     }
@@ -283,13 +238,10 @@ class LeftoverPurchaseControllerTest extends TestCase
             'offered_price_per_item' => '5.00',
         ]);
 
-        $this
-            ->actingAs($admin)
-            ->postJson("/api/admin/auctions/{$auction->id}/leftover-purchases", [
-                'username' => $buyer->username,
-                'quantity' => 1,
-            ])
-            ->assertCreated();
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/leftover-purchases", [
+            'username' => $buyer->username,
+            'quantity' => 1,
+        ])->assertCreated();
 
         $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer->id, 'status' => 'rejected']);
     }
@@ -308,11 +260,9 @@ class LeftoverPurchaseControllerTest extends TestCase
             'auction_round_id' => $round->id,
         ]);
 
-        $this
-            ->actingAs($this->createUser())
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 1])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', "This auction's round has been closed.");
+        $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonPath('message', "This auction's round has been closed.");
     }
 
     public function test_leftover_purchase_allowed_when_auction_has_no_round(): void
@@ -328,10 +278,9 @@ class LeftoverPurchaseControllerTest extends TestCase
             'ends_at' => now()->subHour(),
         ]);
 
-        $this
-            ->actingAs($this->createUser())
-            ->postJson("/api/auctions/{$auction->id}/leftover-purchases", ['quantity' => 1])
-            ->assertCreated();
+        $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/leftover-purchases", [
+            'quantity' => 1,
+        ])->assertCreated();
     }
 
     public function test_admin_leftover_purchases_cannot_exceed_available_quantity(): void
@@ -348,13 +297,9 @@ class LeftoverPurchaseControllerTest extends TestCase
             'quantity' => 1,
         ]);
 
-        $this
-            ->actingAs($admin)
-            ->postJson("/api/admin/auctions/{$auction->id}/leftover-purchases", [
-                'username' => $buyer->username,
-                'quantity' => 2,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'Only 1 item(s) available.');
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/leftover-purchases", [
+            'username' => $buyer->username,
+            'quantity' => 2,
+        ])->assertUnprocessable()->assertJsonPath('message', 'Only 1 item(s) available.');
     }
 }

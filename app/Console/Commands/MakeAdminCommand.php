@@ -17,10 +17,7 @@ class MakeAdminCommand extends Command
     {
         $identifier = $this->argument('identifier');
 
-        $user = User::query()
-            ->where('username', $identifier)
-            ->orWhere('microsoft_id', $identifier)
-            ->first();
+        $user = User::query()->where('username', $identifier)->orWhere('microsoft_id', $identifier)->first();
 
         if (!$user) {
             $this->error("User '{$identifier}' not found.");

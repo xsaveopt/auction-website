@@ -26,31 +26,20 @@ class AdminControllersTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['username' => $bidder->username]);
 
-        $this
-            ->actingAs($admin)
-            ->postJson("/api/admin/auctions/{$auction->id}/bids", [
-                'username' => $bidder->username,
-                'amount' => 30,
-                'quantity' => 2,
-            ])
-            ->assertOk()
-            ->assertJsonPath('auction.bids.0.amount', '30.00');
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/bids", [
+            'username' => $bidder->username,
+            'amount' => 30,
+            'quantity' => 2,
+        ])->assertOk()->assertJsonPath('auction.bids.0.amount', '30.00');
 
         $bid = Bid::query()->where('auction_id', $auction->id)->firstOrFail();
 
-        $this
-            ->actingAs($admin)
-            ->putJson("/api/admin/bids/{$bid->id}", [
-                'amount' => 35,
-                'quantity' => 1,
-            ])
-            ->assertOk()
-            ->assertJsonPath('auction.bids.0.amount', '35.00');
+        $this->actingAs($admin)->putJson("/api/admin/bids/{$bid->id}", [
+            'amount' => 35,
+            'quantity' => 1,
+        ])->assertOk()->assertJsonPath('auction.bids.0.amount', '35.00');
 
-        $this
-            ->actingAs($admin)
-            ->deleteJson("/api/admin/bids/{$bid->id}")
-            ->assertOk();
+        $this->actingAs($admin)->deleteJson("/api/admin/bids/{$bid->id}")->assertOk();
 
         $this->assertSoftDeleted('bids', ['id' => $bid->id]);
     }
@@ -70,21 +59,14 @@ class AdminControllersTest extends TestCase
             ->assertJsonPath('auction.status', 'ended');
 
         $reactivatedEndsAt = now()->addDays(2)->toISOString();
-        $this
-            ->actingAs($admin)
-            ->postJson("/api/admin/auctions/{$auction->id}/reactivate", [
-                'ends_at' => $reactivatedEndsAt,
-            ])
-            ->assertOk()
-            ->assertJsonPath('auction.status', 'active');
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/reactivate", [
+            'ends_at' => $reactivatedEndsAt,
+        ])->assertOk()->assertJsonPath('auction.status', 'active');
 
         $extendedEndsAt = now()->addDays(3)->toISOString();
-        $this
-            ->actingAs($admin)
-            ->postJson("/api/admin/auctions/{$auction->id}/extend", [
-                'ends_at' => $extendedEndsAt,
-            ])
-            ->assertOk();
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/extend", [
+            'ends_at' => $extendedEndsAt,
+        ])->assertOk();
 
         $this
             ->actingAs($admin)

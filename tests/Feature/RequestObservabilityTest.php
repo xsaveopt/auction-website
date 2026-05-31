@@ -32,14 +32,8 @@ class RequestObservabilityTest extends TestCase
         $logger = \Mockery::mock();
         $logger->shouldReceive('info')->twice();
 
-        Log::shouldReceive('channel')
-            ->once()
-            ->with('access')
-            ->andReturn($logger);
-        Log::shouldReceive('channel')
-            ->once()
-            ->with('debug')
-            ->andReturn($logger);
+        Log::shouldReceive('channel')->once()->with('access')->andReturn($logger);
+        Log::shouldReceive('channel')->once()->with('debug')->andReturn($logger);
 
         $this->getJson('/api/user')->assertOk();
     }

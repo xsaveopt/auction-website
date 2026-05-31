@@ -35,10 +35,7 @@ class LeftoverPriceOfferControllerTest extends TestCase
             'offered_price_per_item' => '5.00',
         ]);
 
-        $this
-            ->actingAs($admin)
-            ->postJson("/api/admin/leftover-price-offers/{$offer1->id}/accept")
-            ->assertOk();
+        $this->actingAs($admin)->postJson("/api/admin/leftover-price-offers/{$offer1->id}/accept")->assertOk();
 
         $this->assertDatabaseHas('leftover_price_offers', [
             'id' => $offer1->id,
@@ -73,10 +70,7 @@ class LeftoverPriceOfferControllerTest extends TestCase
             'offered_price_per_item' => '5.00',
         ]);
 
-        $this
-            ->actingAs($admin)
-            ->postJson("/api/admin/leftover-price-offers/{$offer1->id}/accept")
-            ->assertOk();
+        $this->actingAs($admin)->postJson("/api/admin/leftover-price-offers/{$offer1->id}/accept")->assertOk();
 
         $this->assertNotSoftDeleted('leftover_price_offers', ['id' => $offer2->id]);
         $this->assertDatabaseHas('leftover_price_offers', [
@@ -99,14 +93,10 @@ class LeftoverPriceOfferControllerTest extends TestCase
             'auction_round_id' => $round->id,
         ]);
 
-        $this
-            ->actingAs($this->createUser())
-            ->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
-                'quantity' => 1,
-                'offered_price_per_item' => 5.00,
-            ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', "This auction's round has been closed.");
+        $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 5.00,
+        ])->assertUnprocessable()->assertJsonPath('message', "This auction's round has been closed.");
     }
 
     public function test_price_offer_allowed_when_auction_has_no_round(): void
@@ -122,13 +112,10 @@ class LeftoverPriceOfferControllerTest extends TestCase
             'ends_at' => now()->subHour(),
         ]);
 
-        $this
-            ->actingAs($this->createUser())
-            ->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
-                'quantity' => 1,
-                'offered_price_per_item' => 5.00,
-            ])
-            ->assertCreated();
+        $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 5.00,
+        ])->assertCreated();
     }
 
     public function test_user_can_submit_a_new_offer_after_a_soft_deleted_offer(): void
@@ -150,14 +137,10 @@ class LeftoverPriceOfferControllerTest extends TestCase
         ]);
         $oldOffer->delete();
 
-        $this
-            ->actingAs($user)
-            ->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
-                'quantity' => 1,
-                'offered_price_per_item' => 6.50,
-            ])
-            ->assertCreated()
-            ->assertJsonPath('auction.leftover_price_offers.0.user.username', $user->username);
+        $this->actingAs($user)->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 6.50,
+        ])->assertCreated()->assertJsonPath('auction.leftover_price_offers.0.user.username', $user->username);
 
         $this->assertSoftDeleted('leftover_price_offers', ['id' => $oldOffer->id]);
         $this->assertDatabaseHas('leftover_price_offers', [
@@ -169,10 +152,7 @@ class LeftoverPriceOfferControllerTest extends TestCase
         ]);
         $this->assertSame(
             2,
-            LeftoverPriceOffer::withTrashed()
-                ->where('auction_id', $auction->id)
-                ->where('user_id', $user->id)
-                ->count(),
+            LeftoverPriceOffer::withTrashed()->where('auction_id', $auction->id)->where('user_id', $user->id)->count(),
         );
     }
 }

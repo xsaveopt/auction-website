@@ -11,11 +11,7 @@ class AnnouncementController extends Controller
 {
     public function active(): JsonResponse
     {
-        $announcement = Announcement::query()
-            ->where('is_active', true)
-            ->with('author:id,username')
-            ->latest()
-            ->first();
+        $announcement = Announcement::query()->where('is_active', true)->with('author:id,username')->latest()->first();
 
         /** @var \App\Models\User|null $author */
         $author = $announcement?->author;
