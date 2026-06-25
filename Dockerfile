@@ -11,13 +11,9 @@ FROM dunglas/frankenphp:1-php8.5
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends curl unzip libjemalloc2 \
-    && find /usr/lib -name "libjemalloc.so.2" | head -1 | xargs -I{} ln -sf {} /usr/local/lib/libjemalloc.so.2
-
-# Replace glibc ptmalloc2 with jemalloc for all C-level allocations (PHP runtime, SQLite, extensions).
-# Long-lived Octane workers accumulate fragmentation with ptmalloc; jemalloc reduces RSS and
-# keeps allocation latency low over the worker's lifetime.
-ENV LD_PRELOAD=/usr/local/lib/libjemalloc.so.2
+    apt-get update && apt-get install -y --no-install-recommends curl unzip libcap2-bin libjemalloc2 \
+    && find /usr/lib -name "libjemalloc.so.2" | head -1 | xargs -I{} ln -sf {} /usr/local/lib/libjemalloc.so.2 \
+    && echo /usr/local/lib/libjemalloc.so.2 > /etc/ld.so.preload
 
 RUN install-php-extensions pdo_sqlite bcmath opcache pcntl apcu igbinary redis mbstring gd zstd
 
@@ -37,7 +33,7 @@ opcache.huge_code_pages=1
 opcache.jit=1255
 opcache.jit_buffer_size=128M
 opcache.preload=/app/opcache_preload.php
-opcache.preload_user=root
+opcache.preload_user=www-data
 
 ; Realpath cache — files don't change at runtime (validate_timestamps=0)
 realpath_cache_size=4096K
@@ -83,11 +79,16 @@ RUN mkdir -p /data/caddy_data /data/caddy_config
 
 COPY --chmod=755 docker-entrypoint.sh /docker-entrypoint.sh
 
+RUN setcap cap_net_bind_service=+ep /usr/local/bin/frankenphp \
+    && chown -R www-data:www-data /data /app/storage /app/bootstrap/cache
+
 EXPOSE 80 443 443/udp
 
 VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -fsS http://localhost:9113/up || exit 1
+
+USER www-data
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
