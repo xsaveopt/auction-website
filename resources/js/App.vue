@@ -1,12 +1,38 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, provide, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "./api.js";
-import { HEARTBEAT_INTERVAL_MS, presencePayload } from "./presence.js";
-import { usePushNotifications } from "./pushNotifications.js";
-import { useTheme } from "./useTheme.js";
-import { useNotifications } from "./useNotifications.js";
+import { api } from "./api";
+import { HEARTBEAT_INTERVAL_MS, presencePayload } from "./presence";
+import { usePushNotifications } from "./pushNotifications";
+import { useTheme } from "./useTheme";
+import { useNotifications } from "./useNotifications";
+import type { Auction, CurrentRound, HeartbeatData, Schedule, User } from "./types";
 import NotificationToast from "./NotificationToast.vue";
+
+interface RawSchedule extends Schedule {
+    server_time?: string;
+    server_time_local?: string;
+    currency_symbol?: string;
+    site_locked?: boolean;
+    lock_message?: string | null;
+}
+
+interface ScheduleBar {
+    open: boolean;
+    percent: number;
+    label: string;
+}
+
+interface TrackedAuctionState {
+    title: string;
+    in_active: boolean;
+    won_quantity?: number;
+    won?: boolean;
+}
+
+function errorMessage(error: unknown): string | undefined {
+    return error instanceof Error ? error.message : undefined;
+}
 
 const { isDark, toggleTheme } = useTheme();
 const { notify } = useNotifications();
@@ -32,47 +58,47 @@ async function handleNotificationBell() {
             notify("Notifications are blocked in your browser settings.", "warning", 8000);
         }
     } catch (error) {
-        notify(error.message ?? "Couldn't enable browser notifications.", "error", 8000);
+        notify(errorMessage(error) ?? "Couldn't enable browser notifications.", "error", 8000);
     }
 }
 
 const route = useRoute();
 const router = useRouter();
-const user = ref(null);
+const user = ref<User | null>(null);
 const loading = ref(true);
-const rawSchedule = ref(null);
+const rawSchedule = ref<RawSchedule | null>(null);
 const ssoEnabled = ref(false);
 const currencySymbol = ref("$");
 const now = ref(new Date());
-const heartbeatData = ref(null);
+const heartbeatData = ref<HeartbeatData | null>(null);
 const siteLocked = ref(false);
-const lockMessage = ref(null);
-const currentRound = ref({ active: null, ended: [] });
+const lockMessage = ref<string | null>(null);
+const currentRound = ref<CurrentRound>({ active: null, ended: [] });
 let serverOffsetMs = 0;
 const serverClockSeconds = ref(0);
 
-function parseTime(str) {
+function parseTime(str: string) {
     const [h, m] = str.split(":").map(Number);
     return h * 60 + m;
 }
 
-function isWeekend(date) {
+function isWeekend(date: Date) {
     const day = date.getDay();
     return day === 0 || day === 6;
 }
 
-function isBiddingOpenNow(sched, date) {
+function isBiddingOpenNow(sched: RawSchedule | null, date: Date) {
     if (!sched) return true;
     if (sched.weekends_open && isWeekend(date)) return true;
     const current = date.getHours() * 60 + date.getMinutes();
     return current < parseTime(sched.closed_start) || current >= parseTime(sched.closed_end);
 }
 
-function currentFractionalMinutes(date) {
+function currentFractionalMinutes(date: Date) {
     return date.getHours() * 60 + date.getMinutes() + date.getSeconds() / 60;
 }
 
-function formatRemaining(minutes) {
+function formatRemaining(minutes: number) {
     const total = Math.ceil(minutes);
     if (total < 60) return `${total}m`;
     const h = Math.floor(total / 60);
@@ -82,7 +108,7 @@ function formatRemaining(minutes) {
     return `${d}d ${h % 24}h`;
 }
 
-const schedule = computed(() => {
+const schedule = computed<Schedule | null>(() => {
     if (!rawSchedule.value) return null;
     return {
         ...rawSchedule.value,
@@ -90,7 +116,7 @@ const schedule = computed(() => {
     };
 });
 
-const scheduleBar = computed(() => {
+const scheduleBar = computed<ScheduleBar | null>(() => {
     if (!rawSchedule.value || !rawSchedule.value.enabled) return null;
     const date = now.value;
     const day = date.getDay();
@@ -179,7 +205,7 @@ const shellWidthClass = "max-w-[1800px]";
 
 async function fetchUser() {
     try {
-        const data = await api("/user");
+        const data = await api<{ user: User | null }>("/user");
         user.value = data.user;
     } catch {
         user.value = null;
@@ -190,7 +216,7 @@ async function fetchUser() {
 
 async function fetchSchedule() {
     try {
-        const data = await api("/schedule");
+        const data = await api<{ schedule: RawSchedule | null }>("/schedule");
         rawSchedule.value = data.schedule;
         if (data.schedule?.server_time) {
             serverOffsetMs = new Date(data.schedule.server_time).getTime() - Date.now();
@@ -210,7 +236,7 @@ async function fetchSchedule() {
 
 async function fetchSsoEnabled() {
     try {
-        const data = await api("/auth/sso/enabled");
+        const data = await api<{ enabled: boolean }>("/auth/sso/enabled");
         ssoEnabled.value = !!data.enabled;
     } catch {
         ssoEnabled.value = false;
@@ -219,14 +245,14 @@ async function fetchSsoEnabled() {
 
 async function fetchCurrentRound() {
     try {
-        const data = await api("/rounds/current");
+        const data = await api<CurrentRound>("/rounds/current");
         currentRound.value = data;
     } catch {}
 }
 
 async function sendPresenceHeartbeat() {
     try {
-        const data = await api("/presence/heartbeat", {
+        const data = await api<HeartbeatData>("/presence/heartbeat", {
             method: "POST",
             body: JSON.stringify(presencePayload(route)),
         });
@@ -234,18 +260,19 @@ async function sendPresenceHeartbeat() {
     } catch {}
 }
 
-const trackedAuctionStates = ref({});
-let myAuctionsInterval;
+const trackedAuctionStates = ref<Record<string, TrackedAuctionState>>({});
+let myAuctionsInterval: ReturnType<typeof setInterval> | undefined;
 
 async function pollMyAuctions() {
     if (!user.value || user.value.is_admin) return;
     const viewingAuctionId = route.params.id ? String(route.params.id) : null;
     try {
-        const data = await api("/my-auctions");
-        /** @type {Record<string, {title: string, in_active: boolean, won_quantity?: number, won?: boolean}>} */
-        const newStates = {};
+        const data = await api<{ active?: Auction[]; won?: Auction[]; lost?: Auction[] }>(
+            "/my-auctions",
+        );
+        const newStates: Record<string, TrackedAuctionState> = {};
         for (const auction of data.active ?? []) {
-            const myBid = auction.bids?.find((b) => b.user.id === user.value.id);
+            const myBid = auction.bids?.find((b) => b.user?.id === user.value?.id);
             newStates[String(auction.id)] = {
                 title: auction.title,
                 in_active: true,
@@ -282,9 +309,9 @@ async function pollMyAuctions() {
     } catch {}
 }
 
-let scheduleInterval;
-let presenceInterval;
-let clockInterval;
+let scheduleInterval: ReturnType<typeof setInterval> | undefined;
+let presenceInterval: ReturnType<typeof setInterval> | null = null;
+let clockInterval: ReturnType<typeof setInterval> | undefined;
 function startHeartbeat() {
     if (!presenceInterval) {
         sendPresenceHeartbeat();
@@ -293,7 +320,7 @@ function startHeartbeat() {
 }
 
 function stopHeartbeat() {
-    clearInterval(presenceInterval);
+    if (presenceInterval) clearInterval(presenceInterval);
     presenceInterval = null;
 }
 
@@ -323,7 +350,8 @@ onMounted(() => {
             .then(() => refreshPushSubscriptionState())
             .catch((error) => {
                 notify(
-                    error.message ?? "Couldn't start background notifications on this device.",
+                    errorMessage(error) ??
+                        "Couldn't start background notifications on this device.",
                     "error",
                     8000,
                 );
@@ -344,7 +372,8 @@ watch(user, async (newUser) => {
                 await syncPushSubscription();
             } catch (error) {
                 notify(
-                    error.message ?? "Couldn't sync background notifications for this browser.",
+                    errorMessage(error) ??
+                        "Couldn't sync background notifications for this browser.",
                     "error",
                     8000,
                 );
@@ -355,7 +384,7 @@ watch(user, async (newUser) => {
             await clearPushSubscription();
         } catch (error) {
             notify(
-                error.message ?? "Couldn't disable bidder notifications on this browser.",
+                errorMessage(error) ?? "Couldn't disable bidder notifications on this browser.",
                 "warning",
                 8000,
             );
@@ -382,7 +411,7 @@ async function logout() {
             await clearPushSubscription();
         } catch (error) {
             notify(
-                error.message ?? "Couldn't disable browser notifications on this device.",
+                errorMessage(error) ?? "Couldn't disable browser notifications on this device.",
                 "warning",
                 8000,
             );
@@ -398,7 +427,7 @@ async function logout() {
     }
 }
 
-function onLogin(u) {
+function onLogin(u: User) {
     user.value = u;
     router.push("/");
 }

@@ -1,24 +1,26 @@
-<script setup>
-import { ref, inject, computed, onMounted } from "vue";
+<script setup lang="ts">
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api, ApiError } from "../api";
+import { injectUser, injectCurrencySymbol } from "../injection";
+import type { Auction, Category } from "../types";
 
 const router = useRouter();
-const user = inject("user");
-const currencySymbol = inject("currencySymbol");
+const user = injectUser();
+const currencySymbol = injectCurrencySymbol();
 const priceLabel = computed(() => `Starting Price (${currencySymbol.value})`);
-const props = defineProps({ id: String });
+const props = defineProps<{ id?: string }>();
 
-const categories = ref([]);
+const categories = ref<Category[]>([]);
 const title = ref("");
 const description = ref("");
 const startingPrice = ref("");
 const quantity = ref(1);
 const maxPerBidder = ref(1);
-const categoryId = ref("");
+const categoryId = ref<string | number>("");
 const location = ref("");
 const endsAt = ref("");
-const errors = ref({});
+const errors = ref<Record<string, string[]>>({});
 const submitting = ref(false);
 const loading = ref(true);
 
@@ -29,19 +31,19 @@ onMounted(async () => {
     }
     try {
         const [data, catData] = await Promise.all([
-            api(`/auctions/${props.id}`),
-            api("/categories").catch(() => ({ categories: [] })),
+            api<{ auction: Auction }>(`/auctions/${props.id}`),
+            api<{ categories: Category[] }>("/categories").catch(() => ({ categories: [] })),
         ]);
         categories.value = catData.categories;
         const a = data.auction;
         title.value = a.title;
-        description.value = a.description;
+        description.value = a.description ?? "";
         startingPrice.value = Number(a.starting_price).toFixed(2);
         quantity.value = a.quantity;
-        maxPerBidder.value = a.max_per_bidder;
+        maxPerBidder.value = a.max_per_bidder ?? 1;
         categoryId.value = a.category_id || "";
         location.value = a.location || "";
-        endsAt.value = a.ends_at.slice(0, 16);
+        endsAt.value = a.ends_at?.slice(0, 16) ?? "";
     } catch {
         errors.value = { general: ["Failed to load auction."] };
     } finally {
@@ -68,11 +70,11 @@ async function submit() {
         });
         router.push(`/auctions/${props.id}`);
     } catch (e) {
-        if (e.data?.errors) {
+        if (e instanceof ApiError && e.data.errors) {
             errors.value = e.data.errors;
         } else {
             errors.value = {
-                general: [e.data?.message || "Failed to update auction."],
+                general: [(e instanceof ApiError && e.data.message) || "Failed to update auction."],
             };
         }
     } finally {

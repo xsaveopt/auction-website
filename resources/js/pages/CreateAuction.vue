@@ -1,51 +1,54 @@
-<script setup>
-import { ref, inject, computed } from "vue";
+<script setup lang="ts">
+import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api, ApiError } from "../api";
+import { injectUser, injectCurrencySymbol, injectNow } from "../injection";
+import type { Auction, Category } from "../types";
 
 const router = useRouter();
-const user = inject("user");
-const currencySymbol = inject("currencySymbol");
-const now = inject("now");
+const user = injectUser();
+const currencySymbol = injectCurrencySymbol();
+const now = injectNow();
 const priceLabel = computed(() => `Starting Price (${currencySymbol.value})`);
-const categories = ref([]);
+const categories = ref<Category[]>([]);
 const title = ref("");
 const description = ref("");
 const startingPrice = ref("1.00");
 const quantity = ref(1);
 const maxPerBidder = ref(1);
-const categoryId = ref("");
+const categoryId = ref<string | number>("");
 const location = ref("");
 const endsAt = ref("");
-const imageFiles = ref([]);
-const imagePreviews = ref([]);
-const errors = ref({});
+const imageFiles = ref<File[]>([]);
+const imagePreviews = ref<string[]>([]);
+const errors = ref<Record<string, string[]>>({});
 const submitting = ref(false);
 
 if (!user.value?.is_admin) {
     router.push("/");
 }
 
-api("/categories")
+api<{ categories: Category[] }>("/categories")
     .then((data) => {
         categories.value = data.categories;
     })
     .catch(() => {});
 
 const d = new Date(now.value.getTime() + 7 * 86400000);
-const pad = (n) => String(n).padStart(2, "0");
+const pad = (n: number) => String(n).padStart(2, "0");
 endsAt.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-function onFilesSelected(e) {
-    const files = Array.from(e.target.files);
+function onFilesSelected(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
     for (const file of files) {
         imageFiles.value.push(file);
         imagePreviews.value.push(URL.createObjectURL(file));
     }
-    e.target.value = "";
+    input.value = "";
 }
 
-function removeImage(index) {
+function removeImage(index: number) {
     URL.revokeObjectURL(imagePreviews.value[index]);
     imageFiles.value.splice(index, 1);
     imagePreviews.value.splice(index, 1);
@@ -55,7 +58,7 @@ async function submit() {
     errors.value = {};
     submitting.value = true;
     try {
-        const data = await api("/auctions", {
+        const data = await api<{ auction: Auction }>("/auctions", {
             method: "POST",
             body: JSON.stringify({
                 title: title.value,
@@ -82,11 +85,11 @@ async function submit() {
 
         router.push(`/auctions/${data.auction.id}`);
     } catch (e) {
-        if (e.data?.errors) {
+        if (e instanceof ApiError && e.data.errors) {
             errors.value = e.data.errors;
         } else {
             errors.value = {
-                general: [e.data?.message || "Failed to create auction."],
+                general: [(e instanceof ApiError && e.data.message) || "Failed to create auction."],
             };
         }
     } finally {

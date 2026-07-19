@@ -1,5 +1,5 @@
-<script setup>
-import { useNotifications } from "./useNotifications.js";
+<script setup lang="ts">
+import { useNotifications } from "./useNotifications";
 
 const { notifications, dismiss } = useNotifications();
 </script>

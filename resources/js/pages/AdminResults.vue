@@ -1,30 +1,57 @@
-<script setup>
-import { computed, ref, inject, onMounted, watch } from "vue";
+<script setup lang="ts">
+import { computed, ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api } from "../api";
+import { injectUser, injectCurrencySymbol } from "../injection";
+import type { Auction, AuctionImage, AuctionRound, Id, Money } from "../types";
 
-const props = defineProps({
-    active: {
-        type: Boolean,
-        default: false,
-    },
-});
+interface ResultsSummary {
+    revenue_after_tax: number;
+    total_value_after_tax: number;
+    revenue_before_tax: number;
+    total_value_before_tax: number;
+    [key: string]: unknown;
+}
+
+interface UserSummaryItem {
+    auctionId: Id;
+    auctionTitle: string;
+    auctionImages?: AuctionImage[];
+    wonQuantity: number;
+    totalOwed: number;
+    bidId: Id | null;
+    offerId?: Id;
+    isLeftover: boolean;
+    fromPriceOffer?: boolean;
+}
+
+interface UserSummary {
+    username: string;
+    userId: Id;
+    items: UserSummaryItem[];
+    totalItems: number;
+    totalOwed: number;
+}
+
+const props = withDefaults(defineProps<{ active?: boolean }>(), { active: false });
 const router = useRouter();
 const route = useRoute();
-const user = inject("user");
-const currencySymbol = inject("currencySymbol");
-const allAuctions = ref([]);
-const allRounds = ref([]);
-const summary = ref(null);
+const user = injectUser();
+const currencySymbol = injectCurrencySymbol();
+const allAuctions = ref<Auction[]>([]);
+const allRounds = ref<AuctionRound[]>([]);
+const summary = ref<ResultsSummary | null>(null);
 const loading = ref(true);
-const expanded = ref({});
-const view = ref(route.query.view === "auctions" ? "auctions" : "users");
-const expandedUsers = ref({});
-const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
+const expanded = ref<Record<number, boolean>>({});
+const view = ref<"users" | "auctions">(route.query.view === "auctions" ? "auctions" : "users");
+const expandedUsers = ref<Record<string, boolean>>({});
+const selectedRoundId = ref<number | null>(
+    route.query.round_id ? Number(route.query.round_id) : null,
+);
 
 const auctions = allAuctions;
 
-function syncViewQuery(v) {
+function syncViewQuery(v: string) {
     if (!props.active) {
         return;
     }
@@ -34,7 +61,7 @@ function syncViewQuery(v) {
     router.replace({ path: route.path, query });
 }
 
-function syncRoundQuery(roundId) {
+function syncRoundQuery(roundId: number | null) {
     if (!props.active) {
         return;
     }
@@ -74,9 +101,9 @@ if (!user.value?.is_admin) {
     router.push("/");
 }
 
-async function loadEnded(roundId = null) {
+async function loadEnded(roundId: number | null = null) {
     const url = roundId !== null ? `/auctions/ended?round_id=${roundId}` : "/auctions/ended";
-    const data = await api(url);
+    const data = await api<{ auctions: Auction[]; summary: ResultsSummary | null }>(url);
     return data;
 }
 
@@ -85,10 +112,12 @@ let initialized = false;
 onMounted(async () => {
     try {
         const [roundsData, currentData] = await Promise.all([
-            api("/rounds"),
-            api("/rounds/current"),
+            api<{ rounds: AuctionRound[] }>("/rounds"),
+            api<{ active: AuctionRound | null }>("/rounds/current"),
         ]);
-        allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
+        allRounds.value = (roundsData.rounds ?? []).sort(
+            (a: AuctionRound, b: AuctionRound) => b.id - a.id,
+        );
 
         let roundId = selectedRoundId.value;
         if (roundId === null) {
@@ -119,37 +148,37 @@ watch(selectedRoundId, async (roundId) => {
     }
 });
 
-function toggle(id) {
+function toggle(id: number) {
     expanded.value[id] = !expanded.value[id];
 }
 
-function winners(auction) {
-    return auction.bids.filter((b) => b.won_quantity > 0);
+function winners(auction: Auction) {
+    return (auction.bids ?? []).filter((b) => (b.won_quantity ?? 0) > 0);
 }
 
-function formatDate(d) {
+function formatDate(d: string | null | undefined) {
     if (!d) return "";
     return d.slice(0, 16).replace("T", " ");
 }
 
-function quoteUrl(auctionId, bidId) {
+function quoteUrl(auctionId: Id, bidId: Id) {
     return `/api/auctions/${auctionId}/quotes/${bidId}`;
 }
 
-function userQuoteUrl(userId) {
+function userQuoteUrl(userId: Id) {
     const base = `/api/users/${userId}/quotes`;
     return selectedRoundId.value !== null ? `${base}?round_id=${selectedRoundId.value}` : base;
 }
 
-function leftoverQuoteUrl(auctionId, purchaseId) {
+function leftoverQuoteUrl(auctionId: Id, purchaseId: Id) {
     return `/api/auctions/${auctionId}/leftover-purchases/${purchaseId}/quotes`;
 }
 
-function priceOfferQuoteUrl(auctionId, offerId) {
+function priceOfferQuoteUrl(auctionId: Id, offerId: Id) {
     return `/api/auctions/${auctionId}/leftover-price-offers/${offerId}/quotes`;
 }
 
-function downloadAllQuotes(auction) {
+function downloadAllQuotes(auction: Auction) {
     for (const bid of winners(auction)) {
         window.open(quoteUrl(auction.id, bid.id), "_blank");
     }
@@ -173,58 +202,57 @@ function hasAnyWinners() {
     return auctions.value.some((a) => winners(a).length > 0);
 }
 
-function formatMoney(amount) {
+function formatMoney(amount: Money | null | undefined) {
     return `${currencySymbol.value}${Number(amount ?? 0).toFixed(2)}`;
 }
 
-function toggleUser(username) {
+function toggleUser(username: string) {
     expandedUsers.value[username] = !expandedUsers.value[username];
 }
 
-const userSummaries = computed(() => {
-    /** @type {Map<string, {username: string, userId: number, items: Array, totalItems: number, totalOwed: number}>} */
-    const map = new Map();
+const userSummaries = computed<UserSummary[]>(() => {
+    const map = new Map<string, UserSummary>();
 
     for (const auction of auctions.value) {
         for (const bid of auction.bids ?? []) {
-            if (bid.won_quantity <= 0) continue;
-            const username = bid.user.username;
+            if ((bid.won_quantity ?? 0) <= 0) continue;
+            const username = bid.user!.username;
             if (!map.has(username)) {
                 map.set(username, {
                     username,
-                    userId: bid.user.id,
+                    userId: bid.user!.id,
                     items: [],
                     totalItems: 0,
                     totalOwed: 0,
                 });
             }
-            const entry = map.get(username);
-            const owed = bid.won_quantity * Number(bid.price ?? bid.amount);
+            const entry = map.get(username)!;
+            const owed = (bid.won_quantity ?? 0) * Number(bid.price ?? bid.amount);
             entry.items.push({
                 auctionId: auction.id,
                 auctionTitle: auction.title,
                 auctionImages: auction.images,
-                wonQuantity: bid.won_quantity,
+                wonQuantity: bid.won_quantity ?? 0,
                 totalOwed: owed,
                 bidId: bid.id,
                 isLeftover: false,
             });
-            entry.totalItems += bid.won_quantity;
+            entry.totalItems += bid.won_quantity ?? 0;
             entry.totalOwed += owed;
         }
 
         for (const purchase of auction.leftover_purchases ?? []) {
-            const username = purchase.user.username;
+            const username = purchase.user!.username;
             if (!map.has(username)) {
                 map.set(username, {
                     username,
-                    userId: purchase.user.id,
+                    userId: purchase.user!.id,
                     items: [],
                     totalItems: 0,
                     totalOwed: 0,
                 });
             }
-            const entry = map.get(username);
+            const entry = map.get(username)!;
             const owed = purchase.quantity * Number(purchase.price_per_item);
             entry.items.push({
                 auctionId: auction.id,
@@ -243,17 +271,17 @@ const userSummaries = computed(() => {
         for (const offer of (auction.leftover_price_offers ?? []).filter(
             (o) => o.status === "accepted",
         )) {
-            const username = offer.user.username;
+            const username = offer.user!.username;
             if (!map.has(username)) {
                 map.set(username, {
                     username,
-                    userId: offer.user.id,
+                    userId: offer.user!.id,
                     items: [],
                     totalItems: 0,
                     totalOwed: 0,
                 });
             }
-            const entry = map.get(username);
+            const entry = map.get(username)!;
             const owed = offer.quantity * Number(offer.offered_price_per_item);
             entry.items.push({
                 auctionId: auction.id,
@@ -473,7 +501,10 @@ const statsCards = computed(() => {
                         <div class="flex items-center gap-3 shrink-0 ml-4">
                             <span class="text-sm font-medium text-green-700 dark:text-green-400">
                                 {{
-                                    winners(auction).reduce((s, b) => s + b.won_quantity, 0) +
+                                    winners(auction).reduce(
+                                        (s, b) => s + (b.won_quantity ?? 0),
+                                        0,
+                                    ) +
                                     (auction.leftover_purchases ?? []).reduce(
                                         (s, p) => s + p.quantity,
                                         0,
@@ -484,7 +515,8 @@ const statsCards = computed(() => {
                                     (
                                         winners(auction).reduce(
                                             (s, b) =>
-                                                s + b.won_quantity * Number(b.price ?? b.amount),
+                                                s +
+                                                (b.won_quantity ?? 0) * Number(b.price ?? b.amount),
                                             0,
                                         ) +
                                         (auction.leftover_purchases ?? []).reduce(
@@ -538,7 +570,7 @@ const statsCards = computed(() => {
                                         class="border-b dark:border-gray-700 last:border-0"
                                     >
                                         <td class="py-2 font-medium">
-                                            {{ bid.user.username }}
+                                            {{ bid.user?.username }}
                                         </td>
                                         <td class="py-2">
                                             {{ currencySymbol }}{{ Number(bid.amount).toFixed(2) }}
@@ -554,7 +586,7 @@ const statsCards = computed(() => {
                                             {{ currencySymbol
                                             }}{{
                                                 (
-                                                    bid.won_quantity *
+                                                    (bid.won_quantity ?? 0) *
                                                     Number(bid.price ?? bid.amount)
                                                 ).toFixed(2)
                                             }}
@@ -589,7 +621,7 @@ const statsCards = computed(() => {
                                         <td class="pt-2">
                                             {{
                                                 winners(auction).reduce(
-                                                    (s, b) => s + b.won_quantity,
+                                                    (s, b) => s + (b.won_quantity ?? 0),
                                                     0,
                                                 )
                                             }}
@@ -602,7 +634,7 @@ const statsCards = computed(() => {
                                                     .reduce(
                                                         (s, b) =>
                                                             s +
-                                                            b.won_quantity *
+                                                            (b.won_quantity ?? 0) *
                                                                 Number(b.price ?? b.amount),
                                                         0,
                                                     )
@@ -616,7 +648,10 @@ const statsCards = computed(() => {
                         </div>
 
                         <div
-                            v-if="auction.bids.filter((b) => b.won_quantity === 0).length > 0"
+                            v-if="
+                                (auction.bids ?? []).filter((b) => (b.won_quantity ?? 0) === 0)
+                                    .length > 0
+                            "
                             class="mt-4"
                         >
                             <h3 class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-1">
@@ -624,10 +659,12 @@ const statsCards = computed(() => {
                             </h3>
                             <div class="text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
                                 <div
-                                    v-for="bid in auction.bids.filter((b) => b.won_quantity === 0)"
+                                    v-for="bid in (auction.bids ?? []).filter(
+                                        (b) => (b.won_quantity ?? 0) === 0,
+                                    )"
                                     :key="bid.id"
                                 >
-                                    {{ bid.user.username }} — {{ currencySymbol
+                                    {{ bid.user?.username }} — {{ currencySymbol
                                     }}{{ Number(bid.amount).toFixed(2) }}
                                     <span v-if="bid.quantity > 1">for {{ bid.quantity }}</span>
                                 </div>
@@ -636,7 +673,7 @@ const statsCards = computed(() => {
 
                         <div
                             v-if="
-                                auction.leftover_purchases?.length > 0 ||
+                                (auction.leftover_purchases?.length ?? 0) > 0 ||
                                 (auction.leftover_price_offers ?? []).some(
                                     (o) => o.status === 'accepted',
                                 )
@@ -666,7 +703,7 @@ const statsCards = computed(() => {
                                         class="border-b dark:border-gray-700 last:border-0"
                                     >
                                         <td class="py-2 font-medium">
-                                            {{ purchase.user.username }}
+                                            {{ purchase.user?.username }}
                                         </td>
                                         <td class="py-2 text-gray-500 dark:text-gray-400">
                                             Leftover buy
@@ -718,7 +755,7 @@ const statsCards = computed(() => {
                                         class="border-b dark:border-gray-700 last:border-0"
                                     >
                                         <td class="py-2 font-medium">
-                                            {{ offer.user.username }}
+                                            {{ offer.user?.username }}
                                         </td>
                                         <td class="py-2 text-gray-500 dark:text-gray-400">
                                             Price offer
@@ -922,8 +959,8 @@ const statsCards = computed(() => {
                                     <td class="py-2">
                                         <div class="flex items-center gap-2">
                                             <img
-                                                v-if="item.auctionImages.length"
-                                                :src="item.auctionImages[0].url"
+                                                v-if="item.auctionImages?.length"
+                                                :src="item.auctionImages?.[0].url"
                                                 class="w-7 h-7 rounded object-cover shrink-0"
                                             />
                                             <router-link

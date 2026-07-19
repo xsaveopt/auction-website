@@ -1,22 +1,26 @@
-<script setup>
-import { ref, inject, onMounted, watch } from "vue";
+<script setup lang="ts">
+import { ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api } from "../api";
+import { injectUser, injectCurrencySymbol } from "../injection";
+import type { Auction, AuctionRound } from "../types";
 
 const router = useRouter();
 const route = useRoute();
-const user = inject("user");
-const currencySymbol = inject("currencySymbol");
-const auctions = ref([]);
-const allRounds = ref([]);
+const user = injectUser();
+const currencySymbol = injectCurrencySymbol();
+const auctions = ref<Auction[]>([]);
+const allRounds = ref<AuctionRound[]>([]);
 const loading = ref(true);
-const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
+const selectedRoundId = ref<number | null>(
+    route.query.round_id ? Number(route.query.round_id) : null,
+);
 
 if (!user.value?.is_admin) {
     router.push("/");
 }
 
-function syncRoundQuery(roundId) {
+function syncRoundQuery(roundId: number | null) {
     const query = { ...route.query };
     if (roundId !== null) {
         query.round_id = String(roundId);
@@ -26,10 +30,10 @@ function syncRoundQuery(roundId) {
     router.replace({ path: route.path, query });
 }
 
-async function loadLeftovers(roundId = null) {
+async function loadLeftovers(roundId: number | null = null) {
     const url =
         roundId !== null ? `/auctions/leftovers?round_id=${roundId}` : "/auctions/leftovers";
-    const data = await api(url);
+    const data = await api<{ auctions: Auction[] }>(url);
     return data;
 }
 
@@ -38,10 +42,12 @@ let initialized = false;
 onMounted(async () => {
     try {
         const [roundsData, currentData] = await Promise.all([
-            api("/rounds"),
-            api("/rounds/current"),
+            api<{ rounds: AuctionRound[] }>("/rounds"),
+            api<{ active: AuctionRound | null }>("/rounds/current"),
         ]);
-        allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
+        allRounds.value = (roundsData.rounds ?? []).sort(
+            (a: AuctionRound, b: AuctionRound) => b.id - a.id,
+        );
 
         let roundId = selectedRoundId.value;
         if (roundId === null) {
@@ -70,25 +76,25 @@ watch(selectedRoundId, async (roundId) => {
     }
 });
 
-function formatDate(d) {
+function formatDate(d: string | null | undefined) {
     if (!d) return "";
     return d.slice(0, 10);
 }
 
-function formatMoney(amount) {
+function formatMoney(amount: number | string | null | undefined) {
     return `${currencySymbol.value}${Number(amount ?? 0).toFixed(2)}`;
 }
 
 function exportCsv() {
-    const rows = [
+    const rows: (string | number)[][] = [
         ["Auction", "Ended", "Location", "Total qty", "Sold", "Leftover", "Starting price"],
-        ...auctions.value.map((a) => [
+        ...auctions.value.map((a: Auction) => [
             a.title,
             formatDate(a.ends_at),
             a.location ?? "",
             a.quantity,
-            a.quantity - a.leftover_quantity,
-            a.leftover_quantity,
+            a.quantity - (a.leftover_quantity ?? 0),
+            a.leftover_quantity ?? 0,
             Number(a.starting_price ?? 0).toFixed(2),
         ]),
     ];
@@ -191,7 +197,7 @@ function exportCsv() {
                             {{ auction.quantity }}
                         </td>
                         <td class="py-2 pr-4 text-right text-gray-700 dark:text-gray-300">
-                            {{ auction.quantity - auction.leftover_quantity }}
+                            {{ auction.quantity - (auction.leftover_quantity ?? 0) }}
                         </td>
                         <td
                             class="py-2 pr-4 text-right font-semibold text-orange-600 dark:text-orange-400"
@@ -213,11 +219,14 @@ function exportCsv() {
                         </td>
                         <td class="pt-2 pr-4 text-right">
                             {{
-                                auctions.reduce((s, a) => s + (a.quantity - a.leftover_quantity), 0)
+                                auctions.reduce(
+                                    (s, a) => s + (a.quantity - (a.leftover_quantity ?? 0)),
+                                    0,
+                                )
                             }}
                         </td>
                         <td class="pt-2 pr-4 text-right text-orange-600 dark:text-orange-400">
-                            {{ auctions.reduce((s, a) => s + a.leftover_quantity, 0) }}
+                            {{ auctions.reduce((s, a) => s + (a.leftover_quantity ?? 0), 0) }}
                         </td>
                         <td></td>
                     </tr>

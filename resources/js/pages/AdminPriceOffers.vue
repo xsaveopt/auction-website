@@ -1,25 +1,35 @@
-<script setup>
-import { ref, computed, inject, onMounted, watch } from "vue";
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api, ApiError } from "../api";
+import { injectUser, injectCurrencySymbol } from "../injection";
+import type { Auction, AuctionRound, Id, LeftoverPriceOffer } from "../types";
+
+interface PriceOfferGroup {
+    auction: Auction;
+    offers: LeftoverPriceOffer[];
+    tiedPrices: Map<string, number[]>;
+}
 
 const router = useRouter();
 const route = useRoute();
-const user = inject("user");
-const currencySymbol = inject("currencySymbol");
-const offers = ref([]);
-const allRounds = ref([]);
+const user = injectUser();
+const currencySymbol = injectCurrencySymbol();
+const offers = ref<LeftoverPriceOffer[]>([]);
+const allRounds = ref<AuctionRound[]>([]);
 const loading = ref(true);
-const processingId = ref(null);
-const rebidProcessingKey = ref(null);
+const processingId = ref<number | null>(null);
+const rebidProcessingKey = ref<string | null>(null);
 const error = ref("");
-const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
+const selectedRoundId = ref<number | null>(
+    route.query.round_id ? Number(route.query.round_id) : null,
+);
 
 if (!user.value?.is_admin) {
     router.push("/");
 }
 
-function syncRoundQuery(roundId) {
+function syncRoundQuery(roundId: number | null) {
     const query = { ...route.query };
     if (roundId !== null) {
         query.round_id = String(roundId);
@@ -29,14 +39,14 @@ function syncRoundQuery(roundId) {
     router.replace({ path: route.path, query });
 }
 
-async function load(roundId = null) {
+async function load(roundId: number | null = null) {
     loading.value = true;
     try {
         const url =
             roundId !== null
                 ? `/admin/leftover-price-offers?round_id=${roundId}`
                 : "/admin/leftover-price-offers";
-        const data = await api(url);
+        const data = await api<{ offers: LeftoverPriceOffer[] }>(url);
         offers.value = data.offers;
     } finally {
         loading.value = false;
@@ -46,8 +56,13 @@ async function load(roundId = null) {
 let initialized = false;
 
 onMounted(async () => {
-    const [roundsData, currentData] = await Promise.all([api("/rounds"), api("/rounds/current")]);
-    allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
+    const [roundsData, currentData] = await Promise.all([
+        api<{ rounds: AuctionRound[] }>("/rounds"),
+        api<{ active: AuctionRound | null }>("/rounds/current"),
+    ]);
+    allRounds.value = (roundsData.rounds ?? []).sort(
+        (a: AuctionRound, b: AuctionRound) => b.id - a.id,
+    );
 
     let roundId = selectedRoundId.value;
     if (roundId === null) {
@@ -65,43 +80,44 @@ watch(selectedRoundId, async (roundId) => {
     await load(roundId);
 });
 
-function formatDate(d) {
+function formatDate(d: string | null | undefined) {
     if (!d) return "";
     return d.slice(0, 16).replace("T", " ");
 }
 
-async function accept(offer) {
+async function accept(offer: LeftoverPriceOffer) {
     processingId.value = offer.id;
     error.value = "";
     try {
         await api(`/admin/leftover-price-offers/${offer.id}/accept`, { method: "POST" });
         offers.value = offers.value.filter((o) => o.id !== offer.id);
     } catch (e) {
-        error.value = e.data?.message || "Failed to accept offer.";
+        error.value = (e instanceof ApiError && e.data.message) || "Failed to accept offer.";
     } finally {
         processingId.value = null;
     }
 }
 
-const grouped = computed(() => {
-    const map = new Map();
+const grouped = computed<PriceOfferGroup[]>(() => {
+    const map = new Map<Id, { auction: Auction; offers: LeftoverPriceOffer[] }>();
     for (const offer of offers.value) {
+        if (!offer.auction) continue;
         const id = offer.auction.id;
         if (!map.has(id)) {
             map.set(id, { auction: offer.auction, offers: [] });
         }
-        map.get(id).offers.push(offer);
+        map.get(id)!.offers.push(offer);
     }
     return [...map.values()].map((group) => {
         const sortedOffers = [...group.offers].sort(
             (a, b) => Number(b.offered_price_per_item) - Number(a.offered_price_per_item),
         );
 
-        const priceMap = new Map();
+        const priceMap = new Map<string, number[]>();
         for (const offer of sortedOffers) {
             const key = Number(offer.offered_price_per_item).toFixed(2);
             if (!priceMap.has(key)) priceMap.set(key, []);
-            priceMap.get(key).push(offer.id);
+            priceMap.get(key)!.push(offer.id);
         }
         const tiedPrices = new Map([...priceMap.entries()].filter(([, ids]) => ids.length >= 2));
 
@@ -109,12 +125,12 @@ const grouped = computed(() => {
     });
 });
 
-function tiedGroupForOffer(group, offer) {
+function tiedGroupForOffer(group: PriceOfferGroup, offer: LeftoverPriceOffer) {
     const key = Number(offer.offered_price_per_item).toFixed(2);
     return group.tiedPrices.get(key) ?? null;
 }
 
-function rebidAlreadyRequested(group, offer) {
+function rebidAlreadyRequested(group: PriceOfferGroup, offer: LeftoverPriceOffer) {
     const ids = tiedGroupForOffer(group, offer);
     if (!ids) return false;
     return ids.every((id) => {
@@ -123,12 +139,12 @@ function rebidAlreadyRequested(group, offer) {
     });
 }
 
-function isFirstInTiedGroup(group, offer) {
+function isFirstInTiedGroup(group: PriceOfferGroup, offer: LeftoverPriceOffer) {
     const ids = tiedGroupForOffer(group, offer);
     return ids ? ids[0] === offer.id : false;
 }
 
-async function requestRebid(offerIds) {
+async function requestRebid(offerIds: number[]) {
     const key = offerIds.join(",");
     rebidProcessingKey.value = key;
     error.value = "";
@@ -142,33 +158,33 @@ async function requestRebid(offerIds) {
             offerIds.includes(o.id) ? { ...o, rebid_requested_at: now } : o,
         );
     } catch (e) {
-        error.value = e.data?.message || "Failed to request rebid.";
+        error.value = (e instanceof ApiError && e.data.message) || "Failed to request rebid.";
     } finally {
         rebidProcessingKey.value = null;
     }
 }
 
-async function reject(offer) {
+async function reject(offer: LeftoverPriceOffer) {
     processingId.value = offer.id;
     error.value = "";
     try {
         await api(`/admin/leftover-price-offers/${offer.id}/reject`, { method: "POST" });
         offers.value = offers.value.filter((o) => o.id !== offer.id);
     } catch (e) {
-        error.value = e.data?.message || "Failed to reject offer.";
+        error.value = (e instanceof ApiError && e.data.message) || "Failed to reject offer.";
     } finally {
         processingId.value = null;
     }
 }
 
-async function deleteOffer(offer) {
+async function deleteOffer(offer: LeftoverPriceOffer) {
     processingId.value = offer.id;
     error.value = "";
     try {
         await api(`/admin/leftover-price-offers/${offer.id}`, { method: "DELETE" });
         offers.value = offers.value.filter((o) => o.id !== offer.id);
     } catch (e) {
-        error.value = e.data?.message || "Failed to delete offer.";
+        error.value = (e instanceof ApiError && e.data.message) || "Failed to delete offer.";
     } finally {
         processingId.value = null;
     }
@@ -239,7 +255,7 @@ async function deleteOffer(offer) {
                             </span>
                             <button
                                 v-if="!rebidAlreadyRequested(group, offer)"
-                                @click="requestRebid(tiedGroupForOffer(group, offer))"
+                                @click="requestRebid(tiedGroupForOffer(group, offer) ?? [])"
                                 :disabled="
                                     rebidProcessingKey ===
                                     tiedGroupForOffer(group, offer)?.join(',')
@@ -260,7 +276,7 @@ async function deleteOffer(offer) {
                         >
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm text-gray-600 dark:text-gray-300">
-                                    <span class="font-medium">{{ offer.user.username }}</span>
+                                    <span class="font-medium">{{ offer.user?.username }}</span>
                                     offers
                                     <span class="font-bold">
                                         {{ offer.quantity }} × {{ currencySymbol

@@ -1,24 +1,28 @@
-<script setup>
-import { ref, inject, onMounted } from "vue";
-import { api } from "../api.js";
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
+import { api, ApiError } from "../api";
+import { injectOnLogin } from "../injection";
+import type { User } from "../types";
 
-const onLogin = inject("onLogin");
+const onLogin = injectOnLogin();
 const username = ref("");
 const password = ref("");
-const errors = ref({});
+const errors = ref<Record<string, string[]>>({});
 const ssoEnabled = ref(false);
 
 onMounted(async () => {
     try {
-        const data = await api("/auth/sso/enabled");
+        const data = await api<{ enabled: boolean }>("/auth/sso/enabled");
         ssoEnabled.value = data.enabled;
-    } catch (e) {}
+    } catch {
+        ssoEnabled.value = false;
+    }
 });
 
 async function submit() {
     errors.value = {};
     try {
-        const data = await api("/register", {
+        const data = await api<{ user: User }>("/register", {
             method: "POST",
             body: JSON.stringify({
                 username: username.value,
@@ -27,11 +31,11 @@ async function submit() {
         });
         onLogin(data.user);
     } catch (e) {
-        if (e.data?.errors) {
+        if (e instanceof ApiError && e.data.errors) {
             errors.value = e.data.errors;
         } else {
             errors.value = {
-                general: [e.data?.message || "Registration failed."],
+                general: [(e instanceof ApiError && e.data.message) || "Registration failed."],
             };
         }
     }

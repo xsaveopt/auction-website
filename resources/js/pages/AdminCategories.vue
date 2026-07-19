@@ -1,20 +1,22 @@
-<script setup>
-import { ref, inject, onMounted } from "vue";
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api } from "../api";
+import { injectUser } from "../injection";
+import type { Category, ConfirmDialogState } from "../types";
 import ConfirmDialog from "../ConfirmDialog.vue";
 
 const router = useRouter();
-const user = inject("user");
-const categories = ref([]);
+const user = injectUser();
+const categories = ref<Category[]>([]);
 const loading = ref(true);
 const newName = ref("");
 const adding = ref(false);
-const editingId = ref(null);
+const editingId = ref<number | null>(null);
 const editName = ref("");
 const editOrder = ref(0);
 const saving = ref(false);
-const confirmDialog = ref(null);
+const confirmDialog = ref<ConfirmDialogState | null>(null);
 
 onMounted(async () => {
     if (!user.value?.is_admin) {
@@ -25,7 +27,7 @@ onMounted(async () => {
 });
 
 async function loadCategories() {
-    const data = await api("/categories");
+    const data = await api<{ categories: Category[] }>("/categories");
     categories.value = data.categories;
     loading.value = false;
 }
@@ -45,10 +47,10 @@ async function addCategory() {
     await loadCategories();
 }
 
-function startEdit(cat) {
+function startEdit(cat: Category) {
     editingId.value = cat.id;
     editName.value = cat.name;
-    editOrder.value = cat.sort_order;
+    editOrder.value = cat.sort_order ?? 0;
 }
 
 function cancelEdit() {
@@ -72,7 +74,7 @@ async function saveEdit() {
     await loadCategories();
 }
 
-function deleteCategory(cat) {
+function deleteCategory(cat: Category) {
     confirmDialog.value = {
         title: `Delete "${cat.name}"?`,
         message: "Auctions in this category will become uncategorized.",

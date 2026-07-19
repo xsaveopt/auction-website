@@ -1,11 +1,11 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { api } from "../api.js";
+import { api } from "../api";
 
 const loading = ref(true);
 const saving = ref(false);
 const saved = ref(false);
-const error = ref(null);
+const error = ref<string | null>(null);
 
 const form = ref({
     is_locked: false,
@@ -33,7 +33,9 @@ const form = ref({
 });
 
 onMounted(async () => {
-    const data = await api("/admin/settings").catch(() => null);
+    const data = await api<{ settings?: Record<string, unknown> }>("/admin/settings").catch(
+        () => null,
+    );
     if (data?.settings) {
         Object.assign(form.value, data.settings);
     }
@@ -53,7 +55,7 @@ async function save() {
         saved.value = true;
         setTimeout(() => (saved.value = false), 3000);
     } catch (e) {
-        error.value = e.message || "Failed to save settings.";
+        error.value = (e instanceof Error && e.message) || "Failed to save settings.";
     } finally {
         saving.value = false;
     }

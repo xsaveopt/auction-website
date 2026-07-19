@@ -1,8 +1,10 @@
-<script setup>
-import { ref, inject, onMounted } from "vue";
-import { api } from "../api.js";
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
+import { api, ApiError } from "../api";
+import { injectOnLogin } from "../injection";
+import type { User } from "../types";
 
-const onLogin = inject("onLogin");
+const onLogin = injectOnLogin();
 const username = ref("");
 const password = ref("");
 const error = ref("");
@@ -10,15 +12,17 @@ const ssoEnabled = ref(false);
 
 onMounted(async () => {
     try {
-        const data = await api("/auth/sso/enabled");
+        const data = await api<{ enabled: boolean }>("/auth/sso/enabled");
         ssoEnabled.value = data.enabled;
-    } catch (e) {}
+    } catch {
+        ssoEnabled.value = false;
+    }
 });
 
 async function submit() {
     error.value = "";
     try {
-        const data = await api("/login", {
+        const data = await api<{ user: User }>("/login", {
             method: "POST",
             body: JSON.stringify({
                 username: username.value,
@@ -27,7 +31,7 @@ async function submit() {
         });
         onLogin(data.user);
     } catch (e) {
-        error.value = e.data?.message || "Login failed.";
+        error.value = (e instanceof ApiError && e.data.message) || "Login failed.";
     }
 }
 </script>

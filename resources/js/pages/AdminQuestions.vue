@@ -1,28 +1,32 @@
-<script setup>
-import { ref, computed, inject, onMounted, watch } from "vue";
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api, ApiError } from "../api";
+import { injectUser } from "../injection";
+import type { AuctionQuestion, AuctionRound, ConfirmDialogState } from "../types";
 import ConfirmDialog from "../ConfirmDialog.vue";
 
 const router = useRouter();
 const route = useRoute();
-const user = inject("user");
-const questions = ref([]);
-const allRounds = ref([]);
+const user = injectUser();
+const questions = ref<AuctionQuestion[]>([]);
+const allRounds = ref<AuctionRound[]>([]);
 const loading = ref(true);
 const error = ref("");
-const editingQuestionId = ref(null);
-const answerDrafts = ref({});
-const savingAnswerId = ref(null);
-const deletingQuestionId = ref(null);
-const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
-const confirmDialog = ref(null);
+const editingQuestionId = ref<number | null>(null);
+const answerDrafts = ref<Record<number, string>>({});
+const savingAnswerId = ref<number | null>(null);
+const deletingQuestionId = ref<number | null>(null);
+const selectedRoundId = ref<number | null>(
+    route.query.round_id ? Number(route.query.round_id) : null,
+);
+const confirmDialog = ref<ConfirmDialogState | null>(null);
 
 if (!user.value?.is_admin) {
     router.push("/");
 }
 
-function syncRoundQuery(roundId) {
+function syncRoundQuery(roundId: number | null) {
     const query = { ...route.query };
     if (roundId !== null) {
         query.round_id = String(roundId);
@@ -32,11 +36,11 @@ function syncRoundQuery(roundId) {
     router.replace({ path: route.path, query });
 }
 
-async function loadQuestions(roundId = null) {
+async function loadQuestions(roundId: number | null = null) {
     loading.value = true;
     try {
         const url = roundId !== null ? `/questions?round_id=${roundId}` : "/questions";
-        const data = await api(url);
+        const data = await api<{ questions: AuctionQuestion[] }>(url);
         questions.value = data.questions;
     } finally {
         loading.value = false;
@@ -46,8 +50,13 @@ async function loadQuestions(roundId = null) {
 let initialized = false;
 
 onMounted(async () => {
-    const [roundsData, currentData] = await Promise.all([api("/rounds"), api("/rounds/current")]);
-    allRounds.value = (roundsData.rounds ?? []).sort((a, b) => b.id - a.id);
+    const [roundsData, currentData] = await Promise.all([
+        api<{ rounds: AuctionRound[] }>("/rounds"),
+        api<{ active: AuctionRound | null }>("/rounds/current"),
+    ]);
+    allRounds.value = (roundsData.rounds ?? []).sort(
+        (a: AuctionRound, b: AuctionRound) => b.id - a.id,
+    );
 
     let roundId = selectedRoundId.value;
     if (roundId === null) {
@@ -68,7 +77,7 @@ watch(selectedRoundId, async (roundId) => {
 const unansweredQuestions = computed(() => questions.value.filter((q) => !q.answer));
 const answeredQuestions = computed(() => questions.value.filter((q) => q.answer));
 
-function startAnswer(question) {
+function startAnswer(question: AuctionQuestion) {
     editingQuestionId.value = question.id;
     answerDrafts.value = {
         ...answerDrafts.value,
@@ -77,13 +86,13 @@ function startAnswer(question) {
     error.value = "";
 }
 
-function cancelAnswer(questionId) {
+function cancelAnswer(questionId: number) {
     if (editingQuestionId.value === questionId) {
         editingQuestionId.value = null;
     }
 }
 
-async function submitAnswer(question) {
+async function submitAnswer(question: AuctionQuestion) {
     error.value = "";
     const answer = (answerDrafts.value[question.id] ?? "").trim();
     if (!answer) {
@@ -99,13 +108,15 @@ async function submitAnswer(question) {
         editingQuestionId.value = null;
         await loadQuestions();
     } catch (e) {
-        error.value = e.data?.message || e.data?.errors?.answer?.[0] || "Failed to save answer.";
+        error.value =
+            (e instanceof ApiError && (e.data.message || e.data.errors?.answer?.[0])) ||
+            "Failed to save answer.";
     } finally {
         savingAnswerId.value = null;
     }
 }
 
-function deleteQuestion(question) {
+function deleteQuestion(question: AuctionQuestion) {
     confirmDialog.value = {
         message: "Delete this question?",
         confirmLabel: "Delete",
@@ -123,7 +134,8 @@ function deleteQuestion(question) {
                 answerDrafts.value = nextDrafts;
                 await loadQuestions();
             } catch (e) {
-                error.value = e.data?.message || "Failed to delete question.";
+                error.value =
+                    (e instanceof ApiError && e.data.message) || "Failed to delete question.";
             } finally {
                 deletingQuestionId.value = null;
             }
@@ -131,7 +143,7 @@ function deleteQuestion(question) {
     };
 }
 
-function formatDate(d) {
+function formatDate(d: string | null | undefined) {
     if (!d) return "";
     return d.slice(0, 16).replace("T", " ");
 }
@@ -196,16 +208,16 @@ function formatDate(d) {
                             <div class="flex items-start justify-between gap-4">
                                 <div class="min-w-0">
                                     <router-link
-                                        :to="`/auctions/${question.auction.id}`"
+                                        :to="`/auctions/${question.auction?.id}`"
                                         class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
                                     >
-                                        {{ question.auction.title }}
+                                        {{ question.auction?.title }}
                                     </router-link>
                                     <p class="mt-2 whitespace-pre-line">
                                         {{ question.question }}
                                     </p>
                                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                        Asked by {{ question.user.username }} ·
+                                        Asked by {{ question.user?.username }} ·
                                         {{ formatDate(question.created_at) }}
                                     </p>
                                 </div>
@@ -280,16 +292,16 @@ function formatDate(d) {
                         >
                             <div class="min-w-0">
                                 <router-link
-                                    :to="`/auctions/${question.auction.id}`"
+                                    :to="`/auctions/${question.auction?.id}`"
                                     class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
                                 >
-                                    {{ question.auction.title }}
+                                    {{ question.auction?.title }}
                                 </router-link>
                                 <p class="mt-2 font-medium whitespace-pre-line">
                                     {{ question.question }}
                                 </p>
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Asked by {{ question.user.username }} ·
+                                    Asked by {{ question.user?.username }} ·
                                     {{ formatDate(question.created_at) }}
                                 </p>
                             </div>

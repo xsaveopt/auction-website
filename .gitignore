@@ -17,6 +17,9 @@
 /auth.json
 /mcp-server/node_modules
 /node_modules
+/playwright-report
+/test-results
+/playwright/.cache
 /public/build
 /public/hot
 /public/storage

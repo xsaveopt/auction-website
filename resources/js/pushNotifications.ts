@@ -1,5 +1,28 @@
-import { computed, ref } from "vue";
-import { api } from "./api.js";
+import { computed, ref, type ComputedRef, type Ref } from "vue";
+import { api } from "./api";
+
+type SubscriptionState =
+    | "checking"
+    | "unsupported"
+    | "idle"
+    | "subscribing"
+    | "subscribed"
+    | "blocked"
+    | "error";
+
+interface PushConfig {
+    configured: boolean;
+    public_key: string | null;
+}
+
+interface SerializedSubscription {
+    endpoint: string;
+    keys: {
+        p256dh: string | null;
+        auth: string | null;
+    };
+    contentEncoding: string;
+}
 
 const pushSupported = ref(
     typeof window !== "undefined" &&
@@ -8,13 +31,15 @@ const pushSupported = ref(
         typeof Notification !== "undefined",
 );
 
-const browserPermission = ref(pushSupported.value ? Notification.permission : "denied");
-const subscriptionState = ref(pushSupported.value ? "checking" : "unsupported");
+const browserPermission = ref<NotificationPermission>(
+    pushSupported.value ? Notification.permission : "denied",
+);
+const subscriptionState = ref<SubscriptionState>(pushSupported.value ? "checking" : "unsupported");
 
-let registrationPromise;
-let pushConfigPromise;
+let registrationPromise: Promise<ServiceWorkerRegistration> | undefined;
+let pushConfigPromise: Promise<PushConfig> | undefined;
 
-function supportedContentEncoding() {
+function supportedContentEncoding(): string {
     if (
         typeof PushManager !== "undefined" &&
         Array.isArray(PushManager.supportedContentEncodings) &&
@@ -26,7 +51,7 @@ function supportedContentEncoding() {
     return "aesgcm";
 }
 
-function urlBase64ToUint8Array(base64String) {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding).replaceAll("-", "+").replaceAll("_", "/");
     const raw = window.atob(base64);
@@ -34,7 +59,7 @@ function urlBase64ToUint8Array(base64String) {
     return Uint8Array.from(raw, (char) => char.charCodeAt(0));
 }
 
-function arrayBufferToBase64Url(buffer) {
+function arrayBufferToBase64Url(buffer: ArrayBuffer | null): string | null {
     if (!buffer) return null;
 
     const bytes = new Uint8Array(buffer);
@@ -47,7 +72,7 @@ function arrayBufferToBase64Url(buffer) {
     return window.btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-function serializeSubscription(subscription) {
+function serializeSubscription(subscription: PushSubscription): SerializedSubscription {
     const serialized = subscription.toJSON();
 
     return {
@@ -61,17 +86,17 @@ function serializeSubscription(subscription) {
     };
 }
 
-async function fetchPushConfig() {
+async function fetchPushConfig(): Promise<PushConfig> {
     if (!pushSupported.value) {
         return { configured: false, public_key: null };
     }
 
-    pushConfigPromise ??= api("/push/config");
+    pushConfigPromise ??= api<PushConfig>("/push/config");
 
     return pushConfigPromise;
 }
 
-export async function registerPushServiceWorker() {
+export async function registerPushServiceWorker(): Promise<ServiceWorkerRegistration | null> {
     if (!pushSupported.value) return null;
 
     registrationPromise ??= navigator.serviceWorker.register("/service-worker.js");
@@ -79,7 +104,7 @@ export async function registerPushServiceWorker() {
     return registrationPromise;
 }
 
-export async function refreshPushSubscriptionState() {
+export async function refreshPushSubscriptionState(): Promise<SubscriptionState> {
     if (!pushSupported.value) return "unsupported";
 
     const registration = await registerPushServiceWorker();
@@ -90,7 +115,7 @@ export async function refreshPushSubscriptionState() {
     return subscriptionState.value;
 }
 
-export async function syncPushSubscription() {
+export async function syncPushSubscription(): Promise<boolean> {
     if (!pushSupported.value) return false;
 
     browserPermission.value = Notification.permission;
@@ -137,7 +162,7 @@ export async function syncPushSubscription() {
     return true;
 }
 
-export async function enablePushNotifications() {
+export async function enablePushNotifications(): Promise<boolean> {
     if (!pushSupported.value) {
         throw new Error("This browser does not support push notifications.");
     }
@@ -156,7 +181,7 @@ export async function enablePushNotifications() {
     return syncPushSubscription();
 }
 
-export async function clearPushSubscription({ removeServer = true } = {}) {
+export async function clearPushSubscription({ removeServer = true } = {}): Promise<boolean> {
     if (!pushSupported.value) return false;
 
     const registration = await registerPushServiceWorker();
@@ -180,7 +205,20 @@ export async function clearPushSubscription({ removeServer = true } = {}) {
     return true;
 }
 
-export function usePushNotifications() {
+export interface PushNotificationsApi {
+    pushSupported: Ref<boolean>;
+    pushEnabled: ComputedRef<boolean>;
+    pushStateKnown: ComputedRef<boolean>;
+    browserPermission: Ref<NotificationPermission>;
+    subscriptionState: Ref<SubscriptionState>;
+    registerPushServiceWorker: typeof registerPushServiceWorker;
+    refreshPushSubscriptionState: typeof refreshPushSubscriptionState;
+    syncPushSubscription: typeof syncPushSubscription;
+    enablePushNotifications: typeof enablePushNotifications;
+    clearPushSubscription: typeof clearPushSubscription;
+}
+
+export function usePushNotifications(): PushNotificationsApi {
     const pushEnabled = computed(
         () => browserPermission.value === "granted" && subscriptionState.value === "subscribed",
     );

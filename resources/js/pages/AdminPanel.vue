@@ -1,6 +1,7 @@
-<script setup>
-import { computed, ref, watch, inject } from "vue";
+<script setup lang="ts">
+import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { injectUser } from "../injection";
 import AdminResults from "./AdminResults.vue";
 import AdminQuestions from "./AdminQuestions.vue";
 import AdminPriceOffers from "./AdminPriceOffers.vue";
@@ -14,7 +15,7 @@ import CreateAuction from "./CreateAuction.vue";
 
 const router = useRouter();
 const route = useRoute();
-const user = inject("user");
+const user = injectUser();
 
 if (!user.value?.is_admin) {
     router.push("/");
@@ -100,7 +101,7 @@ const tabDefinitions = [
             "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
     },
 ];
-const tabByRouteName = {
+const tabByRouteName: Record<string, string> = {
     "admin-results": "results",
     "admin-questions": "questions",
     "admin-price-offers": "priceOffers",
@@ -114,7 +115,7 @@ const tabByRouteName = {
 };
 const inactiveTabClasses =
     "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200";
-const activeTab = computed(() => tabByRouteName[route.name] ?? "results");
+const activeTab = computed(() => tabByRouteName[route.name as string] ?? "results");
 
 const lazyTabs = [
     "results",
@@ -127,7 +128,9 @@ const lazyTabs = [
     "auditLog",
     "settings",
 ];
-const tabMounted = ref(Object.fromEntries(lazyTabs.map((tab) => [tab, false])));
+const tabMounted = ref<Record<string, boolean>>(
+    Object.fromEntries(lazyTabs.map((tab) => [tab, false])),
+);
 
 watch(
     activeTab,

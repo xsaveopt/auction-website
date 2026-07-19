@@ -1,4 +1,10 @@
-import { createRouter, createWebHistory } from "vue-router";
+import {
+    createRouter,
+    createWebHistory,
+    type LocationQuery,
+    type RouteLocationRaw,
+    type RouteRecordRaw,
+} from "vue-router";
 import AuctionList from "./pages/AuctionList.vue";
 import AuctionDetail from "./pages/AuctionDetail.vue";
 import EditAuction from "./pages/EditAuction.vue";
@@ -7,7 +13,19 @@ import Login from "./pages/Login.vue";
 import Register from "./pages/Register.vue";
 import MyDashboard from "./pages/MyDashboard.vue";
 
-const adminTabPaths = {
+type AdminTab =
+    | "results"
+    | "questions"
+    | "priceOffers"
+    | "leftovers"
+    | "auctions"
+    | "rounds"
+    | "categories"
+    | "auditLog"
+    | "sell"
+    | "settings";
+
+const adminTabPaths: Record<AdminTab, string> = {
     results: "/admin/results",
     questions: "/admin/questions",
     priceOffers: "/admin/price-offers",
@@ -20,7 +38,7 @@ const adminTabPaths = {
     settings: "/admin/settings",
 };
 
-const adminTabQueryKeys = {
+const adminTabQueryKeys: Record<AdminTab, string[]> = {
     results: ["view", "round_id"],
     questions: [],
     priceOffers: [],
@@ -30,11 +48,14 @@ const adminTabQueryKeys = {
     categories: [],
     auditLog: ["page"],
     sell: [],
+    settings: [],
 };
 
-function adminPanelRedirect(query = {}) {
-    const requestedTab =
-        typeof query.tab === "string" && query.tab in adminTabPaths ? query.tab : "results";
+function adminPanelRedirect(query: LocationQuery = {}): RouteLocationRaw {
+    const requestedTab: AdminTab =
+        typeof query.tab === "string" && query.tab in adminTabPaths
+            ? (query.tab as AdminTab)
+            : "results";
     const preservedQuery = Object.fromEntries(
         adminTabQueryKeys[requestedTab]
             .map((key) => [key, query[key]])
@@ -47,7 +68,7 @@ function adminPanelRedirect(query = {}) {
     };
 }
 
-const routes = [
+const routes: RouteRecordRaw[] = [
     { path: "/", component: AuctionList },
     { path: "/dashboard", component: MyDashboard },
     { path: "/admin", redirect: (to) => adminPanelRedirect(to.query) },

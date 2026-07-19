@@ -1,24 +1,42 @@
-<script setup>
-import { ref, inject, computed, onMounted, watch, watchEffect } from "vue";
+<script setup lang="ts">
+import { ref, computed, onMounted, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api, ApiError } from "../api";
 import {
     getItemLabel,
     getLeftoverDiscountPercent,
     hasAvailableLeftovers,
-} from "../auctionPresentation.js";
+} from "../auctionPresentation";
+import {
+    injectUser,
+    injectSchedule,
+    injectCurrencySymbol,
+    injectHeartbeatData,
+    injectNow,
+    injectNotifyOptional,
+} from "../injection";
+import type {
+    Auction,
+    AuctionQuestion,
+    Bid,
+    ConfirmDialogState,
+    LeftoverPriceOffer,
+    LeftoverPurchase,
+    Money,
+    User,
+} from "../types";
 import ConfirmDialog from "../ConfirmDialog.vue";
 
 const router = useRouter();
 
-const props = defineProps({ id: String });
-const user = inject("user");
-const schedule = inject("schedule");
-const currencySymbol = inject("currencySymbol");
-const heartbeatData = inject("heartbeatData");
-const now = inject("now");
-const notify = inject("notify", null);
-const auction = ref(null);
+const props = defineProps<{ id?: string }>();
+const user = injectUser();
+const schedule = injectSchedule();
+const currencySymbol = injectCurrencySymbol();
+const heartbeatData = injectHeartbeatData();
+const now = injectNow();
+const notify = injectNotifyOptional();
+const auction = ref<Auction | null>(null);
 const bidAmount = ref("");
 const bidQuantity = ref(1);
 const error = ref("");
@@ -26,12 +44,12 @@ const questionError = ref("");
 const loading = ref(true);
 const activeImage = ref(0);
 const questionText = ref("");
-const answerDrafts = ref({});
-const editingQuestionId = ref(null);
+const answerDrafts = ref<Record<number, string>>({});
+const editingQuestionId = ref<number | null>(null);
 const askingQuestion = ref(false);
-const savingAnswerId = ref(null);
-const deletingQuestionId = ref(null);
-const highlightedBids = ref(new Set());
+const savingAnswerId = ref<number | null>(null);
+const deletingQuestionId = ref<number | null>(null);
+const highlightedBids = ref<Set<number>>(new Set());
 const endingSoonNotified = ref(false);
 const leftoverQuantity = ref(1);
 const leftoverError = ref("");
@@ -48,7 +66,7 @@ const adminOfferQuantity = ref(1);
 const adminOfferPrice = ref("");
 const adminOfferError = ref("");
 const adminOfferSaving = ref(false);
-const editingBidId = ref(null);
+const editingBidId = ref<number | null>(null);
 const editBidAmount = ref("");
 const editBidQuantity = ref(1);
 const showAddBid = ref(false);
@@ -65,38 +83,38 @@ const adminBidSaving = ref(false);
 const newEndsAt = ref("");
 const adminAuctionError = ref("");
 const adminAuctionSaving = ref(false);
-const allUsers = ref([]);
+const allUsers = ref<User[]>([]);
 const usersLoaded = ref(false);
-const confirmDialog = ref(null);
+const confirmDialog = ref<ConfirmDialogState | null>(null);
 
 const isSeller = computed(() => {
     if (!user.value || !auction.value) return false;
-    return user.value.id === auction.value.seller.id;
+    return user.value.id === auction.value.seller?.id;
 });
 
 const canModerateQuestions = computed(() => {
     if (!user.value || !auction.value) return false;
-    return user.value.id === auction.value.seller.id || user.value.is_admin;
+    return user.value.id === auction.value.seller?.id || user.value.is_admin;
 });
 
 const canAskQuestion = computed(() => {
     if (!user.value || !auction.value) return false;
-    return user.value.id !== auction.value.seller.id;
+    return user.value.id !== auction.value.seller?.id;
 });
 
-const myBid = computed(() => {
+const myBid = computed<Bid | null>(() => {
     if (!user.value || !auction.value) return null;
-    return auction.value.bids.find((b) => b.user.id === user.value.id);
+    return auction.value.bids?.find((b) => b.user?.id === user.value?.id) ?? null;
 });
 
-const myLeftoverPurchase = computed(() => {
+const myLeftoverPurchase = computed<LeftoverPurchase | null>(() => {
     if (!user.value || !auction.value?.leftover_purchases) return null;
-    return auction.value.leftover_purchases.find((p) => p.user.id === user.value.id) ?? null;
+    return auction.value.leftover_purchases.find((p) => p.user?.id === user.value?.id) ?? null;
 });
 
-const myPriceOffer = computed(() => {
+const myPriceOffer = computed<LeftoverPriceOffer | null>(() => {
     if (!user.value || !auction.value?.leftover_price_offers) return null;
-    return auction.value.leftover_price_offers.find((o) => o.user.id === user.value.id) ?? null;
+    return auction.value.leftover_price_offers.find((o) => o.user?.id === user.value?.id) ?? null;
 });
 
 const myPriceOfferNeedsRebid = computed(
@@ -117,7 +135,9 @@ const leftoverSold = computed(() => {
     if (!auction.value) return 0;
     return Math.max(
         0,
-        auction.value.quantity - auction.value.items_allocated - auction.value.leftover_quantity,
+        auction.value.quantity -
+            (auction.value.items_allocated ?? 0) -
+            (auction.value.leftover_quantity ?? 0),
     );
 });
 
@@ -201,7 +221,7 @@ const primaryPriceLabel = computed(() => {
     if (!auction.value) return "";
     if (auction.value.is_active) return "Current clearing price";
     if (effectiveLeftoverAvailable.value) return "Buy now price";
-    if (auction.value.bid_count > 0) return "Final clearing price";
+    if ((auction.value.bid_count ?? 0) > 0) return "Final clearing price";
 
     return "Starting price";
 });
@@ -238,24 +258,27 @@ const openQuestions = computed(
     () => auction.value?.questions?.filter((question) => !question.answer) ?? [],
 );
 
-function bidKey(bid) {
+function bidKey(bid: Bid) {
     return `${bid.id}:${bid.amount}:${bid.quantity}`;
 }
 
-function clampBidQuantity(quantity, maxPerBidder) {
+function clampBidQuantity(
+    quantity: number | string | null | undefined,
+    maxPerBidder: number | string | null | undefined,
+) {
     const max = Math.max(1, Number(maxPerBidder || 1));
     const normalized = Math.trunc(Number(quantity || 1));
     return Math.min(Math.max(normalized || 1, 1), max);
 }
 
-function updateAuction(newAuction, resetForm = false) {
+function updateAuction(newAuction: Auction | null, resetForm = false) {
     if (!newAuction) return;
+
+    const newBids = newAuction.bids ?? [];
 
     if (auction.value?.bids) {
         const oldKeys = new Set(auction.value.bids.map(bidKey));
-        const newHighlights = newAuction.bids
-            .filter((b) => !oldKeys.has(bidKey(b)))
-            .map((b) => b.id);
+        const newHighlights = newBids.filter((b) => !oldKeys.has(bidKey(b))).map((b) => b.id);
         if (newHighlights.length) {
             highlightedBids.value = new Set(newHighlights);
             setTimeout(() => {
@@ -265,8 +288,8 @@ function updateAuction(newAuction, resetForm = false) {
     }
 
     if (notify && user.value && auction.value?.bids) {
-        const oldMyBid = auction.value.bids.find((b) => b.user.id === user.value.id);
-        const newMyBid = newAuction.bids.find((b) => b.user.id === user.value.id);
+        const oldMyBid = auction.value.bids.find((b) => b.user?.id === user.value?.id);
+        const newMyBid = newBids.find((b) => b.user?.id === user.value?.id);
         if (
             oldMyBid &&
             (oldMyBid.won_quantity ?? 0) > 0 &&
@@ -279,10 +302,10 @@ function updateAuction(newAuction, resetForm = false) {
 
     if (notify && auction.value?.is_active && !newAuction.is_active) {
         if (user.value) {
-            const myBid = newAuction.bids.find((b) => b.user.id === user.value.id);
-            if (myBid && (myBid.won_quantity ?? 0) > 0) {
+            const winningBid = newBids.find((b) => b.user?.id === user.value?.id);
+            if (winningBid && (winningBid.won_quantity ?? 0) > 0) {
                 notify(`You won "${newAuction.title}"!`, "success", 10000);
-            } else if (myBid) {
+            } else if (winningBid) {
                 notify(`Auction "${newAuction.title}" has ended — you didn't win.`, "info", 8000);
             } else {
                 notify(`"${newAuction.title}" has ended.`, "info");
@@ -296,11 +319,11 @@ function updateAuction(newAuction, resetForm = false) {
     if (notify && user.value && auction.value?.questions) {
         const prevAnswered = new Set(
             auction.value.questions
-                .filter((q) => q.user.id === user.value.id && q.answer)
+                .filter((q) => q.user?.id === user.value?.id && q.answer)
                 .map((q) => q.id),
         );
         const newlyAnswered = (newAuction.questions ?? []).filter(
-            (q) => q.user.id === user.value.id && q.answer && !prevAnswered.has(q.id),
+            (q) => q.user?.id === user.value?.id && q.answer && !prevAnswered.has(q.id),
         );
         if (newlyAnswered.length > 0) {
             notify("Your question has been answered!", "info", 6000);
@@ -310,7 +333,7 @@ function updateAuction(newAuction, resetForm = false) {
     auction.value = newAuction;
     activeImage.value = Math.min(activeImage.value, Math.max(newAuction.images.length - 1, 0));
     if (resetForm) {
-        const my = newAuction.bids.find((b) => b.user.id === user.value?.id);
+        const my = newBids.find((b) => b.user?.id === user.value?.id);
         bidAmount.value = my
             ? (Number(my.amount) + 1).toFixed(2)
             : Number(newAuction.starting_price).toFixed(2);
@@ -322,9 +345,19 @@ function updateAuction(newAuction, resetForm = false) {
 
 async function load(showLoading = false, resetForm = false) {
     if (showLoading) loading.value = true;
-    const data = await api(`/auctions/${props.id}`);
+    const data = await api<{ auction: Auction }>(`/auctions/${props.id}`);
     updateAuction(data.auction, resetForm);
     loading.value = false;
+}
+
+function apiError(e: unknown, ...fields: string[]): string | undefined {
+    if (!(e instanceof ApiError)) return undefined;
+    if (e.data.message) return e.data.message;
+    for (const field of fields) {
+        const value = e.data.errors?.[field]?.[0];
+        if (value) return value;
+    }
+    return undefined;
 }
 
 function deleteAuction() {
@@ -338,7 +371,7 @@ function deleteAuction() {
                 await api(`/auctions/${props.id}`, { method: "DELETE" });
                 router.push("/");
             } catch (e) {
-                error.value = e.data?.message || "Failed to delete auction.";
+                error.value = apiError(e) || "Failed to delete auction.";
             }
         },
     };
@@ -348,15 +381,14 @@ async function buyLeftover() {
     leftoverError.value = "";
     try {
         buyingLeftover.value = true;
-        const data = await api(`/auctions/${props.id}/leftover-purchases`, {
+        const data = await api<{ auction: Auction }>(`/auctions/${props.id}/leftover-purchases`, {
             method: "POST",
             body: JSON.stringify({ quantity: Number(leftoverQuantity.value) }),
         });
         updateAuction(data.auction);
         notify?.("Purchase successful!", "success");
     } catch (e) {
-        leftoverError.value =
-            e.data?.message || e.data?.errors?.quantity?.[0] || "Purchase failed.";
+        leftoverError.value = apiError(e, "quantity") || "Purchase failed.";
     } finally {
         buyingLeftover.value = false;
     }
@@ -366,60 +398,66 @@ async function submitPriceOffer() {
     offerError.value = "";
     submittingOffer.value = true;
     try {
-        const data = await api(`/auctions/${props.id}/leftover-price-offers`, {
-            method: "POST",
-            body: JSON.stringify({
-                quantity: Number(offerQuantity.value),
-                offered_price_per_item: Number(offerPrice.value),
-            }),
-        });
+        const data = await api<{ auction: Auction }>(
+            `/auctions/${props.id}/leftover-price-offers`,
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    quantity: Number(offerQuantity.value),
+                    offered_price_per_item: Number(offerPrice.value),
+                }),
+            },
+        );
         updateAuction(data.auction);
         showOfferForm.value = false;
         notify?.("Offer submitted!", "success");
     } catch (e) {
         offerError.value =
-            e.data?.message ||
-            e.data?.errors?.quantity?.[0] ||
-            e.data?.errors?.offered_price_per_item?.[0] ||
-            "Failed to submit offer.";
+            apiError(e, "quantity", "offered_price_per_item") || "Failed to submit offer.";
     } finally {
         submittingOffer.value = false;
     }
 }
 
-function acceptPriceOffer(offer) {
+function acceptPriceOffer(offer: LeftoverPriceOffer) {
     confirmDialog.value = {
-        message: `Accept offer of ${currencySymbol.value}${Number(offer.offered_price_per_item).toFixed(2)} × ${offer.quantity} from ${offer.user.username}?`,
+        message: `Accept offer of ${currencySymbol.value}${Number(offer.offered_price_per_item).toFixed(2)} × ${offer.quantity} from ${offer.user?.username}?`,
         confirmLabel: "Accept",
         danger: false,
         onConfirm: async () => {
             try {
-                const data = await api(`/admin/leftover-price-offers/${offer.id}/accept`, {
-                    method: "POST",
-                });
+                const data = await api<{ auction: Auction }>(
+                    `/admin/leftover-price-offers/${offer.id}/accept`,
+                    {
+                        method: "POST",
+                    },
+                );
                 updateAuction(data.auction);
                 notify?.("Offer accepted.", "success");
             } catch (e) {
-                notify?.(e.data?.message || "Failed to accept offer.", "error");
+                notify?.(apiError(e) || "Failed to accept offer.", "error");
             }
         },
     };
 }
 
-function rejectPriceOffer(offer) {
+function rejectPriceOffer(offer: LeftoverPriceOffer) {
     confirmDialog.value = {
-        message: `Reject offer from ${offer.user.username}?`,
+        message: `Reject offer from ${offer.user?.username}?`,
         confirmLabel: "Reject",
         danger: true,
         onConfirm: async () => {
             try {
-                const data = await api(`/admin/leftover-price-offers/${offer.id}/reject`, {
-                    method: "POST",
-                });
+                const data = await api<{ auction: Auction }>(
+                    `/admin/leftover-price-offers/${offer.id}/reject`,
+                    {
+                        method: "POST",
+                    },
+                );
                 updateAuction(data.auction);
                 notify?.("Offer rejected.", "success");
             } catch (e) {
-                notify?.(e.data?.message || "Failed to reject offer.", "error");
+                notify?.(apiError(e) || "Failed to reject offer.", "error");
             }
         },
     };
@@ -429,14 +467,17 @@ async function submitAdminOffer() {
     adminOfferError.value = "";
     adminOfferSaving.value = true;
     try {
-        const data = await api(`/admin/auctions/${props.id}/leftover-price-offers`, {
-            method: "POST",
-            body: JSON.stringify({
-                username: adminOfferUsername.value,
-                quantity: Number(adminOfferQuantity.value),
-                offered_price_per_item: Number(adminOfferPrice.value),
-            }),
-        });
+        const data = await api<{ auction: Auction }>(
+            `/admin/auctions/${props.id}/leftover-price-offers`,
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    username: adminOfferUsername.value,
+                    quantity: Number(adminOfferQuantity.value),
+                    offered_price_per_item: Number(adminOfferPrice.value),
+                }),
+            },
+        );
         updateAuction(data.auction);
         showAdminOfferForm.value = false;
         adminOfferUsername.value = "";
@@ -445,30 +486,29 @@ async function submitAdminOffer() {
         notify?.("Offer added.", "success");
     } catch (e) {
         adminOfferError.value =
-            e.data?.message ||
-            e.data?.errors?.username?.[0] ||
-            e.data?.errors?.quantity?.[0] ||
-            e.data?.errors?.offered_price_per_item?.[0] ||
-            "Failed to add offer.";
+            apiError(e, "username", "quantity", "offered_price_per_item") || "Failed to add offer.";
     } finally {
         adminOfferSaving.value = false;
     }
 }
 
-function deletePriceOffer(offer) {
+function deletePriceOffer(offer: LeftoverPriceOffer) {
     confirmDialog.value = {
-        message: `Delete offer from ${offer.user.username}?`,
+        message: `Delete offer from ${offer.user?.username}?`,
         confirmLabel: "Delete",
         danger: true,
         onConfirm: async () => {
             try {
-                const data = await api(`/admin/leftover-price-offers/${offer.id}`, {
-                    method: "DELETE",
-                });
+                const data = await api<{ auction: Auction }>(
+                    `/admin/leftover-price-offers/${offer.id}`,
+                    {
+                        method: "DELETE",
+                    },
+                );
                 updateAuction(data.auction);
                 notify?.("Offer deleted.", "success");
             } catch (e) {
-                notify?.(e.data?.message || "Failed to delete offer.", "error");
+                notify?.(apiError(e) || "Failed to delete offer.", "error");
             }
         },
     };
@@ -478,8 +518,8 @@ async function placeBid() {
     error.value = "";
     try {
         const quantity =
-            auction.value?.max_per_bidder > 1
-                ? clampBidQuantity(bidQuantity.value, auction.value.max_per_bidder)
+            Number(auction.value?.max_per_bidder) > 1
+                ? clampBidQuantity(bidQuantity.value, auction.value?.max_per_bidder)
                 : 1;
 
         bidQuantity.value = quantity;
@@ -494,15 +534,11 @@ async function placeBid() {
         await load(false, true);
         notify?.("Bid placed successfully!", "success");
     } catch (e) {
-        error.value =
-            e.data?.message ||
-            e.data?.errors?.amount?.[0] ||
-            e.data?.errors?.quantity?.[0] ||
-            "Failed to place bid.";
+        error.value = apiError(e, "amount", "quantity") || "Failed to place bid.";
     }
 }
 
-function startAnswer(question) {
+function startAnswer(question: AuctionQuestion) {
     editingQuestionId.value = question.id;
     answerDrafts.value = {
         ...answerDrafts.value,
@@ -511,7 +547,7 @@ function startAnswer(question) {
     questionError.value = "";
 }
 
-function cancelAnswer(questionId) {
+function cancelAnswer(questionId: number) {
     if (editingQuestionId.value === questionId) {
         editingQuestionId.value = null;
     }
@@ -536,14 +572,13 @@ async function submitQuestion() {
         questionText.value = "";
         await load();
     } catch (e) {
-        questionError.value =
-            e.data?.message || e.data?.errors?.question?.[0] || "Failed to ask question.";
+        questionError.value = apiError(e, "question") || "Failed to ask question.";
     } finally {
         askingQuestion.value = false;
     }
 }
 
-async function submitAnswer(question) {
+async function submitAnswer(question: AuctionQuestion) {
     questionError.value = "";
 
     const answer = (answerDrafts.value[question.id] ?? "").trim();
@@ -562,14 +597,13 @@ async function submitAnswer(question) {
         editingQuestionId.value = null;
         await load();
     } catch (e) {
-        questionError.value =
-            e.data?.message || e.data?.errors?.answer?.[0] || "Failed to save answer.";
+        questionError.value = apiError(e, "answer") || "Failed to save answer.";
     } finally {
         savingAnswerId.value = null;
     }
 }
 
-function deleteQuestion(question) {
+function deleteQuestion(question: AuctionQuestion) {
     confirmDialog.value = {
         message: "Delete this question?",
         confirmLabel: "Delete",
@@ -587,7 +621,7 @@ function deleteQuestion(question) {
                 answerDrafts.value = nextDrafts;
                 await load();
             } catch (e) {
-                questionError.value = e.data?.message || "Failed to delete question.";
+                questionError.value = apiError(e) || "Failed to delete question.";
             } finally {
                 deletingQuestionId.value = null;
             }
@@ -598,13 +632,13 @@ function deleteQuestion(question) {
 async function loadUsers() {
     if (usersLoaded.value) return;
     try {
-        const data = await api("/admin/users");
+        const data = await api<{ users: User[] }>("/admin/users");
         allUsers.value = data.users;
         usersLoaded.value = true;
     } catch {}
 }
 
-function startEditBid(bid) {
+function startEditBid(bid: Bid) {
     editingBidId.value = bid.id;
     editBidAmount.value = String(Number(bid.amount).toFixed(2));
     editBidQuantity.value = bid.quantity;
@@ -616,11 +650,11 @@ function cancelEditBid() {
     adminBidError.value = "";
 }
 
-async function saveBid(bid) {
+async function saveBid(bid: Bid) {
     adminBidError.value = "";
     adminBidSaving.value = true;
     try {
-        const data = await api(`/admin/bids/${bid.id}`, {
+        const data = await api<{ auction: Auction }>(`/admin/bids/${bid.id}`, {
             method: "PUT",
             body: JSON.stringify({
                 amount: Number(editBidAmount.value),
@@ -631,25 +665,27 @@ async function saveBid(bid) {
         editingBidId.value = null;
         notify?.("Bid updated.", "success");
     } catch (e) {
-        adminBidError.value = e.data?.message || "Failed to update bid.";
+        adminBidError.value = apiError(e) || "Failed to update bid.";
     } finally {
         adminBidSaving.value = false;
     }
 }
 
-function deleteBid(bid) {
+function deleteBid(bid: Bid) {
     confirmDialog.value = {
-        message: `Delete bid by ${bid.user.username}?`,
+        message: `Delete bid by ${bid.user?.username}?`,
         confirmLabel: "Delete",
         danger: true,
         onConfirm: async () => {
             adminBidError.value = "";
             try {
-                const data = await api(`/admin/bids/${bid.id}`, { method: "DELETE" });
+                const data = await api<{ auction: Auction }>(`/admin/bids/${bid.id}`, {
+                    method: "DELETE",
+                });
                 updateAuction(data.auction);
                 notify?.("Bid deleted.", "success");
             } catch (e) {
-                adminBidError.value = e.data?.message || "Failed to delete bid.";
+                adminBidError.value = apiError(e) || "Failed to delete bid.";
             }
         },
     };
@@ -659,7 +695,7 @@ async function submitAddBid() {
     adminBidError.value = "";
     adminBidSaving.value = true;
     try {
-        const data = await api(`/admin/auctions/${props.id}/bids`, {
+        const data = await api<{ auction: Auction }>(`/admin/auctions/${props.id}/bids`, {
             method: "POST",
             body: JSON.stringify({
                 username: addBidUsername.value,
@@ -674,11 +710,7 @@ async function submitAddBid() {
         addBidQuantity.value = 1;
         notify?.("Bid added.", "success");
     } catch (e) {
-        adminBidError.value =
-            e.data?.message ||
-            e.data?.errors?.username?.[0] ||
-            e.data?.errors?.amount?.[0] ||
-            "Failed to add bid.";
+        adminBidError.value = apiError(e, "username", "amount") || "Failed to add bid.";
     } finally {
         adminBidSaving.value = false;
     }
@@ -694,11 +726,14 @@ function endAuction(cancel = false) {
             adminAuctionError.value = "";
             adminAuctionSaving.value = true;
             try {
-                const data = await api(`/admin/auctions/${props.id}/${label}`, { method: "POST" });
+                const data = await api<{ auction: Auction }>(
+                    `/admin/auctions/${props.id}/${label}`,
+                    { method: "POST" },
+                );
                 updateAuction(data.auction);
                 notify?.(`Auction ${cancel ? "cancelled" : "ended"}.`, "success");
             } catch (e) {
-                adminAuctionError.value = e.data?.message || `Failed to ${label} auction.`;
+                adminAuctionError.value = apiError(e) || `Failed to ${label} auction.`;
             } finally {
                 adminAuctionSaving.value = false;
             }
@@ -714,7 +749,7 @@ async function reactivateAuction() {
     adminAuctionError.value = "";
     adminAuctionSaving.value = true;
     try {
-        const data = await api(`/admin/auctions/${props.id}/reactivate`, {
+        const data = await api<{ auction: Auction }>(`/admin/auctions/${props.id}/reactivate`, {
             method: "POST",
             body: JSON.stringify({ ends_at: newEndsAt.value }),
         });
@@ -722,8 +757,7 @@ async function reactivateAuction() {
         newEndsAt.value = "";
         notify?.("Auction reactivated.", "success");
     } catch (e) {
-        adminAuctionError.value =
-            e.data?.message || e.data?.errors?.ends_at?.[0] || "Failed to reactivate.";
+        adminAuctionError.value = apiError(e, "ends_at") || "Failed to reactivate.";
     } finally {
         adminAuctionSaving.value = false;
     }
@@ -737,7 +771,7 @@ async function extendAuction() {
     adminAuctionError.value = "";
     adminAuctionSaving.value = true;
     try {
-        const data = await api(`/admin/auctions/${props.id}/extend`, {
+        const data = await api<{ auction: Auction }>(`/admin/auctions/${props.id}/extend`, {
             method: "POST",
             body: JSON.stringify({ ends_at: newEndsAt.value }),
         });
@@ -745,26 +779,28 @@ async function extendAuction() {
         newEndsAt.value = "";
         notify?.("Auction extended.", "success");
     } catch (e) {
-        adminAuctionError.value =
-            e.data?.message || e.data?.errors?.ends_at?.[0] || "Failed to extend.";
+        adminAuctionError.value = apiError(e, "ends_at") || "Failed to extend.";
     } finally {
         adminAuctionSaving.value = false;
     }
 }
 
-function deleteLeftoverPurchase(purchase) {
+function deleteLeftoverPurchase(purchase: LeftoverPurchase) {
     confirmDialog.value = {
-        message: `Delete purchase by ${purchase.user.username}?`,
+        message: `Delete purchase by ${purchase.user?.username}?`,
         confirmLabel: "Delete",
         danger: true,
         onConfirm: async () => {
             try {
-                const data = await api(`/admin/leftover-purchases/${purchase.id}`, {
-                    method: "DELETE",
-                });
+                const data = await api<{ auction: Auction }>(
+                    `/admin/leftover-purchases/${purchase.id}`,
+                    {
+                        method: "DELETE",
+                    },
+                );
                 updateAuction(data.auction);
                 notify?.("Purchase deleted.", "success");
-            } catch (e) {
+            } catch {
                 notify?.("Failed to delete purchase.", "error");
             }
         },
@@ -775,39 +811,38 @@ async function submitAddPurchase() {
     adminPurchaseError.value = "";
     adminPurchaseSaving.value = true;
     try {
-        const data = await api(`/admin/auctions/${props.id}/leftover-purchases`, {
-            method: "POST",
-            body: JSON.stringify({
-                username: addPurchaseUsername.value,
-                quantity: Number(addPurchaseQuantity.value),
-            }),
-        });
+        const data = await api<{ auction: Auction }>(
+            `/admin/auctions/${props.id}/leftover-purchases`,
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    username: addPurchaseUsername.value,
+                    quantity: Number(addPurchaseQuantity.value),
+                }),
+            },
+        );
         updateAuction(data.auction);
         showAddPurchase.value = false;
         addPurchaseUsername.value = "";
         addPurchaseQuantity.value = 1;
         notify?.("Purchase added.", "success");
     } catch (e) {
-        adminPurchaseError.value =
-            e.data?.message ||
-            e.data?.errors?.username?.[0] ||
-            e.data?.errors?.quantity?.[0] ||
-            "Failed to add purchase.";
+        adminPurchaseError.value = apiError(e, "username", "quantity") || "Failed to add purchase.";
     } finally {
         adminPurchaseSaving.value = false;
     }
 }
 
-function formatDate(d) {
+function formatDate(d: string | null | undefined) {
     if (!d) return "";
     return d.slice(0, 16).replace("T", " ");
 }
 
-function formatMoney(value) {
+function formatMoney(value: Money | null | undefined) {
     return Number(value).toFixed(2);
 }
 
-function watchingText(count) {
+function watchingText(count: number) {
     return `${count} currently watching`;
 }
 
@@ -854,7 +889,7 @@ watchEffect(() => {
     )
         return;
     if (!myBid.value) return;
-    const timeLeft = new Date(auction.value.ends_at) - now.value;
+    const timeLeft = new Date(auction.value.ends_at).getTime() - now.value.getTime();
     if (timeLeft > 0 && timeLeft <= 5 * 60 * 1000) {
         endingSoonNotified.value = true;
         notify(`"${auction.value.title}" ends in less than 5 minutes!`, "warning", 6000);
@@ -888,14 +923,14 @@ watchEffect(() => {
                         <div class="flex flex-wrap items-center gap-2">
                             <span
                                 class="rounded-full px-3 py-1 text-xs font-semibold"
-                                :class="auctionStatus.tone"
+                                :class="auctionStatus?.tone"
                             >
-                                {{ auctionStatus.label }}
+                                {{ auctionStatus?.label }}
                             </span>
                             <span
                                 class="rounded-full bg-amber-50 dark:bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400"
                             >
-                                {{ watchingText(auction.watcher_count) }}
+                                {{ watchingText(auction.watcher_count ?? 0) }}
                             </span>
                             <span
                                 v-if="auction.category"
@@ -906,7 +941,7 @@ watchEffect(() => {
                         </div>
                         <h1 class="mt-3 text-2xl font-bold break-words">{{ auction.title }}</h1>
                         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                            {{ auctionStatus.summary }}
+                            {{ auctionStatus?.summary }}
                         </p>
                     </div>
                     <div v-if="user?.is_admin" class="flex gap-2 shrink-0">
@@ -1045,7 +1080,7 @@ watchEffect(() => {
             </div>
 
             <div
-                v-if="auction.is_active && user && user.id !== auction.seller.id"
+                v-if="auction.is_active && user && user.id !== auction.seller?.id"
                 class="bg-white dark:bg-gray-800 rounded shadow p-6"
             >
                 <h2 class="text-lg font-semibold mb-3">
@@ -1065,17 +1100,20 @@ watchEffect(() => {
                             <span class="font-bold text-green-700 dark:text-green-400"
                                 >{{ currencySymbol }}{{ formatMoney(myBid.amount) }}</span
                             >
-                            <span v-if="auction.max_per_bidder > 1">
+                            <span v-if="(auction.max_per_bidder ?? 0) > 1">
                                 for {{ myBid.quantity }} item{{
                                     myBid.quantity !== 1 ? "s" : ""
                                 }}</span
                             >
-                            <span v-if="auction.max_per_bidder > 1" class="ml-1"
+                            <span v-if="(auction.max_per_bidder ?? 0) > 1" class="ml-1"
                                 >(up to {{ currencySymbol
-                                }}{{ formatMoney(myBid.amount * myBid.quantity) }} total)</span
+                                }}{{
+                                    formatMoney(Number(myBid?.amount) * (myBid?.quantity ?? 0))
+                                }}
+                                total)</span
                             >
                             <span
-                                v-if="myBid.won_quantity > 0"
+                                v-if="(myBid?.won_quantity ?? 0) > 0"
                                 class="text-green-600 dark:text-green-400 ml-1"
                                 >(winning {{ myBid.won_quantity }})</span
                             >
@@ -1106,7 +1144,7 @@ watchEffect(() => {
                                 />
                             </div>
                         </div>
-                        <div v-if="auction.max_per_bidder > 1">
+                        <div v-if="(auction.max_per_bidder ?? 0) > 1">
                             <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                 >Quantity</label
                             >
@@ -1114,13 +1152,13 @@ watchEffect(() => {
                                 v-model="bidQuantity"
                                 type="number"
                                 min="1"
-                                :max="auction.max_per_bidder"
+                                :max="auction.max_per_bidder ?? undefined"
                                 required
                                 class="border rounded px-3 py-2 w-20"
                             />
                         </div>
                         <div
-                            v-if="auction.max_per_bidder > 1"
+                            v-if="(auction.max_per_bidder ?? 0) > 1"
                             class="basis-full text-sm text-gray-500 dark:text-gray-400"
                         >
                             Your price is per item, so bidding
@@ -1680,9 +1718,9 @@ watchEffect(() => {
                                 class="py-2 flex items-center justify-between"
                             >
                                 <div class="flex items-center gap-2 flex-wrap">
-                                    <span class="font-medium">{{ purchase.user.username }}</span>
+                                    <span class="font-medium">{{ purchase.user?.username }}</span>
                                     <span
-                                        v-if="purchase.user.id === user?.id"
+                                        v-if="purchase.user?.id === user?.id"
                                         class="text-xs text-blue-600 dark:text-blue-400"
                                         >(you)</span
                                     >
@@ -1743,7 +1781,7 @@ watchEffect(() => {
                                 class="py-3 flex items-center justify-between gap-2"
                             >
                                 <div class="flex items-center gap-2 text-sm flex-wrap">
-                                    <span class="font-medium">{{ offer.user.username }}</span>
+                                    <span class="font-medium">{{ offer.user?.username }}</span>
                                     <span
                                         class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize"
                                         :class="{
@@ -1808,7 +1846,7 @@ watchEffect(() => {
 
                     <!-- Admin: add purchase for another user -->
                     <div
-                        v-if="user?.is_admin && auction.leftover_quantity > 0"
+                        v-if="user?.is_admin && (auction.leftover_quantity ?? 0) > 0"
                         class="border-t dark:border-gray-700 pt-6 mt-6"
                     >
                         <div class="flex items-center justify-between mb-2">
@@ -1983,7 +2021,10 @@ watchEffect(() => {
                 >
                     {{ adminBidError }}
                 </div>
-                <p v-if="auction.bids.length === 0" class="text-gray-500 dark:text-gray-400">
+                <p
+                    v-if="(auction.bids ?? []).length === 0"
+                    class="text-gray-500 dark:text-gray-400"
+                >
                     No bids yet.
                 </p>
                 <TransitionGroup
@@ -1997,21 +2038,21 @@ watchEffect(() => {
                         :key="bid.id"
                         class="py-2 flex items-center justify-between transition-all duration-500"
                         :class="[
-                            bid.won_quantity > 0
+                            (bid.won_quantity ?? 0) > 0
                                 ? 'bg-green-50 dark:bg-green-900/20 -mx-2 px-2 rounded'
                                 : '',
                             highlightedBids.has(bid.id) ? 'bid-flash' : '',
                         ]"
                     >
                         <div class="flex items-center gap-2">
-                            <span class="font-medium">{{ bid.user.username }}</span>
+                            <span class="font-medium">{{ bid.user?.username }}</span>
                             <span
-                                v-if="bid.user.id === user?.id"
+                                v-if="bid.user?.id === user?.id"
                                 class="text-xs text-blue-600 dark:text-blue-400"
                                 >(you)</span
                             >
                             <span
-                                v-if="auction.max_per_bidder > 1"
+                                v-if="(auction.max_per_bidder ?? 0) > 1"
                                 class="text-gray-400 dark:text-gray-500 text-xs"
                                 >wants {{ bid.quantity }}</span
                             >
@@ -2099,7 +2140,7 @@ watchEffect(() => {
                                 <span
                                     class="font-bold"
                                     :class="
-                                        bid.won_quantity > 0
+                                        (bid.won_quantity ?? 0) > 0
                                             ? 'text-green-700 dark:text-green-400'
                                             : 'text-gray-500 dark:text-gray-400'
                                     "
@@ -2107,7 +2148,7 @@ watchEffect(() => {
                                     {{ currencySymbol }}{{ Number(bid.amount).toFixed(2) }}
                                 </span>
                                 <span
-                                    v-if="bid.won_quantity > 0 && auction.quantity > 1"
+                                    v-if="(bid.won_quantity ?? 0) > 0 && auction.quantity > 1"
                                     class="block text-xs text-green-600 dark:text-green-400"
                                 >
                                     wins {{ bid.won_quantity }} @ {{ currencySymbol
@@ -2228,7 +2269,7 @@ watchEffect(() => {
                             {{ question.question }}
                         </p>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Asked by {{ question.user.username }} ·
+                            Asked by {{ question.user?.username }} ·
                             {{ formatDate(question.created_at) }}
                         </p>
 
@@ -2319,7 +2360,7 @@ watchEffect(() => {
                             <div class="flex items-start justify-between gap-4">
                                 <div>
                                     <p class="font-medium">
-                                        {{ question.user.username }}
+                                        {{ question.user?.username }}
                                     </p>
                                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         {{ formatDate(question.created_at) }}

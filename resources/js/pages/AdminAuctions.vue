@@ -1,39 +1,38 @@
-<script setup>
-import { ref, computed, inject, onMounted, watch } from "vue";
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api, ApiError } from "../api";
+import { injectUser, injectCurrencySymbol } from "../injection";
+import type { Auction, AuctionRound, Category, ConfirmDialogState } from "../types";
 import ConfirmDialog from "../ConfirmDialog.vue";
 
 const router = useRouter();
 const route = useRoute();
-const user = inject("user");
-const currencySymbol = inject("currencySymbol");
+const user = injectUser();
+const currencySymbol = injectCurrencySymbol();
 
 if (!user.value?.is_admin) {
     router.push("/");
 }
 
-/** @type {import("vue").Ref<Array>} */
-const auctions = ref([]);
-/** @type {import("vue").Ref<Array>} */
-const rounds = ref([]);
-/** @type {import("vue").Ref<Array>} */
-const categories = ref([]);
+const auctions = ref<Auction[]>([]);
+const rounds = ref<AuctionRound[]>([]);
+const categories = ref<Category[]>([]);
 const loading = ref(true);
 const saving = ref(false);
 const saveError = ref("");
 const saveSuccess = ref("");
-const confirmDialog = ref(null);
+const confirmDialog = ref<ConfirmDialogState | null>(null);
 
-const selected = ref(/** @type {Set<number>} */ (new Set()));
+const selected = ref<Set<number>>(new Set());
 const filterStatus = ref("all");
 const filterRound = ref(route.query.round_id ? String(route.query.round_id) : "all");
 const bulkAction = ref("assign_round");
-const assignRoundId = ref(/** @type {number|null} */ (null));
-const assignCategoryId = ref(/** @type {number|null} */ (null));
+const assignRoundId = ref<number | null>(null);
+const assignCategoryId = ref<number | null>(null);
 const assignLocation = ref("");
 
-function syncRoundQuery(value) {
+function syncRoundQuery(value: string) {
     const query = { ...route.query };
     if (value !== "all") {
         query.round_id = value;
@@ -48,10 +47,10 @@ let initialized = false;
 onMounted(async () => {
     try {
         const [auctionData, roundData, currentData, categoryData] = await Promise.all([
-            api("/auctions"),
-            api("/rounds"),
-            api("/rounds/current"),
-            api("/categories"),
+            api<{ auctions: Auction[] }>("/auctions"),
+            api<{ rounds: AuctionRound[] }>("/rounds"),
+            api<{ active: AuctionRound | null }>("/rounds/current"),
+            api<{ categories: Category[] }>("/categories"),
         ]);
         auctions.value = auctionData.auctions;
         rounds.value = roundData.rounds ?? [];
@@ -98,7 +97,7 @@ function toggleAll() {
     selected.value = new Set(selected.value);
 }
 
-function toggle(id) {
+function toggle(id: number) {
     if (selected.value.has(id)) {
         selected.value.delete(id);
     } else {
@@ -128,7 +127,13 @@ async function executeBulk() {
     saveSuccess.value = "";
     const ids = selectedInView.value.map((a) => a.id);
     try {
-        const body = { action: bulkAction.value, auction_ids: ids };
+        const body: {
+            action: string;
+            auction_ids: number[];
+            round_id?: number | null;
+            category_id?: number | null;
+            location?: string | null;
+        } = { action: bulkAction.value, auction_ids: ids };
         if (bulkAction.value === "assign_round") body.round_id = assignRoundId.value;
         if (bulkAction.value === "assign_category") body.category_id = assignCategoryId.value;
         if (bulkAction.value === "assign_location")
@@ -144,8 +149,7 @@ async function executeBulk() {
                 ? (rounds.value.find((r) => r.id === assignRoundId.value) ?? null)
                 : null;
             for (const a of auctions.value) {
-                if (selected.value.has(a.id))
-                    a.round = roundObj ? { id: roundObj.id, name: roundObj.name } : null;
+                if (selected.value.has(a.id)) a.round = roundObj;
             }
         } else if (bulkAction.value === "assign_location") {
             const loc = assignLocation.value.trim() || null;
@@ -159,7 +163,7 @@ async function executeBulk() {
             for (const a of auctions.value) {
                 if (selected.value.has(a.id)) {
                     a.category_id = catObj?.id ?? null;
-                    a.category = catObj ? { id: catObj.id, name: catObj.name } : null;
+                    a.category = catObj;
                 }
             }
         } else if (bulkAction.value === "end") {
@@ -183,7 +187,7 @@ async function executeBulk() {
         saveSuccess.value = `${count} auction${count !== 1 ? "s" : ""} updated.`;
         setTimeout(() => (saveSuccess.value = ""), 3000);
     } catch (e) {
-        saveError.value = e.data?.message || "Failed to update auctions.";
+        saveError.value = (e instanceof ApiError && e.data.message) || "Failed to update auctions.";
     } finally {
         saving.value = false;
     }
@@ -209,13 +213,13 @@ function applyBulk() {
     }
 }
 
-function statusLabel(auction) {
+function statusLabel(auction: Auction) {
     if (auction.is_active) return "Active";
     if (auction.status === "cancelled") return "Cancelled";
     return "Ended";
 }
 
-function statusClasses(auction) {
+function statusClasses(auction: Auction) {
     if (auction.is_active)
         return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400";
     if (auction.status === "cancelled")
@@ -223,7 +227,7 @@ function statusClasses(auction) {
     return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
 }
 
-function formatDate(d) {
+function formatDate(d: string | null | undefined) {
     if (!d) return "—";
     return d.slice(0, 10);
 }

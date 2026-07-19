@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin, type ResolvedConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
@@ -10,12 +10,12 @@ import { extname, join, resolve } from 'path';
 
 const COMPRESSIBLE = new Set(['.js', '.css', '.json', '.svg', '.html']);
 
-function precompress() {
-    let outDir;
+function precompress(): Plugin {
+    let outDir: string;
     return {
         name: 'precompress',
         apply: 'build',
-        configResolved(config) {
+        configResolved(config: ResolvedConfig) {
             outDir = config.build.outDir;
         },
         async closeBundle() {
@@ -39,7 +39,9 @@ function precompress() {
                     ),
                     pipeline(
                         createReadStream(file),
-                        createZstdCompress({ level: 11 }),
+                        createZstdCompress({
+                            params: { [zlibConstants.ZSTD_c_compressionLevel]: 11 },
+                        }),
                         createWriteStream(`${file}.zst`),
                     ),
                 ]),
@@ -51,7 +53,7 @@ function precompress() {
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: ['resources/css/app.css', 'resources/js/app.ts'],
             refresh: true,
         }),
         tailwindcss(),

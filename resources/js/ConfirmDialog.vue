@@ -1,11 +1,14 @@
-<script setup>
-defineProps({
-    title: { type: String, default: "" },
-    message: { type: String, required: true },
-    confirmLabel: { type: String, default: "Confirm" },
-    danger: { type: Boolean, default: false },
-});
-defineEmits(["confirm", "cancel"]);
+<script setup lang="ts">
+withDefaults(
+    defineProps<{
+        title?: string;
+        message: string;
+        confirmLabel?: string;
+        danger?: boolean;
+    }>(),
+    { title: "", confirmLabel: "Confirm", danger: false },
+);
+defineEmits<{ confirm: []; cancel: [] }>();
 </script>
 
 <template>

@@ -1,27 +1,38 @@
-<script setup>
-import { ref, computed, inject, onMounted, watch } from "vue";
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api } from "../api";
+import { injectUser, injectCurrencySymbol, injectNow } from "../injection";
+import type { Auction, AuctionRound, LeftoverPriceOffer, LeftoverPurchase, Money } from "../types";
 
 const route = useRoute();
 const router = useRouter();
-const user = inject("user");
+const user = injectUser();
 
 if (!user.value) {
     router.push("/login");
 }
-const currencySymbol = inject("currencySymbol");
-const now = inject("now");
+const currencySymbol = injectCurrencySymbol();
+const now = injectNow();
 
-const active = ref([]);
-const won = ref([]);
-const lost = ref([]);
-const purchased = ref([]);
-const allRounds = ref([]);
+const active = ref<Auction[]>([]);
+const won = ref<Auction[]>([]);
+const lost = ref<Auction[]>([]);
+const purchased = ref<Auction[]>([]);
+const allRounds = ref<AuctionRound[]>([]);
 const loading = ref(true);
-const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
+const selectedRoundId = ref<number | null>(
+    route.query.round_id ? Number(route.query.round_id) : null,
+);
 
-function syncRoundQuery(roundId) {
+interface MyAuctionsResponse {
+    active: Auction[];
+    won: Auction[];
+    lost: Auction[];
+    purchased?: Auction[];
+}
+
+function syncRoundQuery(roundId: number | null) {
     const query = { ...route.query };
     if (roundId !== null) {
         query.round_id = String(roundId);
@@ -31,9 +42,9 @@ function syncRoundQuery(roundId) {
     router.replace({ path: route.path, query });
 }
 
-async function loadMyAuctions(roundId = null) {
+async function loadMyAuctions(roundId: number | null = null) {
     const url = roundId !== null ? `/my-auctions?round_id=${roundId}` : "/my-auctions";
-    const data = await api(url);
+    const data = await api<MyAuctionsResponse>(url);
     active.value = data.active;
     won.value = data.won;
     lost.value = data.lost;
@@ -44,9 +55,12 @@ let initialized = false;
 
 onMounted(async () => {
     try {
-        const currentData = await api("/rounds/current");
+        const currentData = await api<{
+            active: AuctionRound | null;
+            ended?: AuctionRound[];
+        }>("/rounds/current");
 
-        const rounds = [];
+        const rounds: AuctionRound[] = [];
         if (currentData?.active) rounds.push(currentData.active);
         allRounds.value = [...rounds, ...(currentData?.ended ?? [])];
 
@@ -74,26 +88,28 @@ watch(selectedRoundId, async (roundId) => {
     }
 });
 
-function myLeftoverPurchase(auction) {
-    return auction.leftover_purchases?.find((p) => p.user.id === user.value?.id);
+function myLeftoverPurchase(auction: Auction): LeftoverPurchase | undefined {
+    return auction.leftover_purchases?.find((p) => p.user?.id === user.value?.id);
 }
 
-function myAcceptedOffer(auction) {
+function myAcceptedOffer(auction: Auction): LeftoverPriceOffer | undefined {
     return auction.leftover_price_offers?.find(
-        (o) => o.user.id === user.value?.id && o.status === "accepted",
+        (o) => o.user?.id === user.value?.id && o.status === "accepted",
     );
 }
 
-function myLeftoverSale(auction) {
+function myLeftoverSale(auction: Auction): LeftoverPurchase | LeftoverPriceOffer | undefined {
     return myLeftoverPurchase(auction) ?? myAcceptedOffer(auction);
 }
 
-function myLeftoverPrice(sale) {
+function myLeftoverPrice(
+    sale: { price_per_item?: Money; offered_price_per_item?: Money } | undefined,
+): Money | undefined {
     return sale?.price_per_item ?? sale?.offered_price_per_item;
 }
 
-function timeLeft(endsAt) {
-    const diff = new Date(endsAt) - now.value;
+function timeLeft(endsAt: string) {
+    const diff = new Date(endsAt).getTime() - now.value.getTime();
     if (diff <= 0) return "Ended";
     const hours = Math.floor(diff / 3600000);
     const minutes = Math.floor((diff % 3600000) / 60000);
@@ -101,8 +117,8 @@ function timeLeft(endsAt) {
     return `${hours}h ${minutes}m left`;
 }
 
-function myBid(auction) {
-    return auction.bids.find((b) => b.user.id === user.value?.id);
+function myBid(auction: Auction) {
+    return auction.bids?.find((b) => b.user?.id === user.value?.id);
 }
 
 const hasAnything = computed(
@@ -211,13 +227,13 @@ const hasAnything = computed(
                                     {{ auction.title }}
                                 </h3>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                                    Won {{ myBid(auction).won_quantity }} item{{
-                                        myBid(auction).won_quantity !== 1 ? "s" : ""
+                                    Won {{ myBid(auction)?.won_quantity ?? 0 }} item{{
+                                        (myBid(auction)?.won_quantity ?? 0) !== 1 ? "s" : ""
                                     }}
                                     @ {{ currencySymbol
                                     }}{{
                                         Number(
-                                            myBid(auction).price ?? myBid(auction).amount,
+                                            myBid(auction)?.price ?? myBid(auction)?.amount ?? 0,
                                         ).toFixed(2)
                                     }}
                                 </p>
@@ -225,8 +241,12 @@ const hasAnything = computed(
                                     Total: {{ currencySymbol
                                     }}{{
                                         (
-                                            myBid(auction).won_quantity *
-                                            Number(myBid(auction).price ?? myBid(auction).amount)
+                                            (myBid(auction)?.won_quantity ?? 0) *
+                                            Number(
+                                                myBid(auction)?.price ??
+                                                    myBid(auction)?.amount ??
+                                                    0,
+                                            )
                                         ).toFixed(2)
                                     }}
                                 </p>
@@ -260,17 +280,21 @@ const hasAnything = computed(
                                     <span
                                         class="text-xs whitespace-nowrap px-2 py-0.5 rounded"
                                         :class="
-                                            myBid(auction).won_quantity > 0
+                                            (myBid(auction)?.won_quantity ?? 0) > 0
                                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                                 : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                                         "
                                     >
-                                        {{ myBid(auction).won_quantity > 0 ? "Winning" : "Outbid" }}
+                                        {{
+                                            (myBid(auction)?.won_quantity ?? 0) > 0
+                                                ? "Winning"
+                                                : "Outbid"
+                                        }}
                                     </span>
                                 </div>
                                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                     Your bid: {{ currencySymbol
-                                    }}{{ Number(myBid(auction).amount).toFixed(2) }}
+                                    }}{{ Number(myBid(auction)?.amount ?? 0).toFixed(2) }}
                                 </p>
                                 <div class="mt-2 flex justify-between items-end">
                                     <span
@@ -318,7 +342,7 @@ const hasAnything = computed(
                         <div class="text-right">
                             <p class="text-xs text-gray-500 dark:text-gray-400">
                                 Your bid: {{ currencySymbol
-                                }}{{ Number(myBid(auction).amount).toFixed(2) }}
+                                }}{{ Number(myBid(auction)?.amount ?? 0).toFixed(2) }}
                             </p>
                             <p class="text-xs font-bold text-gray-600 dark:text-gray-300">
                                 Final: {{ currencySymbol

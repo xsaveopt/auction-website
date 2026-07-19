@@ -1,34 +1,51 @@
-<script setup>
-import { ref, computed, onMounted, inject, watch } from "vue";
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api } from "../api";
 import {
     getItemLabel,
     getLeftoverDiscountPercent,
     hasAvailableLeftovers,
-} from "../auctionPresentation.js";
+} from "../auctionPresentation";
+import {
+    injectHeartbeatData,
+    injectCurrencySymbol,
+    injectUser,
+    injectNow,
+    injectCurrentRound,
+} from "../injection";
+import type { Announcement, Auction, AuctionRound, Category, HeartbeatData, Id } from "../types";
+
+interface AuctionGroup {
+    id: Id | null;
+    name: string;
+    slug: string;
+    auctions: Auction[];
+}
 
 const route = useRoute();
 const router = useRouter();
 
-const auctions = ref([]);
-const allRounds = ref([]);
-const categories = ref([]);
+const auctions = ref<Auction[]>([]);
+const allRounds = ref<AuctionRound[]>([]);
+const categories = ref<Category[]>([]);
 const loading = ref(true);
-const heartbeatData = inject("heartbeatData");
-const currencySymbol = inject("currencySymbol");
-const user = inject("user");
-const now = inject("now");
-const currentRound = inject("currentRound");
+const heartbeatData = injectHeartbeatData();
+const currencySymbol = injectCurrencySymbol();
+const user = injectUser();
+const now = injectNow();
+const currentRound = injectCurrentRound();
 
-const selectedRoundId = ref(route.query.round_id ? Number(route.query.round_id) : null);
+const selectedRoundId = ref<number | null>(
+    route.query.round_id ? Number(route.query.round_id) : null,
+);
 
-const announcement = ref(null);
+const announcement = ref<Announcement | null>(null);
 const editingAnnouncement = ref(false);
 const announcementDraft = ref("");
 const announcementSaving = ref(false);
 
-function syncRoundQuery(roundId) {
+function syncRoundQuery(roundId: number | null) {
     const query = { ...route.query };
     if (roundId !== null) {
         query.round_id = String(roundId);
@@ -39,14 +56,16 @@ function syncRoundQuery(roundId) {
 }
 
 async function loadAnnouncement() {
-    const data = await api("/announcement").catch(() => null);
+    const data = await api<{ announcement: Announcement | null }>("/announcement").catch(
+        () => null,
+    );
     if (data) announcement.value = data.announcement;
 }
 
 async function saveAnnouncement() {
     if (!announcementDraft.value.trim()) return;
     announcementSaving.value = true;
-    const data = await api("/announcement", {
+    const data = await api<{ announcement: Announcement }>("/announcement", {
         method: "POST",
         body: JSON.stringify({ message: announcementDraft.value.trim() }),
     }).catch(() => null);
@@ -69,9 +88,9 @@ function startEditAnnouncement() {
     editingAnnouncement.value = true;
 }
 
-async function loadAuctions(roundId = null) {
+async function loadAuctions(roundId: number | null = null) {
     const url = roundId !== null ? `/auctions?round_id=${roundId}` : "/auctions";
-    const data = await api(url);
+    const data = await api<{ auctions: Auction[] }>(url);
     auctions.value = data.auctions;
 }
 
@@ -80,12 +99,12 @@ let initialized = false;
 onMounted(async () => {
     try {
         const [currentData, categoryData] = await Promise.all([
-            api("/rounds/current"),
-            api("/categories"),
+            api<{ active: AuctionRound | null; ended?: AuctionRound[] }>("/rounds/current"),
+            api<{ categories: Category[] }>("/categories"),
             loadAnnouncement(),
         ]);
 
-        const rounds = [];
+        const rounds: AuctionRound[] = [];
         if (currentData?.active) rounds.push(currentData.active);
         allRounds.value = [...rounds, ...(currentData?.ended ?? [])];
 
@@ -131,37 +150,37 @@ watch(heartbeatData, (data) => {
     }
 });
 
-function watchingText(count) {
+function watchingText(count: number) {
     return `${count} currently watching`;
 }
 
-function roundClosed(auction) {
+function roundClosed(auction: Auction) {
     return auction.round?.status === "ended";
 }
 
-function isLeftoverSale(auction) {
+function isLeftoverSale(auction: Auction) {
     return !auction.is_active && hasAvailableLeftovers(auction) && !roundClosed(auction);
 }
 
-function priceLabel(auction) {
+function priceLabel(auction: Auction) {
     if (isLeftoverSale(auction)) return "Buy now";
     if (auction.is_active) return "Current price";
-    if (auction.bid_count > 0) return "Final price";
+    if ((auction.bid_count ?? 0) > 0) return "Final price";
 
     return "Starting price";
 }
 
-function priceValue(auction) {
+function priceValue(auction: Auction) {
     return isLeftoverSale(auction) ? auction.leftover_price : auction.current_price;
 }
 
-function leftoverDiscountText(auction) {
+function leftoverDiscountText(auction: Auction) {
     const discountPercent = getLeftoverDiscountPercent(auction);
 
     return discountPercent > 0 ? `${discountPercent}% off` : null;
 }
 
-function statusText(auction) {
+function statusText(auction: Auction) {
     if (auction.is_active) return "Live";
     if (isLeftoverSale(auction)) return "Leftover sale";
     if (auction.leftover_enabled && auction.leftover_quantity === 0 && !roundClosed(auction))
@@ -171,30 +190,30 @@ function statusText(auction) {
 }
 
 const showSoldOut = ref(false);
-const selectedLocation = ref(null);
+const selectedLocation = ref<string | null>(null);
 
-function shouldHideEnded(auction) {
+function shouldHideEnded(auction: Auction) {
     if (auction.is_active) return false;
     if (roundClosed(auction)) return false;
-    return !(auction.leftover_enabled && auction.leftover_quantity > 0);
+    return !(auction.leftover_enabled && (auction.leftover_quantity ?? 0) > 0);
 }
 
 const hiddenEndedCount = computed(() => auctions.value.filter((a) => shouldHideEnded(a)).length);
 
 const availableLocations = computed(() => {
-    const locs = new Set();
+    const locs = new Set<string>();
     for (const auction of auctions.value) {
         if (auction.location) locs.add(auction.location);
     }
     return [...locs].sort();
 });
 
-const groupedAuctions = computed(() => {
-    const groups = [];
-    const categoryMap = new Map();
+const groupedAuctions = computed<AuctionGroup[]>(() => {
+    const groups: AuctionGroup[] = [];
+    const categoryMap = new Map<Id, AuctionGroup>();
 
     for (const cat of categories.value) {
-        const group = {
+        const group: AuctionGroup = {
             id: cat.id,
             name: cat.name,
             slug: cat.slug,
@@ -204,13 +223,13 @@ const groupedAuctions = computed(() => {
         groups.push(group);
     }
 
-    const uncategorized = [];
+    const uncategorized: Auction[] = [];
 
     for (const auction of auctions.value) {
         if (!showSoldOut.value && shouldHideEnded(auction)) continue;
         if (selectedLocation.value && auction.location !== selectedLocation.value) continue;
         if (auction.category_id && categoryMap.has(auction.category_id)) {
-            categoryMap.get(auction.category_id).auctions.push(auction);
+            categoryMap.get(auction.category_id)!.auctions.push(auction);
         } else {
             uncategorized.push(auction);
         }
@@ -230,8 +249,8 @@ const groupedAuctions = computed(() => {
     return result;
 });
 
-function timeLeft(endsAt) {
-    const diff = new Date(endsAt) - now.value;
+function timeLeft(endsAt: string) {
+    const diff = new Date(endsAt).getTime() - now.value.getTime();
     if (diff <= 0) return "Ended";
     const hours = Math.floor(diff / 3600000);
     const minutes = Math.floor((diff % 3600000) / 60000);
@@ -490,7 +509,7 @@ function timeLeft(endsAt) {
                                 <div
                                     class="mt-2 text-sm font-medium text-amber-600 dark:text-amber-400"
                                 >
-                                    {{ watchingText(auction.watcher_count) }}
+                                    {{ watchingText(auction.watcher_count ?? 0) }}
                                 </div>
                                 <div
                                     class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"

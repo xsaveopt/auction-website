@@ -1,11 +1,12 @@
 FROM node:26-alpine AS frontend
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1].split('+')[0]")"
+RUN --mount=type=cache,target=/pnpm-store \
+    pnpm install --frozen-lockfile --store-dir /pnpm-store
 COPY vite.config.js ./
 COPY resources/ resources/
-RUN npm run build
+RUN pnpm run build
 
 FROM dunglas/frankenphp:1-php8.5
 

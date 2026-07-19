@@ -1,29 +1,26 @@
-<script setup>
-import { ref, inject, onMounted, watch } from "vue";
+<script setup lang="ts">
+import { ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api } from "../api";
+import { injectUser } from "../injection";
+import type { AuditLog } from "../types";
 
-const props = defineProps({
-    active: {
-        type: Boolean,
-        default: false,
-    },
-});
+const props = withDefaults(defineProps<{ active?: boolean }>(), { active: false });
 const router = useRouter();
 const route = useRoute();
-const user = inject("user");
-const logs = ref([]);
+const user = injectUser();
+const logs = ref<AuditLog[]>([]);
 const loading = ref(true);
 const error = ref("");
-const currentPage = ref(parseInt(route.query.page) || 1);
+const currentPage = ref(Number(route.query.page) || 1);
 const lastPage = ref(1);
 const total = ref(0);
 
-const editingCommentId = ref(null);
+const editingCommentId = ref<number | null>(null);
 const editingCommentText = ref("");
 const savingComment = ref(false);
 
-const selectedLogIds = ref(new Set());
+const selectedLogIds = ref<Set<number>>(new Set());
 const bulkCommentText = ref("");
 const savingBulk = ref(false);
 const bulkError = ref("");
@@ -40,28 +37,33 @@ async function loadLogs(page = 1) {
     loading.value = true;
     error.value = "";
     try {
-        const data = await api(`/admin/audit-log?page=${page}`);
+        const data = await api<{
+            logs: AuditLog[];
+            current_page: number;
+            last_page: number;
+            total: number;
+        }>(`/admin/audit-log?page=${page}`);
         logs.value = data.logs;
         currentPage.value = data.current_page;
         lastPage.value = data.last_page;
         total.value = data.total;
         const query = { ...route.query };
         if (page > 1) {
-            query.page = page;
+            query.page = String(page);
         } else {
             delete query.page;
         }
         if (props.active) {
             router.replace({ path: route.path, query });
         }
-    } catch (e) {
+    } catch {
         error.value = "Failed to load audit log.";
     } finally {
         loading.value = false;
     }
 }
 
-async function goToPage(page) {
+async function goToPage(page: number) {
     if (page < 1 || page > lastPage.value) return;
     await loadLogs(page);
 }
@@ -73,7 +75,7 @@ watch(
             return;
         }
 
-        const page = parseInt(newPage) || 1;
+        const page = Number(newPage) || 1;
         if (page !== currentPage.value) {
             loadLogs(page);
         }
@@ -87,20 +89,20 @@ watch(
             return;
         }
 
-        const page = parseInt(route.query.page) || 1;
+        const page = Number(route.query.page) || 1;
         if (!logs.value.length || page !== currentPage.value) {
             loadLogs(page);
         }
     },
 );
 
-function formatDate(d) {
+function formatDate(d: string | null | undefined) {
     if (!d) return "";
     return d.slice(0, 19).replace("T", " ");
 }
 
-function actionLabel(action) {
-    const labels = {
+function actionLabel(action: string) {
+    const labels: Record<string, string> = {
         "auction.create": "Created auction",
         "auction.update": "Updated auction",
         "auction.delete": "Deleted auction",
@@ -124,7 +126,7 @@ function actionLabel(action) {
     return labels[action] ?? action;
 }
 
-function actionColorClass(action) {
+function actionColorClass(action: string) {
     if (action.endsWith(".delete") || action === "auction.cancel") {
         return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400";
     }
@@ -134,14 +136,14 @@ function actionColorClass(action) {
     return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400";
 }
 
-function formatData(data) {
-    if (!data) return null;
+function formatData(data: Record<string, unknown> | null | undefined): string | undefined {
+    if (!data) return undefined;
     return Object.entries(data)
         .map(([k, v]) => `${k}: ${v}`)
         .join(" · ");
 }
 
-function toggleSelect(logId) {
+function toggleSelect(logId: number) {
     const next = new Set(selectedLogIds.value);
     if (next.has(logId)) {
         next.delete(logId);
@@ -176,14 +178,14 @@ async function saveBulkComment() {
             }
         });
         clearSelection();
-    } catch (e) {
+    } catch {
         bulkError.value = "Failed to save comments.";
     } finally {
         savingBulk.value = false;
     }
 }
 
-function startEditComment(log) {
+function startEditComment(log: AuditLog) {
     editingCommentId.value = log.id;
     editingCommentText.value = log.comment ?? "";
 }
@@ -193,17 +195,18 @@ function cancelEditComment() {
     editingCommentText.value = "";
 }
 
-async function saveComment(log) {
+async function saveComment(log: AuditLog) {
     savingComment.value = true;
     try {
-        const data = await api(`/admin/audit-log/${log.id}/comment`, {
+        const data = await api<{ comment: string | null }>(`/admin/audit-log/${log.id}/comment`, {
             method: "PATCH",
             body: JSON.stringify({ comment: editingCommentText.value || null }),
         });
         log.comment = data.comment;
         editingCommentId.value = null;
         editingCommentText.value = "";
-    } catch (e) {
+    } catch {
+        savingComment.value = false;
     } finally {
         savingComment.value = false;
     }

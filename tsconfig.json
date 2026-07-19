@@ -1,0 +1,21 @@
+{
+    "extends": "@vue/tsconfig/tsconfig.dom.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "types": ["vite/client", "node"],
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["./resources/js/*"]
+        }
+    },
+    "include": [
+        "resources/js/**/*.ts",
+        "resources/js/**/*.vue",
+        "vite.config.ts",
+        "vitest.config.ts",
+        "e2e/**/*.ts"
+    ],
+    "vueCompilerOptions": {
+        "strictTemplates": false
+    }
+}

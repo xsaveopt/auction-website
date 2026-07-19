@@ -1,9 +1,19 @@
+import type { RouteLocationNormalizedLoaded } from "vue-router";
+
 export const HEARTBEAT_INTERVAL_MS = 1000;
 
 const CLIENT_STORAGE_KEY = "auction-presence-client-id";
 const PAGE_STORAGE_KEY = "auction-presence-page-id";
 
-function createIdentifier() {
+export interface PresencePayload {
+    client_id: string;
+    page_id: string;
+    page_type: "page" | "home" | "auction";
+    path: string;
+    auction_id?: number;
+}
+
+function createIdentifier(): string {
     if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
         return crypto.randomUUID();
     }
@@ -11,7 +21,7 @@ function createIdentifier() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function getStorageValue(storage, key) {
+function getStorageValue(storage: Storage, key: string): string {
     const existing = storage.getItem(key);
 
     if (existing) {
@@ -24,8 +34,8 @@ function getStorageValue(storage, key) {
     return created;
 }
 
-export function presencePayload(route) {
-    const payload = {
+export function presencePayload(route: RouteLocationNormalizedLoaded): PresencePayload {
+    const payload: PresencePayload = {
         client_id: getStorageValue(window.localStorage, CLIENT_STORAGE_KEY),
         page_id: getStorageValue(window.sessionStorage, PAGE_STORAGE_KEY),
         page_type: "page",

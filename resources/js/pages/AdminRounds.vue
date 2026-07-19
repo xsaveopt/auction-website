@@ -1,18 +1,20 @@
-<script setup>
-import { ref, inject, onMounted } from "vue";
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { api } from "../api.js";
+import { api, ApiError } from "../api";
+import { injectUser } from "../injection";
+import type { AuctionRound } from "../types";
 
 const router = useRouter();
-const user = inject("user");
-const rounds = ref([]);
+const user = injectUser();
+const rounds = ref<AuctionRound[]>([]);
 const loading = ref(true);
 const creating = ref(false);
 const newRoundName = ref("");
 const createError = ref("");
-const closingId = ref(null);
+const closingId = ref<number | null>(null);
 const closeError = ref("");
-const confirmingClose = ref(null);
+const confirmingClose = ref<AuctionRound | null>(null);
 
 if (!user.value?.is_admin) {
     router.push("/");
@@ -25,34 +27,34 @@ onMounted(async () => {
 async function load() {
     loading.value = true;
     try {
-        const data = await api("/rounds");
+        const data = await api<{ rounds: AuctionRound[] }>("/rounds");
         rounds.value = data.rounds;
     } finally {
         loading.value = false;
     }
 }
 
-const activeRound = () => rounds.value.find((r) => r.status === "active");
+const activeRound = () => rounds.value.find((r: AuctionRound) => r.status === "active");
 
 async function createRound() {
     if (!newRoundName.value.trim()) return;
     creating.value = true;
     createError.value = "";
     try {
-        const data = await api("/rounds", {
+        const data = await api<{ round: AuctionRound }>("/rounds", {
             method: "POST",
             body: JSON.stringify({ name: newRoundName.value.trim() }),
         });
         rounds.value.unshift(data.round);
         newRoundName.value = "";
     } catch (e) {
-        createError.value = e.data?.message || "Failed to create round.";
+        createError.value = (e instanceof ApiError && e.data.message) || "Failed to create round.";
     } finally {
         creating.value = false;
     }
 }
 
-function askClose(round) {
+function askClose(round: AuctionRound) {
     confirmingClose.value = round;
 }
 
@@ -67,22 +69,24 @@ async function confirmClose() {
     closingId.value = round.id;
     closeError.value = "";
     try {
-        const data = await api(`/rounds/${round.id}/close`, { method: "POST" });
-        const idx = rounds.value.findIndex((r) => r.id === round.id);
+        const data = await api<{ round: AuctionRound }>(`/rounds/${round.id}/close`, {
+            method: "POST",
+        });
+        const idx = rounds.value.findIndex((r: AuctionRound) => r.id === round.id);
         if (idx !== -1) rounds.value[idx] = data.round;
     } catch (e) {
-        closeError.value = e.data?.message || "Failed to close round.";
+        closeError.value = (e instanceof ApiError && e.data.message) || "Failed to close round.";
     } finally {
         closingId.value = null;
     }
 }
 
-function formatDate(d) {
+function formatDate(d: string | null | undefined) {
     if (!d) return "—";
     return d.slice(0, 16).replace("T", " ");
 }
 
-function resultsLink(round) {
+function resultsLink(round: AuctionRound) {
     return `/admin/results?round_id=${round.id}`;
 }
 </script>
