@@ -4,7 +4,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN npm install -g "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1].split('+')[0]")"
 RUN --mount=type=cache,target=/pnpm-store \
     pnpm install --frozen-lockfile --store-dir /pnpm-store
-COPY vite.config.js ./
+COPY vite.config.ts tsconfig.json ./
 COPY resources/ resources/
 RUN pnpm run build
 

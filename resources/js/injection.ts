@@ -17,6 +17,5 @@ export const injectSchedule = (): ComputedRef<Schedule | null> => injectStrict("
 export const injectCurrencySymbol = (): Ref<string> => injectStrict("currencySymbol");
 export const injectHeartbeatData = (): Ref<HeartbeatData | null> => injectStrict("heartbeatData");
 export const injectNow = (): Ref<Date> => injectStrict("now");
-export const injectNotify = (): NotifyFn => injectStrict("notify");
 export const injectCurrentRound = (): Ref<CurrentRound> => injectStrict("currentRound");
 export const injectNotifyOptional = (): NotifyFn | undefined => inject<NotifyFn>("notify");
