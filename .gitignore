@@ -26,8 +26,7 @@
 /storage/*.key
 /storage/pail
 /vendor
-frankenphp
-frankenphp-worker.php
+/frankenphp
 Homestead.json
 Homestead.yaml
 Thumbs.db
