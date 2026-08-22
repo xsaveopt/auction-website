@@ -21,16 +21,16 @@
         "@vue/test-utils": "^2.4.11",
         "@vue/tsconfig": "^0.9.1",
         "axios": "^1.19.0",
-        "concurrently": "^10.0.4",
+        "concurrently": "^10.0.5",
         "jsdom": "^30.0.1",
         "laravel-vite-plugin": "^3.2.0",
-        "oxfmt": "^0.63.0",
-        "oxlint": "^1.78.0",
+        "oxfmt": "^0.64.0",
+        "oxlint": "^1.79.0",
         "tailwindcss": "^4.3.3",
         "typescript": "^5.9.3",
         "vite": "^8.2.1",
-        "vitest": "^4.1.10",
-        "vue-tsc": "^3.3.9"
+        "vitest": "^4.1.11",
+        "vue-tsc": "^3.3.10"
     },
     "dependencies": {
         "@vitejs/plugin-vue": "^6.0.8",
