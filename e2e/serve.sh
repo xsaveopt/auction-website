@@ -21,4 +21,5 @@ pnpm build
 php artisan migrate:fresh --force
 php artisan app:create-admin e2eadmin password123 || true
 
-exec php artisan serve --host=127.0.0.1 --port=8123
+cd public
+exec php -S 127.0.0.1:8123 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
