@@ -33,9 +33,7 @@ class PresenceController extends Controller
             ]);
         }
 
-        $auctionId = $validated['page_type'] === 'auction' && isset($validated['auction_id'])
-            ? $validated['auction_id']
-            : null;
+        $auctionId = $validated['page_type'] === 'auction' ? $validated['auction_id'] : null;
 
         /** @var int|null $userId */
         $userId = $request->user()?->id;
