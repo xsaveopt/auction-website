@@ -92,7 +92,7 @@ Route::middleware('sso')->group(function () {
         Route::get('/rounds', [AuctionRoundController::class, 'index']);
         Route::post('/rounds', [AuctionRoundController::class, 'store']);
         Route::post('/rounds/{round}/close', [AuctionRoundController::class, 'close']);
-        Route::get('/rounds/{round}/users/{user}/quotes', [\App\Http\Controllers\QuotePdfController::class, 'downloadForUser']);
+        Route::get('/rounds/{round}/users/{user}/quotes', [QuotePdfController::class, 'downloadForRoundUser']);
     });
 
     Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {

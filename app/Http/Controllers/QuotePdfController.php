@@ -176,6 +176,17 @@ class QuotePdfController extends Controller
     public function downloadForUser(Request $request, User $user): Response
     {
         $roundId = $request->filled('round_id') ? $request->integer('round_id') : null;
+
+        return $this->userQuote($user, $roundId);
+    }
+
+    public function downloadForRoundUser(AuctionRound $round, User $user): Response
+    {
+        return $this->userQuote($user, $round->id);
+    }
+
+    private function userQuote(User $user, ?int $roundId): Response
+    {
         $round = $roundId ? AuctionRound::query()->find($roundId) : null;
 
         $userBidAuctionIds = Bid::where('user_id', $user->id)->pluck('auction_id');

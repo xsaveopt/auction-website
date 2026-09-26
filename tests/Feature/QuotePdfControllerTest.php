@@ -107,4 +107,53 @@ class QuotePdfControllerTest extends TestCase
         $this->actingAs($admin)->get("/api/auctions/{$auction->id}/quotes/{$losingBid->id}")->assertNotFound();
         $this->actingAs($admin)->get("/api/auctions/{$auction->id}/quotes/{$winningBid->id}")->assertOk();
     }
+
+    public function test_admin_can_download_a_user_quote_scoped_to_a_round(): void
+    {
+        $admin = $this->createAdmin();
+        $winner = $this->createUser();
+        $round = $this->createRound(['name' => 'Spring Round', 'status' => 'ended']);
+        $inRound = $this->createAuction(null, [
+            'auction_round_id' => $round->id,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $outsideRound = $this->createAuction(null, [
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $this->createBid($inRound, $winner, ['amount' => '25.00', 'quantity' => 1]);
+        $this->createBid($outsideRound, $winner, ['amount' => '40.00', 'quantity' => 1]);
+
+        $pdf = Mockery::mock(\Barryvdh\DomPDF\PDF::class);
+        $pdf->shouldReceive('setPaper')->once();
+        $pdf
+            ->shouldReceive('download')
+            ->once()
+            ->with("quote_{$winner->username}_Spring_Round.pdf")
+            ->andReturn(response('pdf-binary', 200, [
+                'Content-Type' => 'application/pdf',
+            ]));
+
+        Pdf::shouldReceive('loadView')
+            ->once()
+            ->with(
+                'pdf.quote',
+                Mockery::on(
+                    fn(array $data) => (
+                        count($data['items']) === 1
+                        && $data['items'][0]['title'] === $inRound->title
+                        && $data['round_name'] === 'Spring Round'
+                        && $data['winner']['username'] === $winner->username
+                    ),
+                ),
+            )
+            ->andReturn($pdf);
+
+        $this
+            ->actingAs($admin)
+            ->get("/api/rounds/{$round->id}/users/{$winner->id}/quotes")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+    }
 }
