@@ -47,7 +47,11 @@ class BiddingSchedule
         $start = ($startH * 60) + $startM;
         $end = ($endH * 60) + $endM;
 
-        return $current < $start || $current >= $end;
+        if ($start <= $end) {
+            return $current < $start || $current >= $end;
+        }
+
+        return $current < $start && $current >= $end;
     }
 
     public static function isBiddingOpen(?Carbon $at = null): bool
