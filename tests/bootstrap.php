@@ -19,6 +19,10 @@ if (!function_exists('tests_reset_apcu_store')) {
     {
         $store = &tests_apcu_store();
         $store = [];
+
+        if (extension_loaded('apcu')) {
+            apcu_clear_cache();
+        }
     }
 }
 
