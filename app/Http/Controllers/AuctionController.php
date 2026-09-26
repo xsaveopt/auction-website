@@ -111,10 +111,11 @@ class AuctionController extends Controller
             $totalValueBeforeTax += round($auctionTotalValue / $taxMultiplier, 2);
 
             if (!$auction->isActive()) {
-                $soldQuantity = array_sum($allocations);
+                $isCancelled = $auction->status === 'cancelled';
+                $soldQuantity = $isCancelled ? 0 : array_sum($allocations);
                 $soldItems += $soldQuantity;
 
-                $leftoverItemsSold = $this->auctionService->leftoverSoldQuantity($auction);
+                $leftoverItemsSold = $isCancelled ? 0 : $this->auctionService->leftoverSoldQuantity($auction);
                 $soldItems += $leftoverItemsSold;
 
                 if ($soldQuantity > 0 || $leftoverItemsSold > 0) {
