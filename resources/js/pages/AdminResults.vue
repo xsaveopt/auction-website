@@ -199,7 +199,10 @@ const {
                                     (auction.leftover_purchases ?? []).reduce(
                                         (s, p) => s + p.quantity,
                                         0,
-                                    )
+                                    ) +
+                                    (auction.leftover_price_offers ?? [])
+                                        .filter((o) => o.status === "accepted")
+                                        .reduce((s, o) => s + o.quantity, 0)
                                 }}
                                 sold · {{ currencySymbol
                                 }}{{
@@ -213,7 +216,15 @@ const {
                                         (auction.leftover_purchases ?? []).reduce(
                                             (s, p) => s + p.quantity * Number(p.price_per_item),
                                             0,
-                                        )
+                                        ) +
+                                        (auction.leftover_price_offers ?? [])
+                                            .filter((o) => o.status === "accepted")
+                                            .reduce(
+                                                (s, o) =>
+                                                    s +
+                                                    o.quantity * Number(o.offered_price_per_item),
+                                                0,
+                                            )
                                     ).toFixed(2)
                                 }}
                             </span>

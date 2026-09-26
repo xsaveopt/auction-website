@@ -178,6 +178,12 @@ describe("AdminResults", () => {
         expect(wrapper.text()).toContain("Ended 2026-01-15 16:00 · 5 items · 3 bids");
     });
 
+    it("counts accepted price offers in the collapsed auction header", async () => {
+        const wrapper = await mountResults([chairs], { view: "auctions" });
+
+        expect(wrapper.text()).toContain("5 sold · €99.00");
+    });
+
     it("shows an empty state in the by-auction view when nothing sold", async () => {
         const wrapper = await mountResults([unsold], { view: "auctions" });
 
