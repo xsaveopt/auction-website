@@ -315,4 +315,61 @@ class AdminControllersTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', ['id' => $log->id, 'comment' => null]);
     }
+
+    public function test_admin_can_comment_on_own_audit_log_entry(): void
+    {
+        $admin = $this->createAdmin();
+        $log = AuditLog::query()->create(['user_id' => $admin->id, 'action' => 'test.one', 'created_at' => now()]);
+
+        $this->actingAs($admin)->patchJson("/api/admin/audit-log/{$log->id}/comment", [
+            'comment' => 'Checked by finance',
+        ])->assertOk()->assertJsonPath('comment', 'Checked by finance');
+
+        $this->assertDatabaseHas('audit_logs', ['id' => $log->id, 'comment' => 'Checked by finance']);
+    }
+
+    public function test_admin_can_clear_comment_on_own_audit_log_entry(): void
+    {
+        $admin = $this->createAdmin();
+        $log = AuditLog::query()->create([
+            'user_id' => $admin->id,
+            'action' => 'test.one',
+            'comment' => 'Old',
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->patchJson("/api/admin/audit-log/{$log->id}/comment", [
+            'comment' => null,
+        ])->assertOk()->assertJsonPath('comment', null);
+
+        $this->assertDatabaseHas('audit_logs', ['id' => $log->id, 'comment' => null]);
+    }
+
+    public function test_admin_cannot_comment_on_another_admins_audit_log_entry(): void
+    {
+        $owner = $this->createAdmin();
+        $log = AuditLog::query()->create(['user_id' => $owner->id, 'action' => 'test.one', 'created_at' => now()]);
+
+        $this->actingAs($this->createAdmin())->patchJson("/api/admin/audit-log/{$log->id}/comment", [
+            'comment' => 'Not mine',
+        ])->assertForbidden()->assertJsonPath('message', 'You can only comment on your own audit log entries.');
+
+        $this->assertDatabaseHas('audit_logs', ['id' => $log->id, 'comment' => null]);
+    }
+
+    public function test_audit_log_comment_is_limited_to_1000_characters(): void
+    {
+        $admin = $this->createAdmin();
+        $log = AuditLog::query()->create(['user_id' => $admin->id, 'action' => 'test.one', 'created_at' => now()]);
+
+        $this
+            ->actingAs($admin)
+            ->patchJson("/api/admin/audit-log/{$log->id}/comment", ['comment' => str_repeat('a', 1001)])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['comment']);
+
+        $this->actingAs($this->createUser())->patchJson("/api/admin/audit-log/{$log->id}/comment", [
+            'comment' => 'x',
+        ])->assertForbidden();
+    }
 }

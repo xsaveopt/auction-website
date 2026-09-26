@@ -187,4 +187,68 @@ class AuctionControllerTest extends TestCase
         $this->assertSoftDeleted('auctions', ['id' => $auction->id]);
         Storage::disk('public')->assertMissing($path);
     }
+
+    public function test_leftovers_lists_only_non_active_auctions_with_unsold_items(): void
+    {
+        $withLeftovers = $this->createAuction(null, [
+            'quantity' => 3,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $this->createBid($withLeftovers, null, ['quantity' => 1]);
+        $this->createLeftoverPurchase($withLeftovers, null, ['quantity' => 1]);
+
+        $soldOut = $this->createAuction(null, [
+            'quantity' => 1,
+            'status' => 'ended',
+            'ends_at' => now()->subHours(2),
+        ]);
+        $this->createBid($soldOut, null, ['quantity' => 1]);
+
+        $this->createAuction(null, ['quantity' => 5, 'status' => 'active', 'ends_at' => now()->addDay()]);
+
+        $this
+            ->actingAs($this->createAdmin())
+            ->getJson('/api/auctions/leftovers')
+            ->assertOk()
+            ->assertJsonCount(1, 'auctions')
+            ->assertJsonPath('auctions.0.id', $withLeftovers->id)
+            ->assertJsonPath('auctions.0.leftover_quantity', 1);
+    }
+
+    public function test_leftovers_finalizes_expired_auctions_and_filters_by_round(): void
+    {
+        $round = $this->createRound(['status' => 'active']);
+        $expired = $this->createAuction(null, [
+            'quantity' => 2,
+            'status' => 'active',
+            'ends_at' => now()->subMinute(),
+            'auction_round_id' => $round->id,
+        ]);
+        $this->createAuction(null, [
+            'quantity' => 2,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+
+        $admin = $this->createAdmin();
+
+        $this->actingAs($admin)->getJson('/api/auctions/leftovers')->assertOk()->assertJsonCount(2, 'auctions');
+
+        $this->assertSame('ended', $expired->fresh()?->status);
+
+        $this
+            ->actingAs($admin)
+            ->getJson("/api/auctions/leftovers?round_id={$round->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'auctions')
+            ->assertJsonPath('auctions.0.id', $expired->id)
+            ->assertJsonPath('auctions.0.leftover_quantity', 2);
+    }
+
+    public function test_leftovers_is_admin_only(): void
+    {
+        $this->getJson('/api/auctions/leftovers')->assertUnauthorized();
+        $this->actingAs($this->createUser())->getJson('/api/auctions/leftovers')->assertForbidden();
+    }
 }
