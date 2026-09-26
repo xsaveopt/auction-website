@@ -592,4 +592,100 @@ describe("useAuctionDetail", () => {
         result.bidQuantity.value = 2;
         expect(result.selectedBidTotal.value).toBe(5);
     });
+
+    it("surfaces admin offer and purchase errors", async () => {
+        const { result } = mountDetail(auction(), { user: seller });
+        await flushPromises();
+
+        state.apiMock.mockRejectedValueOnce(
+            new ApiError(422, { errors: { username: ["Unknown user."] } }),
+        );
+        await result.submitAdminOffer();
+        expect(result.adminOfferError.value).toBe("Unknown user.");
+        expect(result.adminOfferSaving.value).toBe(false);
+
+        state.apiMock.mockRejectedValueOnce(new Error("offline"));
+        await result.submitAdminOffer();
+        expect(result.adminOfferError.value).toBe("Failed to add offer.");
+
+        state.apiMock.mockRejectedValueOnce(
+            new ApiError(422, { errors: { quantity: ["Only 1 left."] } }),
+        );
+        await result.submitAddPurchase();
+        expect(result.adminPurchaseError.value).toBe("Only 1 left.");
+        expect(result.adminPurchaseSaving.value).toBe(false);
+
+        state.apiMock.mockRejectedValueOnce(new Error("offline"));
+        await result.submitAddPurchase();
+        expect(result.adminPurchaseError.value).toBe("Failed to add purchase.");
+    });
+
+    it("keeps the leftover section for a buyer after the stock sells out", async () => {
+        const { result } = mountDetail(
+            auction({
+                is_active: false,
+                status: "ended",
+                leftover_enabled: true,
+                leftover_quantity: 0,
+                leftover_purchases: [{ id: 9, quantity: 1, price_per_item: "7.50", user: alice }],
+            }),
+        );
+        await flushPromises();
+
+        expect(result.myLeftoverPurchase.value?.id).toBe(9);
+        expect(result.hasLeftoversAvailable.value).toBe(false);
+        expect(result.shouldShowLeftoverSection.value).toBe(true);
+    });
+
+    it("hides the leftover section from other users once the stock sells out", async () => {
+        const { result } = mountDetail(
+            auction({
+                is_active: false,
+                status: "ended",
+                leftover_enabled: true,
+                leftover_quantity: 0,
+                leftover_purchases: [],
+            }),
+            { user: bob },
+        );
+        await flushPromises();
+
+        expect(result.myLeftoverPurchase.value).toBeNull();
+        expect(result.shouldShowLeftoverSection.value).toBe(false);
+    });
+
+    it("keeps leftovers visible to admins after the round is closed", async () => {
+        const { result } = mountDetail(
+            auction({
+                is_active: false,
+                status: "ended",
+                leftover_enabled: true,
+                leftover_quantity: 2,
+                leftover_price: "5.00",
+                round: { id: 1, name: "R", status: "ended" },
+            }),
+            { user: seller },
+        );
+        await flushPromises();
+
+        expect(result.roundIsClosed.value).toBe(true);
+        expect(result.effectiveLeftoverAvailable.value).toBe(true);
+        expect(result.shouldShowLeftoverSection.value).toBe(true);
+        expect(result.auctionStatus.value?.label).toBe("Leftover sale");
+    });
+
+    it("never offers a price limit below one cent", async () => {
+        const { result } = mountDetail(
+            auction({
+                is_active: false,
+                leftover_enabled: true,
+                leftover_quantity: 1,
+                leftover_price: "0.01",
+            }),
+        );
+        await flushPromises();
+
+        expect(result.priceOfferLimit.value).toBe("0.01");
+        expect(result.rebidMinPrice.value).toBe("0.01");
+    });
 });
