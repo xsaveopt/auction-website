@@ -443,4 +443,147 @@ class LeftoverPriceOfferControllerTest extends TestCase
             'deleted_at' => null,
         ]);
     }
+
+    public function test_user_cannot_submit_a_second_offer_without_a_rebid_request(): void
+    {
+        $this->enableLeftoverSales();
+        $user = $this->createUser();
+        $auction = $this->createEndedLeftoverAuction(3);
+        $existing = $this->createLeftoverPriceOffer($auction, $user, [
+            'offered_price_per_item' => '6.00',
+        ]);
+
+        $this->actingAs($user)->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 7.00,
+        ])->assertUnprocessable()->assertJsonPath('message', 'You have already submitted a price offer for this auction.');
+
+        $this->assertSame(1, LeftoverPriceOffer::withTrashed()->where('user_id', $user->id)->count());
+        $this->assertDatabaseHas('leftover_price_offers', [
+            'id' => $existing->id,
+            'offered_price_per_item' => '6.00',
+            'deleted_at' => null,
+        ]);
+    }
+
+    public function test_rebid_resubmission_must_beat_the_previous_offer_by_one_cent(): void
+    {
+        $this->enableLeftoverSales();
+        $user = $this->createUser();
+        $auction = $this->createEndedLeftoverAuction(3);
+        $existing = $this->createLeftoverPriceOffer($auction, $user, [
+            'offered_price_per_item' => '6.00',
+            'rebid_requested_at' => now(),
+        ]);
+
+        $this->actingAs($user)->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 6.00,
+        ])->assertUnprocessable()->assertJsonValidationErrors('offered_price_per_item');
+
+        $this->assertNotSoftDeleted('leftover_price_offers', ['id' => $existing->id]);
+
+        $this->actingAs($user)->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 6.01,
+        ])->assertCreated();
+
+        $this->assertSoftDeleted('leftover_price_offers', ['id' => $existing->id]);
+        $this->assertDatabaseHas('leftover_price_offers', [
+            'auction_id' => $auction->id,
+            'user_id' => $user->id,
+            'offered_price_per_item' => '6.01',
+            'status' => 'pending',
+            'rebid_requested_at' => null,
+            'deleted_at' => null,
+        ]);
+    }
+
+    public function test_offer_price_must_stay_below_the_leftover_buy_now_price(): void
+    {
+        $this->enableLeftoverSales();
+        $user = $this->createUser();
+        $auction = $this->createEndedLeftoverAuction(3);
+
+        $this->actingAs($user)->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 7.50,
+        ])->assertUnprocessable()->assertJsonValidationErrors('offered_price_per_item');
+
+        $this->actingAs($user)->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 0,
+        ])->assertUnprocessable()->assertJsonValidationErrors('offered_price_per_item');
+
+        $this->actingAs($user)->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 7.49,
+        ])->assertCreated();
+    }
+
+    public function test_offer_quantity_is_limited_to_the_remaining_leftover_stock(): void
+    {
+        $this->enableLeftoverSales();
+        $user = $this->createUser();
+        $auction = $this->createEndedLeftoverAuction(4);
+        $this->createBid($auction, null, ['amount' => '12.00', 'quantity' => 1]);
+        $this->createLeftoverPurchase($auction, null, ['quantity' => 1]);
+        $this->createLeftoverPriceOffer($auction, null, ['quantity' => 1, 'status' => 'accepted']);
+
+        $this->actingAs($user)->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 2,
+            'offered_price_per_item' => 5.00,
+        ])->assertUnprocessable()->assertJsonValidationErrors('quantity');
+
+        $this->actingAs($user)->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 5.00,
+        ])->assertCreated();
+    }
+
+    public function test_offers_are_refused_once_no_leftover_stock_remains(): void
+    {
+        $this->enableLeftoverSales();
+        $auction = $this->createEndedLeftoverAuction(1);
+        $this->createLeftoverPurchase($auction, null, ['quantity' => 1]);
+
+        $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/leftover-price-offers", [
+            'quantity' => 1,
+            'offered_price_per_item' => 5.00,
+        ])->assertUnprocessable()->assertJsonPath('message', 'No leftover items are available.');
+    }
+
+    public function test_accepting_an_offer_larger_than_the_remaining_stock_is_refused(): void
+    {
+        $admin = $this->createAdmin();
+        $auction = $this->createEndedLeftoverAuction(2);
+        $this->createLeftoverPurchase($auction, null, ['quantity' => 1]);
+        $offer = $this->createLeftoverPriceOffer($auction, null, ['quantity' => 2]);
+
+        $this
+            ->actingAs($admin)
+            ->postJson("/api/admin/leftover-price-offers/{$offer->id}/accept")
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Only 1 item(s) available; cannot fulfil this offer.');
+
+        $this->assertDatabaseHas('leftover_price_offers', ['id' => $offer->id, 'status' => 'pending']);
+    }
+
+    private function enableLeftoverSales(): void
+    {
+        $siteSettings = SiteSetting::instance();
+        $siteSettings->leftover_sales_enabled = true;
+        $siteSettings->save();
+    }
+
+    private function createEndedLeftoverAuction(int $quantity): \App\Models\Auction
+    {
+        return $this->createAuction($this->createUser(), [
+            'starting_price' => '10.00',
+            'quantity' => $quantity,
+            'max_per_bidder' => $quantity,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+    }
 }

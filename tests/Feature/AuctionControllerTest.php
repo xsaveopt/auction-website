@@ -251,4 +251,113 @@ class AuctionControllerTest extends TestCase
         $this->getJson('/api/auctions/leftovers')->assertUnauthorized();
         $this->actingAs($this->createUser())->getJson('/api/auctions/leftovers')->assertForbidden();
     }
+
+    public function test_ended_summary_totals_bid_and_leftover_revenue_with_and_without_tax(): void
+    {
+        $settings = \App\Models\SiteSetting::instance();
+        $settings->invoice_btw_percentage = 21.0;
+        $settings->save();
+
+        $admin = $this->createAdmin();
+        $bidAuction = $this->createAuction(null, [
+            'quantity' => 3,
+            'max_per_bidder' => 3,
+            'status' => 'ended',
+            'ends_at' => now()->subHours(2),
+        ]);
+        $this->createBid($bidAuction, null, ['amount' => '20.00', 'quantity' => 2]);
+        $this->createBid($bidAuction, null, ['amount' => '15.00', 'quantity' => 1]);
+        $this->createBid($bidAuction, null, ['amount' => '11.00', 'quantity' => 1]);
+
+        $leftoverAuction = $this->createAuction(null, [
+            'starting_price' => '10.00',
+            'quantity' => 4,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $this->createLeftoverPurchase($leftoverAuction, null, ['quantity' => 2, 'price_per_item' => '7.50']);
+        $this->createLeftoverPriceOffer($leftoverAuction, null, [
+            'quantity' => 1,
+            'offered_price_per_item' => '6.00',
+            'status' => 'accepted',
+        ]);
+        $this->createLeftoverPriceOffer($leftoverAuction, null, [
+            'quantity' => 1,
+            'offered_price_per_item' => '5.00',
+            'status' => 'pending',
+        ]);
+
+        $active = $this->createAuction(null, ['ends_at' => now()->addDay()]);
+        $this->createBid($active, null, ['amount' => '50.00']);
+
+        $this
+            ->actingAs($admin)
+            ->getJson('/api/auctions/ended')
+            ->assertOk()
+            ->assertJsonCount(2, 'auctions')
+            ->assertJsonPath('summary.ended_auctions', 2)
+            ->assertJsonPath('summary.auctions_with_sales', 2)
+            ->assertJsonPath('summary.sold_items', 6)
+            ->assertJsonPath('summary.revenue_after_tax', 66)
+            ->assertJsonPath('summary.revenue_before_tax', 54.55);
+    }
+
+    public function test_ended_summary_filters_by_round(): void
+    {
+        $admin = $this->createAdmin();
+        $round = $this->createRound();
+        $inRound = $this->createAuction(null, [
+            'auction_round_id' => $round->id,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $this->createAuction(null, ['status' => 'ended', 'ends_at' => now()->subHour()]);
+
+        $this
+            ->actingAs($admin)
+            ->getJson("/api/auctions/ended?round_id={$round->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'auctions')
+            ->assertJsonPath('auctions.0.id', $inRound->id)
+            ->assertJsonPath('summary.ended_auctions', 1);
+    }
+
+    public function test_ended_summary_finalizes_expired_auctions_first(): void
+    {
+        $admin = $this->createAdmin();
+        $expired = $this->createAuction(null, ['ends_at' => now()->subMinute()]);
+        $this->createBid($expired, null, ['amount' => '12.00']);
+
+        $this
+            ->actingAs($admin)
+            ->getJson('/api/auctions/ended')
+            ->assertOk()
+            ->assertJsonPath('auctions.0.id', $expired->id)
+            ->assertJsonPath('summary.sold_items', 1);
+
+        $this->assertSame('ended', $expired->fresh()->status);
+    }
+
+    public function test_ended_summary_does_not_count_cancelled_auctions_as_sales(): void
+    {
+        $admin = $this->createAdmin();
+        $cancelled = $this->createAuction(null, [
+            'status' => 'cancelled',
+            'ends_at' => now()->subHour(),
+        ]);
+        $this->createBid($cancelled, null, ['amount' => '40.00']);
+
+        $this
+            ->actingAs($admin)
+            ->getJson('/api/auctions/ended')
+            ->assertOk()
+            ->assertJsonPath('summary.auctions_with_sales', 0)
+            ->assertJsonPath('summary.sold_items', 0)
+            ->assertJsonPath('summary.revenue_after_tax', 0);
+    }
+
+    public function test_ended_summary_is_admin_only(): void
+    {
+        $this->actingAs($this->createUser())->getJson('/api/auctions/ended')->assertForbidden();
+    }
 }

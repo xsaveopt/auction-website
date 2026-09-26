@@ -211,4 +211,53 @@ class BidControllerTest extends TestCase
             $settings->save();
         }
     }
+
+    public function test_anti_sniping_does_not_extend_when_disabled(): void
+    {
+        $this->assertAntiSnipingExtension(false, 30, 30);
+    }
+
+    public function test_anti_sniping_does_not_extend_bids_placed_outside_the_window(): void
+    {
+        $this->assertAntiSnipingExtension(true, 120, 120);
+    }
+
+    public function test_anti_sniping_does_not_extend_at_the_exact_window_boundary(): void
+    {
+        $this->assertAntiSnipingExtension(true, 60, 60);
+    }
+
+    public function test_anti_sniping_extends_one_second_inside_the_window(): void
+    {
+        $this->assertAntiSnipingExtension(true, 59, 359);
+    }
+
+    private function assertAntiSnipingExtension(bool $enabled, int $secondsLeft, int $expectedSecondsLeft): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-24 12:00:00'));
+
+        try {
+            $settings = SiteSetting::instance();
+            $settings->anti_sniping_enabled = $enabled;
+            $settings->anti_sniping_window = 60;
+            $settings->anti_sniping_extension = 300;
+            $settings->save();
+
+            $auction = $this->createAuction($this->createUser(), [
+                'ends_at' => now()->addSeconds($secondsLeft),
+            ]);
+
+            $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/bids", [
+                'amount' => 12,
+                'quantity' => 1,
+            ])->assertCreated();
+
+            $this->assertTrue($auction->fresh()->ends_at->equalTo(now()->addSeconds($expectedSecondsLeft)));
+        } finally {
+            Carbon::setTestNow();
+            $settings = SiteSetting::instance();
+            $settings->anti_sniping_enabled = false;
+            $settings->save();
+        }
+    }
 }
