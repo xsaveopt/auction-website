@@ -141,7 +141,8 @@ describe("AuctionList", () => {
         expect(card).toContain("Buy now");
         expect(card).toContain("$15.00");
         expect(card).toContain("2 items left");
-        expect(card).toContain("25% off");
+        expect(card).toContain("25% off the original price");
+        expect(card).not.toContain("off off");
         expect(card).toContain("Buy now available");
     });
 

@@ -312,8 +312,8 @@ const {
                                                 {{ getItemLabel(auction.leftover_quantity) }} left
                                             </span>
                                             <span v-if="leftoverDiscountText(auction)">
-                                                · {{ leftoverDiscountText(auction) }} off the
-                                                original price
+                                                · {{ leftoverDiscountText(auction) }} the original
+                                                price
                                             </span>
                                         </p>
                                     </div>
