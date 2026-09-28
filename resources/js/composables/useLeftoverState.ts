@@ -9,7 +9,11 @@ export function useLeftoverState(source: () => Auction | null) {
 
     const myLeftoverPurchase = computed<LeftoverPurchase | null>(() => {
         if (!user.value || !auction.value?.leftover_purchases) return null;
-        return auction.value.leftover_purchases.find((p) => p.user?.id === user.value?.id) ?? null;
+        return (
+            auction.value.leftover_purchases.find(
+                (p) => p.user?.id === user.value?.id && !p.is_override,
+            ) ?? null
+        );
     });
 
     const myPriceOffer = computed<LeftoverPriceOffer | null>(() => {

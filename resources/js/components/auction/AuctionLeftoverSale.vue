@@ -32,6 +32,9 @@ const {
     leftoverDiscountPercent,
 } = useLeftoverState(() => props.auction);
 
+const regularPurchases = computed(() =>
+    (props.auction.leftover_purchases ?? []).filter((p) => !p.is_override),
+);
 const isSeller = computed(() => Boolean(user.value && user.value.id === props.auction.seller?.id));
 const isBuyer = computed(() => Boolean(user.value && !isSeller.value && !user.value.is_admin));
 
@@ -177,8 +180,8 @@ function onConfirm(dialog: ConfirmDialogState) {
         </div>
 
         <AuctionLeftoverPurchases
-            v-if="auction.leftover_purchases && auction.leftover_purchases.length > 0"
-            :purchases="auction.leftover_purchases"
+            v-if="regularPurchases.length > 0"
+            :purchases="regularPurchases"
             @update="onUpdate"
             @confirm="onConfirm"
         />

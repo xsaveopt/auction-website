@@ -415,7 +415,11 @@ const uid = useId();
                                             {{ purchase.user?.username }}
                                         </td>
                                         <td class="py-2 text-gray-500 dark:text-gray-400">
-                                            Leftover buy
+                                            {{
+                                                purchase.is_override
+                                                    ? "Override sale"
+                                                    : "Leftover buy"
+                                            }}
                                         </td>
                                         <td class="py-2">{{ purchase.quantity }}</td>
                                         <td class="py-2">
@@ -684,9 +688,11 @@ const uid = useId();
                                         {{
                                             !item.isLeftover
                                                 ? "Bid win"
-                                                : item.fromPriceOffer
-                                                  ? "Price offer"
-                                                  : "Leftover buy"
+                                                : item.isOverride
+                                                  ? "Override sale"
+                                                  : item.fromPriceOffer
+                                                    ? "Price offer"
+                                                    : "Leftover buy"
                                         }}
                                     </td>
                                     <td class="py-2">{{ item.wonQuantity }}</td>

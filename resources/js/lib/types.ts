@@ -81,6 +81,7 @@ export interface LeftoverPurchase {
     quantity: number;
     price_per_item: Money;
     from_price_offer?: boolean;
+    is_override?: boolean;
     created_at?: string;
     user?: User;
 }

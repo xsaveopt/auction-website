@@ -23,6 +23,7 @@ interface UserSummaryItem {
     offerId?: Id;
     isLeftover: boolean;
     fromPriceOffer?: boolean;
+    isOverride?: boolean;
 }
 
 interface UserSummary {
@@ -258,6 +259,7 @@ export function useAdminResults(props: { active?: boolean }) {
                     bidId: null,
                     isLeftover: true,
                     fromPriceOffer: purchase.from_price_offer,
+                    isOverride: purchase.is_override,
                 });
                 entry.totalItems += purchase.quantity;
                 entry.totalOwed += owed;
