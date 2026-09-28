@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, useId } from "vue";
+import ConfirmDialog from "../components/ConfirmDialog.vue";
+import { useAdminUsers } from "../composables/useAdminUsers";
+import { overrideSaleQuoteUrl, useOverrideSales } from "../composables/useOverrideSales";
 import { useRoute, useRouter } from "vue-router";
 import { api } from "../lib/api";
 import { formatDate, formatMoney } from "../lib/format";
 import { injectUser, injectCurrencySymbol } from "../lib/injection";
-import type { Auction, AuctionRound } from "../lib/types";
+import type { Auction, AuctionRound, ConfirmDialogState } from "../lib/types";
 
 const router = useRouter();
 const route = useRoute();
@@ -16,6 +19,30 @@ const loading = ref(true);
 const selectedRoundId = ref<number | null>(
     route.query.round_id ? Number(route.query.round_id) : null,
 );
+const confirmDialog = ref<ConfirmDialogState | null>(null);
+const { users, loadUsers } = useAdminUsers();
+const overrideSale = useOverrideSales({
+    confirm: (dialog) => {
+        confirmDialog.value = dialog;
+    },
+    onChange: async () => {
+        const data = await loadLeftovers(selectedRoundId.value);
+        auctions.value = data.auctions;
+    },
+});
+const {
+    sales,
+    selectedLines,
+    username: saleUsername,
+    error: saleError,
+    saving: saleSaving,
+    total: saleTotal,
+    isSelected,
+    toggle: toggleLine,
+    clear: clearSale,
+    submit: submitSale,
+    remove: removeSale,
+} = overrideSale;
 
 if (!user.value?.is_admin) {
     router.push("/");
@@ -57,7 +84,11 @@ onMounted(async () => {
         }
         syncRoundQuery(roundId);
 
-        const data = await loadLeftovers(roundId);
+        const [data] = await Promise.all([
+            loadLeftovers(roundId),
+            overrideSale.loadSales(),
+            loadUsers(),
+        ]);
         auctions.value = data.auctions;
     } finally {
         loading.value = false;
@@ -67,6 +98,7 @@ onMounted(async () => {
 
 watch(selectedRoundId, async (roundId) => {
     if (!initialized) return;
+    clearSale();
     syncRoundQuery(roundId);
     loading.value = true;
     try {
@@ -106,6 +138,19 @@ const uid = useId();
 </script>
 
 <template>
+    <ConfirmDialog
+        v-if="confirmDialog"
+        :title="confirmDialog.title"
+        :message="confirmDialog.message"
+        :confirm-label="confirmDialog.confirmLabel"
+        :danger="confirmDialog.danger"
+        @confirm="
+            confirmDialog.onConfirm();
+            confirmDialog = null;
+        "
+        @cancel="confirmDialog = null"
+    />
+
     <div>
         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1">Leftover Items</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
@@ -151,6 +196,7 @@ const uid = useId();
                     <tr
                         class="text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700"
                     >
+                        <th class="pb-2 pr-2 w-6"><span class="sr-only">Select</span></th>
                         <th class="pb-2 pr-4">Auction</th>
                         <th class="pb-2 pr-4">Ended</th>
                         <th class="pb-2 pr-4">Location</th>
@@ -170,6 +216,14 @@ const uid = useId();
                         :key="auction.id"
                         class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
                     >
+                        <td class="py-2 pr-2">
+                            <input
+                                type="checkbox"
+                                :checked="isSelected(auction)"
+                                :aria-label="`Select ${auction.title} for an override sale`"
+                                @change="toggleLine(auction)"
+                            />
+                        </td>
                         <td class="py-2 pr-4">
                             <router-link
                                 :to="`/auctions/${auction.id}`"
@@ -210,7 +264,7 @@ const uid = useId();
                     <tr
                         class="border-t border-gray-200 dark:border-gray-700 font-semibold text-gray-700 dark:text-gray-300"
                     >
-                        <td class="pt-2 pr-4" colspan="3">Total</td>
+                        <td class="pt-2 pr-4" colspan="4">Total</td>
                         <td class="pt-2 pr-4 text-right">
                             {{ auctions.reduce((s, a) => s + a.quantity, 0) }}
                         </td>
@@ -229,6 +283,158 @@ const uid = useId();
                     </tr>
                 </tfoot>
             </table>
+        </div>
+
+        <form
+            v-if="selectedLines.length > 0"
+            @submit.prevent="submitSale"
+            class="mt-6 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 p-4"
+        >
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100">Override sale</h3>
+                <button
+                    type="button"
+                    @click="clearSale"
+                    class="text-xs text-gray-500 dark:text-gray-400 hover:underline"
+                >
+                    Clear selection
+                </button>
+            </div>
+            <div
+                v-if="saleError"
+                class="mb-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-2 rounded text-sm"
+            >
+                {{ saleError }}
+            </div>
+            <table class="w-full text-sm mb-3">
+                <thead>
+                    <tr class="text-left text-xs text-gray-500 dark:text-gray-400">
+                        <th class="pb-1 pr-4 font-medium">Auction</th>
+                        <th class="pb-1 pr-4 font-medium">Qty</th>
+                        <th class="pb-1 pr-4 font-medium">Price / item</th>
+                        <th class="pb-1 font-medium text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="line in selectedLines" :key="line.auction.id">
+                        <td class="py-1 pr-4">{{ line.auction.title }}</td>
+                        <td class="py-1 pr-4">
+                            <input
+                                v-model="line.quantity"
+                                type="number"
+                                min="1"
+                                :max="line.auction.leftover_quantity"
+                                required
+                                :aria-label="`Quantity of ${line.auction.title}`"
+                                class="border rounded px-2 py-1 w-20"
+                            />
+                            <span class="ml-1 text-xs text-gray-400 dark:text-gray-500"
+                                >/ {{ line.auction.leftover_quantity }}</span
+                            >
+                        </td>
+                        <td class="py-1 pr-4">
+                            <input
+                                v-model="line.price"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                required
+                                :aria-label="`Price per item of ${line.auction.title}`"
+                                class="border rounded px-2 py-1 w-28"
+                            />
+                        </td>
+                        <td class="py-1 text-right">
+                            {{
+                                formatMoney(
+                                    Number(line.quantity || 0) * Number(line.price || 0),
+                                    currencySymbol,
+                                )
+                            }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <label
+                        :for="`${uid}-buyer`"
+                        class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                        >Buyer</label
+                    >
+                    <select
+                        :id="`${uid}-buyer`"
+                        v-model="saleUsername"
+                        required
+                        class="border rounded px-3 py-2 w-48"
+                    >
+                        <option value="" disabled>Select user</option>
+                        <option v-for="u in users" :key="u.id" :value="u.username">
+                            {{ u.username }}
+                        </option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="font-semibold text-gray-800 dark:text-gray-100">
+                        Total {{ formatMoney(saleTotal, currencySymbol) }}
+                    </span>
+                    <button
+                        type="submit"
+                        :disabled="saleSaving"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60 text-sm"
+                    >
+                        {{ saleSaving ? "Saving..." : "Create override sale" }}
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <div v-if="sales.length > 0" class="mt-8">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Override sales
+            </h3>
+            <ul class="divide-y dark:divide-gray-700">
+                <li
+                    v-for="sale in sales"
+                    :key="sale.id"
+                    class="py-3 flex flex-wrap items-start justify-between gap-3"
+                >
+                    <div class="text-sm">
+                        <p class="font-medium text-gray-800 dark:text-gray-100">
+                            #{{ sale.id }} · {{ sale.user.username }}
+                            <span class="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500">
+                                {{ formatDate(sale.created_at) }}
+                            </span>
+                        </p>
+                        <p
+                            v-for="item in sale.items"
+                            :key="item.auction_id"
+                            class="text-gray-500 dark:text-gray-400"
+                        >
+                            {{ item.quantity }} × {{ item.auction_title }} at
+                            {{ formatMoney(item.price_per_item, currencySymbol) }}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3 text-sm">
+                        <span class="font-semibold text-gray-800 dark:text-gray-100">
+                            {{ formatMoney(sale.total, currencySymbol) }}
+                        </span>
+                        <a
+                            :href="overrideSaleQuoteUrl(sale.id)"
+                            target="_blank"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            Quote
+                        </a>
+                        <button
+                            type="button"
+                            @click="removeSale(sale)"
+                            class="text-gray-400 hover:text-red-500 dark:hover:text-red-400"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </li>
+            </ul>
         </div>
     </div>
 </template>

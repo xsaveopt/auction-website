@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useId } from "vue";
 import { useAdminResults } from "../composables/useAdminResults";
+import { overrideSaleQuoteUrl } from "../composables/useOverrideSales";
 
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: false });
 
@@ -439,7 +440,13 @@ const uid = useId();
                                         </td>
                                         <td class="py-2 text-right">
                                             <a
-                                                :href="leftoverQuoteUrl(auction.id, purchase.id)"
+                                                :href="
+                                                    purchase.override_sale_id
+                                                        ? overrideSaleQuoteUrl(
+                                                              purchase.override_sale_id,
+                                                          )
+                                                        : leftoverQuoteUrl(auction.id, purchase.id)
+                                                "
                                                 target="_blank"
                                                 class="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
                                                 title="Download quote PDF"

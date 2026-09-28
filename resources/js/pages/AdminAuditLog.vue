@@ -117,6 +117,7 @@ function actionLabel(action: string) {
         "leftover_purchase.create": "Created leftover sale (admin)",
         "leftover_purchase.delete": "Deleted leftover sale",
         "override_sale.create": "Created override sale",
+        "override_sale.delete": "Deleted override sale",
         "question.answer": "Answered question",
         "question.delete": "Deleted question",
         "api_key.create": "Generated api key",

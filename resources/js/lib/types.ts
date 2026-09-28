@@ -82,8 +82,25 @@ export interface LeftoverPurchase {
     price_per_item: Money;
     from_price_offer?: boolean;
     is_override?: boolean;
+    override_sale_id?: Id | null;
     created_at?: string;
     user?: User;
+}
+
+export interface OverrideSaleItem {
+    auction_id: Id;
+    auction_title: string | null;
+    quantity: number;
+    price_per_item: Money;
+    total: Money;
+}
+
+export interface OverrideSale {
+    id: Id;
+    user: { id: Id | null; username: string | null };
+    items: OverrideSaleItem[];
+    total: Money;
+    created_at: string | null;
 }
 
 export interface AuditLog {

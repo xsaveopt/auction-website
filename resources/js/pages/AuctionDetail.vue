@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import ConfirmDialog from "../components/ConfirmDialog.vue";
 import AuctionAdminControls from "../components/auction/AuctionAdminControls.vue";
-import AuctionAdminOverrideSales from "../components/auction/AuctionAdminOverrideSales.vue";
 import AuctionBidForm from "../components/auction/AuctionBidForm.vue";
 import AuctionBids from "../components/auction/AuctionBids.vue";
 import AuctionLeftoverSale from "../components/auction/AuctionLeftoverSale.vue";
@@ -89,20 +88,6 @@ const { users, loadUsers } = useAdminUsers();
 
                 <AuctionLeftoverSale
                     v-if="shouldShowLeftoverSection"
-                    :auction="auction"
-                    :users="users"
-                    @update="updateAuction"
-                    @confirm="confirm"
-                    @load-users="loadUsers"
-                />
-
-                <AuctionAdminOverrideSales
-                    v-if="
-                        user?.is_admin &&
-                        auction.status !== 'cancelled' &&
-                        ((auction.leftover_quantity ?? 0) > 0 ||
-                            auction.leftover_purchases?.some((p) => p.is_override))
-                    "
                     :auction="auction"
                     :users="users"
                     @update="updateAuction"
