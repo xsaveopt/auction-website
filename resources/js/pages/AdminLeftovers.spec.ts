@@ -95,6 +95,14 @@ describe("AdminLeftovers", () => {
         vi.restoreAllMocks();
     });
 
+    it("renders a single root element so the admin panel can hide it with v-show", async () => {
+        const wrapper = mountLeftovers(() => [], null, admin, [created]);
+        await flushPromises();
+
+        expect(wrapper.vm.$el.nodeType).toBe(Node.ELEMENT_NODE);
+        expect(wrapper.vm.$el.textContent).toContain("Override sales");
+    });
+
     it("redirects non-admins to the home page", () => {
         mountLeftovers(() => [], null, { id: 3, username: "bob", is_admin: false });
 

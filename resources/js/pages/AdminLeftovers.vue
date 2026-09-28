@@ -138,20 +138,20 @@ const uid = useId();
 </script>
 
 <template>
-    <ConfirmDialog
-        v-if="confirmDialog"
-        :title="confirmDialog.title"
-        :message="confirmDialog.message"
-        :confirm-label="confirmDialog.confirmLabel"
-        :danger="confirmDialog.danger"
-        @confirm="
-            confirmDialog.onConfirm();
-            confirmDialog = null;
-        "
-        @cancel="confirmDialog = null"
-    />
-
     <div>
+        <ConfirmDialog
+            v-if="confirmDialog"
+            :title="confirmDialog.title"
+            :message="confirmDialog.message"
+            :confirm-label="confirmDialog.confirmLabel"
+            :danger="confirmDialog.danger"
+            @confirm="
+                confirmDialog.onConfirm();
+                confirmDialog = null;
+            "
+            @cancel="confirmDialog = null"
+        />
+
         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1">Leftover Items</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Ended auctions with unsold stock — items that can be thrown away or otherwise disposed
