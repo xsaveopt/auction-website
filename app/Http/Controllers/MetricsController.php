@@ -10,6 +10,7 @@ use App\Models\LeftoverPurchase;
 use App\Models\PushSubscription;
 use App\Models\User;
 use App\Support\AuctionService;
+use App\Support\BiddingSchedule;
 use App\Support\Presence;
 use App\Support\PrometheusService;
 use Illuminate\Http\Response;
@@ -17,11 +18,16 @@ use Prometheus\RenderTextFormat;
 
 class MetricsController extends Controller
 {
+    private const INTERNAL_PORT = 9113;
+
     public function __invoke(PrometheusService $prometheus, AuctionService $auctionService): Response
     {
         $token = config('services.metrics.token');
+        $authorized = filled($token)
+            ? is_string($token) && hash_equals($token, (string) request()->bearerToken())
+            : request()->getPort() === self::INTERNAL_PORT;
 
-        if (!$token || request()->bearerToken() !== $token) {
+        if (!$authorized) {
             abort(404);
         }
 
@@ -75,6 +81,11 @@ class MetricsController extends Controller
         );
 
         $output = $prometheus->renderMetrics();
+
+        $currency = self::escapeLabel(BiddingSchedule::currencySymbol());
+        $output .= "# HELP app_site_info Site settings exposed as labels\n";
+        $output .= "# TYPE app_site_info gauge\n";
+        $output .= "app_site_info{currency_symbol=\"{$currency}\"} 1\n";
 
         $onlineUserDetails = Presence::onlineUserDetails();
         $output .= "# HELP app_online_user_last_seen Last-seen timestamp in milliseconds for online users\n";

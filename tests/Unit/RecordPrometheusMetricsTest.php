@@ -46,7 +46,7 @@ class RecordPrometheusMetricsTest extends TestCase
         $this->assertLessThan(60.0, $recorded[0]['duration_seconds']);
     }
 
-    public function test_terminate_falls_back_to_the_path_without_a_route(): void
+    public function test_terminate_labels_requests_without_a_route_as_unmatched(): void
     {
         $prometheus = new FakePrometheusService();
         $middleware = new RecordPrometheusMetrics($prometheus);
@@ -55,8 +55,26 @@ class RecordPrometheusMetricsTest extends TestCase
         $middleware->handle($request, fn(Request $r) => new Response());
         $middleware->terminate($request, new Response('', 404));
 
-        $this->assertSame('/missing/page', $prometheus->requests()[0]['route']);
+        $this->assertSame('unmatched', $prometheus->requests()[0]['route']);
         $this->assertSame(404, $prometheus->requests()[0]['status_code']);
+    }
+
+    public function test_terminate_skips_the_metrics_and_health_endpoints(): void
+    {
+        $prometheus = new FakePrometheusService();
+        $middleware = new RecordPrometheusMetrics($prometheus);
+
+        foreach (['metrics', 'up'] as $uri) {
+            $request = Request::create("/{$uri}", 'GET');
+            $route = new Route(['GET'], $uri, fn() => null);
+            $route->bind($request);
+            $request->setRouteResolver(fn() => $route);
+
+            $middleware->handle($request, fn(Request $r) => new Response());
+            $middleware->terminate($request, new Response());
+        }
+
+        $this->assertSame([], $prometheus->requests());
     }
 
     public function test_terminate_skips_requests_that_were_never_started(): void

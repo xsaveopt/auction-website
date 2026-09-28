@@ -32,7 +32,12 @@ class RecordPrometheusMetrics
         }
 
         $routeUri = $request->route()?->uri();
-        $route = $routeUri !== null ? '/' . $routeUri : '/' . $request->path();
+
+        if (in_array($routeUri, ['metrics', 'up'], true)) {
+            return;
+        }
+
+        $route = $routeUri !== null ? '/' . ltrim($routeUri, '/') : 'unmatched';
         $durationSeconds = (hrtime(true) - $startedAt) / 1_000_000_000;
 
         $this->prometheus->observeRequest($request->method(), $route, $response->getStatusCode(), $durationSeconds);
