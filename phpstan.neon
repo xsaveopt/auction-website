@@ -1,8 +1,16 @@
 includes:
     - vendor/larastan/larastan/extension.neon
+    - vendor/phpstan/phpstan-mockery/extension.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
 
 parameters:
     paths:
         - app/
+        - bootstrap/app.php
+        - bootstrap/providers.php
+        - config/
+        - database/
+        - routes/
+        - tests/
     level: 10
     resultCachePath: .phpstan.result.cache
