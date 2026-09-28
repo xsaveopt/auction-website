@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { api, ApiError } from "../api";
-import { injectOnLogin } from "../injection";
-import type { User } from "../types";
+import { ref, onMounted, useId } from "vue";
+import { api } from "../lib/api";
+import { apiError } from "../lib/apiError";
+import { injectOnLogin } from "../lib/injection";
+import type { User } from "../lib/types";
 
 const onLogin = injectOnLogin();
 const username = ref("");
@@ -31,9 +32,11 @@ async function submit() {
         });
         onLogin(data.user);
     } catch (e) {
-        error.value = (e instanceof ApiError && e.data.message) || "Login failed.";
+        error.value = apiError(e) || "Login failed.";
     }
 }
+
+const uid = useId();
 </script>
 
 <template>
@@ -65,8 +68,9 @@ async function submit() {
 
         <form v-else @submit.prevent="submit" class="space-y-4">
             <div>
-                <label class="block text-sm font-medium mb-1">Username</label>
+                <label :for="`${uid}-1`" class="block text-sm font-medium mb-1">Username</label>
                 <input
+                    :id="`${uid}-1`"
                     v-model="username"
                     type="text"
                     required
@@ -74,8 +78,9 @@ async function submit() {
                 />
             </div>
             <div>
-                <label class="block text-sm font-medium mb-1">Password</label>
+                <label :for="`${uid}-2`" class="block text-sm font-medium mb-1">Password</label>
                 <input
+                    :id="`${uid}-2`"
                     v-model="password"
                     type="password"
                     required

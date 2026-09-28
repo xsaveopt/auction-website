@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, useId } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api, ApiError } from "../api";
-import { injectUser } from "../injection";
-import type { AuctionQuestion, AuctionRound, ConfirmDialogState } from "../types";
-import ConfirmDialog from "../ConfirmDialog.vue";
+import { api } from "../lib/api";
+import { apiError } from "../lib/apiError";
+import { formatDate } from "../lib/format";
+import { injectUser } from "../lib/injection";
+import type { AuctionQuestion, AuctionRound, ConfirmDialogState } from "../lib/types";
+import ConfirmDialog from "../components/ConfirmDialog.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -108,9 +110,7 @@ async function submitAnswer(question: AuctionQuestion) {
         editingQuestionId.value = null;
         await loadQuestions();
     } catch (e) {
-        error.value =
-            (e instanceof ApiError && (e.data.message || e.data.errors?.answer?.[0])) ||
-            "Failed to save answer.";
+        error.value = apiError(e, "answer") || "Failed to save answer.";
     } finally {
         savingAnswerId.value = null;
     }
@@ -134,8 +134,7 @@ function deleteQuestion(question: AuctionQuestion) {
                 answerDrafts.value = nextDrafts;
                 await loadQuestions();
             } catch (e) {
-                error.value =
-                    (e instanceof ApiError && e.data.message) || "Failed to delete question.";
+                error.value = apiError(e) || "Failed to delete question.";
             } finally {
                 deletingQuestionId.value = null;
             }
@@ -143,10 +142,7 @@ function deleteQuestion(question: AuctionQuestion) {
     };
 }
 
-function formatDate(d: string | null | undefined) {
-    if (!d) return "";
-    return d.slice(0, 16).replace("T", " ");
-}
+const uid = useId();
 </script>
 
 <template>
@@ -168,8 +164,11 @@ function formatDate(d: string | null | undefined) {
 
         <!-- Round filter -->
         <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-4">
-            <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+            <label :for="`${uid}-1`" class="text-sm text-gray-500 dark:text-gray-400 shrink-0"
+                >Round:</label
+            >
             <select
+                :id="`${uid}-1`"
                 v-model="selectedRoundId"
                 class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
             >
@@ -229,10 +228,13 @@ function formatDate(d: string | null | undefined) {
                             </div>
 
                             <div v-if="editingQuestionId === question.id" class="mt-4">
-                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                <label
+                                    :for="`${uid}-2-${question.id}`"
+                                    class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                     >Answer</label
                                 >
                                 <textarea
+                                    :id="`${uid}-2-${question.id}`"
                                     v-model="answerDrafts[question.id]"
                                     rows="3"
                                     class="w-full border rounded px-3 py-2"
@@ -307,10 +309,13 @@ function formatDate(d: string | null | undefined) {
                             </div>
 
                             <div v-if="editingQuestionId === question.id" class="mt-4">
-                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                <label
+                                    :for="`${uid}-3-${question.id}`"
+                                    class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                     >Answer</label
                                 >
                                 <textarea
+                                    :id="`${uid}-3-${question.id}`"
                                     v-model="answerDrafts[question.id]"
                                     rows="3"
                                     class="w-full border rounded px-3 py-2"

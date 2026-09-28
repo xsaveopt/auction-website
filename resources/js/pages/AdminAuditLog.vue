@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api";
-import { injectUser } from "../injection";
-import type { AuditLog } from "../types";
+import { api } from "../lib/api";
+import { formatDate } from "../lib/format";
+import { injectUser } from "../lib/injection";
+import type { AuditLog } from "../lib/types";
 
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: false });
 const router = useRouter();
@@ -96,11 +97,6 @@ watch(
     },
 );
 
-function formatDate(d: string | null | undefined) {
-    if (!d) return "";
-    return d.slice(0, 19).replace("T", " ");
-}
-
 function actionLabel(action: string) {
     const labels: Record<string, string> = {
         "auction.create": "Created auction",
@@ -122,6 +118,9 @@ function actionLabel(action: string) {
         "leftover_purchase.delete": "Deleted leftover sale",
         "question.answer": "Answered question",
         "question.delete": "Deleted question",
+        "api_key.create": "Generated api key",
+        "api_key.regenerate": "Regenerated api key",
+        "api_key.delete": "Revoked api key",
     };
     return labels[action] ?? action;
 }
@@ -313,7 +312,7 @@ async function saveComment(log: AuditLog) {
                                 <td
                                     class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
                                 >
-                                    {{ formatDate(log.created_at) }}
+                                    {{ formatDate(log.created_at, "second") }}
                                 </td>
                                 <td
                                     class="px-4 py-2 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap"
@@ -326,6 +325,13 @@ async function saveComment(log: AuditLog) {
                                         :class="actionColorClass(log.action)"
                                     >
                                         {{ actionLabel(log.action) }}
+                                    </span>
+                                    <span
+                                        v-if="log.via_api_key"
+                                        class="ml-1 rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                                        title="Performed with an api key"
+                                    >
+                                        API
                                     </span>
                                 </td>
                                 <td

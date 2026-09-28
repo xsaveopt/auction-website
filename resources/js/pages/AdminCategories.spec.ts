@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ref } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
-import type { Category, User } from "../types";
+import type { Category, User } from "../lib/types";
 
 const state = vi.hoisted(() => ({
     apiMock: vi.fn(),
     router: { push: vi.fn(), replace: vi.fn() },
 }));
 
-vi.mock("../api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
+vi.mock("../lib/api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
 vi.mock("vue-router", () => ({ useRouter: () => state.router }));
 
 import AdminCategories from "./AdminCategories.vue";

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { defineComponent, h, ref } from "vue";
 import { mount, flushPromises, type VueWrapper } from "@vue/test-utils";
-import type { AuctionQuestion, User } from "../types";
+import type { AuctionQuestion, User } from "../lib/types";
 
 const state = vi.hoisted(() => ({
     apiMock: vi.fn(),
@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
     questions: [] as unknown[],
 }));
 
-vi.mock("../api", () => {
+vi.mock("../lib/api", () => {
     class ApiError extends Error {
         status: number;
         data: { message?: string; errors?: Record<string, string[]> };
@@ -29,7 +29,7 @@ vi.mock("vue-router", () => ({
 }));
 
 import AdminQuestions from "./AdminQuestions.vue";
-import { ApiError } from "../api";
+import { ApiError } from "../lib/api";
 
 const RouterLinkStub = defineComponent({
     props: { to: { type: String, required: true } },

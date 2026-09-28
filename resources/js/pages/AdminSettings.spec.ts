@@ -3,7 +3,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
 
-vi.mock("../api", () => {
+vi.mock("../lib/api", () => {
     class ApiError extends Error {
         status: number;
         data: { message?: string; errors?: Record<string, string[]> };
@@ -18,14 +18,18 @@ vi.mock("../api", () => {
 });
 
 import AdminSettings from "./AdminSettings.vue";
-import { ApiError } from "../api";
+import { ApiError } from "../lib/api";
 
-async function mountSettings(settings: Record<string, unknown> | Error) {
+async function mountSettings(
+    settings: Record<string, unknown> | Error,
+    apiKey: { exists: boolean; created_at: string | null } = { exists: false, created_at: null },
+) {
     if (settings instanceof Error) {
         apiMock.mockRejectedValueOnce(settings);
     } else {
         apiMock.mockResolvedValueOnce({ settings });
     }
+    apiMock.mockResolvedValueOnce({ api_key: apiKey });
     const wrapper = mount(AdminSettings);
     await flushPromises();
     return wrapper;
@@ -119,5 +123,79 @@ describe("AdminSettings", () => {
         expect(wrapper.text()).toContain("Invalid currency");
         expect(wrapper.text()).not.toContain("Saved.");
         expect(wrapper.find("button[type='submit']").text()).toBe("Save settings");
+    });
+
+    it("generates an api key and shows it once", async () => {
+        const wrapper = await mountSettings({});
+
+        expect(apiMock).toHaveBeenCalledWith("/admin/api-key");
+        expect(wrapper.find("[data-testid='api-key']").text()).toContain("No api key yet.");
+
+        apiMock.mockResolvedValueOnce({
+            key: "auk_secret",
+            api_key: { exists: true, created_at: "2026-09-28T10:00:00.000000Z" },
+        });
+        await wrapper.find("[data-testid='generate-api-key']").trigger("click");
+        await flushPromises();
+
+        expect(apiMock).toHaveBeenLastCalledWith(
+            "/admin/api-key",
+            expect.objectContaining({ method: "POST" }),
+        );
+        const input = wrapper.find("[data-testid='new-api-key']").element as HTMLInputElement;
+        expect(input.value).toBe("auk_secret");
+        expect(wrapper.find("[data-testid='generate-api-key']").text()).toBe("Regenerate key");
+    });
+
+    it("asks for confirmation before regenerating an existing key", async () => {
+        const wrapper = await mountSettings(
+            {},
+            { exists: true, created_at: "2026-09-28T10:00:00.000000Z" },
+        );
+        const callsBefore = apiMock.mock.calls.length;
+
+        await wrapper.find("[data-testid='generate-api-key']").trigger("click");
+        expect(apiMock.mock.calls.length).toBe(callsBefore);
+        expect(wrapper.text()).toContain("Your current api key stops working immediately.");
+
+        apiMock.mockResolvedValueOnce({
+            key: "auk_new",
+            api_key: { exists: true, created_at: "2026-09-28T11:00:00.000000Z" },
+        });
+        await wrapper
+            .findAll("button")
+            .find((b) => b.text() === "Regenerate")!
+            .trigger("click");
+        await flushPromises();
+
+        expect(apiMock).toHaveBeenLastCalledWith(
+            "/admin/api-key",
+            expect.objectContaining({ method: "POST" }),
+        );
+        expect(
+            (wrapper.find("[data-testid='new-api-key']").element as HTMLInputElement).value,
+        ).toBe("auk_new");
+    });
+
+    it("revokes the api key after confirmation", async () => {
+        const wrapper = await mountSettings(
+            {},
+            { exists: true, created_at: "2026-09-28T10:00:00.000000Z" },
+        );
+
+        await wrapper.find("[data-testid='revoke-api-key']").trigger("click");
+        apiMock.mockResolvedValueOnce({ api_key: { exists: false, created_at: null } });
+        await wrapper
+            .findAll("button")
+            .find((b) => b.text() === "Revoke" && !b.attributes("data-testid"))!
+            .trigger("click");
+        await flushPromises();
+
+        expect(apiMock).toHaveBeenLastCalledWith(
+            "/admin/api-key",
+            expect.objectContaining({ method: "DELETE" }),
+        );
+        expect(wrapper.find("[data-testid='revoke-api-key']").exists()).toBe(false);
+        expect(wrapper.find("[data-testid='api-key']").text()).toContain("No api key yet.");
     });
 });

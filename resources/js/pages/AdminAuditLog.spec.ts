@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { reactive, ref } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
-import type { AuditLog, User } from "../types";
+import type { AuditLog, User } from "../lib/types";
 
 const state = vi.hoisted(() => ({
     apiMock: vi.fn(),
@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
     router: { push: vi.fn(), replace: vi.fn() },
 }));
 
-vi.mock("../api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
+vi.mock("../lib/api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
 vi.mock("vue-router", () => ({
     useRoute: () => state.route,
     useRouter: () => state.router,
@@ -79,6 +79,20 @@ describe("AdminAuditLog", () => {
         expect(second.text()).toContain("custom.thing");
         expect(second.text()).toContain("carol");
         expect(wrapper.text()).toContain("2 total entries");
+    });
+
+    it("marks entries made with an api key", async () => {
+        const wrapper = mountLog(() =>
+            page([
+                log({ id: 1, action: "auction.end", via_api_key: true }),
+                log({ id: 2, action: "auction.end", via_api_key: false }),
+            ]),
+        );
+        await flushPromises();
+
+        const [viaKey, viaSession] = wrapper.findAll("tbody tr");
+        expect(viaKey.find("[title='Performed with an api key']").exists()).toBe(true);
+        expect(viaSession.find("[title='Performed with an api key']").exists()).toBe(false);
     });
 
     it("shows an empty state", async () => {

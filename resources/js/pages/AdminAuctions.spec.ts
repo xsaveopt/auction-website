@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ref } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
-import type { Auction, AuctionRound, Category, User } from "../types";
+import type { Auction, AuctionRound, Category, User } from "../lib/types";
 
 const state = vi.hoisted(() => ({
     apiMock: vi.fn(),
@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
     router: { push: vi.fn(), replace: vi.fn() },
 }));
 
-vi.mock("../api", () => {
+vi.mock("../lib/api", () => {
     class ApiError extends Error {
         status: number;
         data: { message?: string; errors?: Record<string, string[]> };
@@ -28,7 +28,7 @@ vi.mock("vue-router", () => ({
 }));
 
 import AdminAuctions from "./AdminAuctions.vue";
-import { ApiError } from "../api";
+import { ApiError } from "../lib/api";
 
 const admin: User = { id: 1, username: "admin", is_admin: true };
 const spring: AuctionRound = { id: 1, name: "Spring", status: "active" };

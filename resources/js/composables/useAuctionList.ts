@@ -1,15 +1,15 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api";
-import { getLeftoverDiscountPercent, hasAvailableLeftovers } from "../auctionPresentation";
+import { api } from "../lib/api";
+import { getLeftoverDiscountPercent, hasAvailableLeftovers } from "../lib/auctionPresentation";
 import {
     injectHeartbeatData,
     injectCurrencySymbol,
     injectUser,
     injectNow,
     injectCurrentRound,
-} from "../injection";
-import type { Announcement, Auction, AuctionRound, Category, Id } from "../types";
+} from "../lib/injection";
+import type { Announcement, Auction, AuctionRound, Category, Id } from "../lib/types";
 
 interface AuctionGroup {
     id: Id | null;
@@ -26,6 +26,7 @@ export function useAuctionList() {
     const allRounds = ref<AuctionRound[]>([]);
     const categories = ref<Category[]>([]);
     const loading = ref(true);
+    const loadError = ref("");
     const heartbeatData = injectHeartbeatData();
     const currencySymbol = injectCurrencySymbol();
     const user = injectUser();
@@ -115,6 +116,8 @@ export function useAuctionList() {
             }
             syncRoundQuery(roundId);
             await loadAuctions(roundId);
+        } catch {
+            loadError.value = "Failed to load auctions.";
         } finally {
             loading.value = false;
             initialized = true;
@@ -125,12 +128,19 @@ export function useAuctionList() {
         if (!initialized) return;
         syncRoundQuery(roundId);
         loading.value = true;
-        await loadAuctions(roundId);
-        loading.value = false;
+        loadError.value = "";
+        try {
+            await loadAuctions(roundId);
+        } catch {
+            loadError.value = "Failed to load auctions.";
+        } finally {
+            loading.value = false;
+        }
     });
 
     watch(heartbeatData, (data) => {
         if (loading.value || !data?.auction_updates) return;
+        if ((data.round_id ?? null) !== selectedRoundId.value) return;
 
         const currentIds = new Set(auctions.value.map((a) => a.id));
         const serverIds = new Set(data.auction_ids ?? []);
@@ -138,7 +148,7 @@ export function useAuctionList() {
             currentIds.size !== serverIds.size ||
             [...serverIds].some((id) => !currentIds.has(id))
         ) {
-            loadAuctions(selectedRoundId.value);
+            loadAuctions(selectedRoundId.value).catch(() => null);
             return;
         }
 
@@ -265,6 +275,7 @@ export function useAuctionList() {
         auctions,
         allRounds,
         loading,
+        loadError,
         currencySymbol,
         user,
         now,

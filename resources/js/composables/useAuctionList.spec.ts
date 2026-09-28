@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { defineComponent, h, reactive, ref, type Ref } from "vue";
 import { mount, flushPromises, enableAutoUnmount } from "@vue/test-utils";
-import type { Auction, HeartbeatData } from "../types";
+import type { Auction, HeartbeatData } from "../lib/types";
 
 const state = vi.hoisted(() => ({
     apiMock: vi.fn(),
@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
     router: { push: vi.fn(), replace: vi.fn() },
 }));
 
-vi.mock("../api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
+vi.mock("../lib/api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
 vi.mock("vue-router", () => ({
     useRoute: () => state.route,
     useRouter: () => state.router,
@@ -48,7 +48,10 @@ function mountList(responses: Record<string, unknown> = {}) {
             if (value instanceof Error) throw value;
             return value;
         }
-        if (url.startsWith("/auctions?round_id=")) return all["/auctions"];
+        if (url.startsWith("/auctions?round_id=")) {
+            if (all["/auctions"] instanceof Error) throw all["/auctions"];
+            return all["/auctions"];
+        }
         throw new Error(`Unexpected ${key}`);
     });
 
@@ -191,6 +194,32 @@ describe("useAuctionList", () => {
         await flushPromises();
 
         expect(state.apiMock).toHaveBeenCalledWith("/auctions");
+    });
+
+    it("ignores heartbeats computed for a different round", async () => {
+        state.route.query = { round_id: "3" };
+        const { heartbeatData } = mountList({ "/auctions": { auctions: [auction({ id: 1 })] } });
+        await flushPromises();
+        state.apiMock.mockClear();
+
+        heartbeatData.value = { round_id: 4, auction_ids: [8, 9], auction_updates: [] };
+        await flushPromises();
+
+        expect(state.apiMock).not.toHaveBeenCalled();
+    });
+
+    it("shows an error instead of loading forever when auctions fail to load", async () => {
+        const { result } = mountList({ "/auctions": new Error("offline") });
+        await flushPromises();
+
+        expect(result.loading.value).toBe(false);
+        expect(result.loadError.value).toBe("Failed to load auctions.");
+
+        result.selectedRoundId.value = 2;
+        await flushPromises();
+
+        expect(result.loading.value).toBe(false);
+        expect(result.loadError.value).toBe("Failed to load auctions.");
     });
 
     it("groups auctions by category, hides ended ones and filters by location", async () => {

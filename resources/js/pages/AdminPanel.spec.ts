@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from "vitest";
 import { reactive, ref } from "vue";
 import { mount, enableAutoUnmount } from "@vue/test-utils";
-import type { User } from "../types";
+import type { User } from "../lib/types";
 
 const state = vi.hoisted(() => ({
     route: { name: "admin-results" as string, path: "/admin/results", query: {} },
@@ -13,7 +13,7 @@ vi.mock("vue-router", () => ({
     useRouter: () => state.router,
 }));
 
-vi.mock("../api", () => ({ api: vi.fn(), ApiError: class extends Error {} }));
+vi.mock("../lib/api", () => ({ api: vi.fn(), ApiError: class extends Error {} }));
 
 import AdminPanel from "./AdminPanel.vue";
 
@@ -40,6 +40,21 @@ function mountPanel(user: User | null = { id: 1, username: "admin", is_admin: tr
 
 describe("AdminPanel", () => {
     enableAutoUnmount(afterEach);
+
+    beforeAll(async () => {
+        await Promise.all([
+            import("./AdminResults.vue"),
+            import("./AdminQuestions.vue"),
+            import("./AdminPriceOffers.vue"),
+            import("./AdminCategories.vue"),
+            import("./AdminAuditLog.vue"),
+            import("./AdminAuctions.vue"),
+            import("./AdminLeftovers.vue"),
+            import("./AdminRounds.vue"),
+            import("./AdminSettings.vue"),
+            import("./CreateAuction.vue"),
+        ]);
+    });
 
     beforeEach(() => {
         state.route = reactive({ name: "admin-results", path: "/admin/results", query: {} });

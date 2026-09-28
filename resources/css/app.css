@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @source '../**/*.blade.php';
-@source '../**/*.js';
+@source '../**/*.ts';
 @source '../**/*.vue';
 
 /* Override Tailwind gray palette in dark mode with true neutrals (no blue tint) */

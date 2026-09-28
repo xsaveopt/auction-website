@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useId } from "vue";
 import { useAdminResults } from "../composables/useAdminResults";
 
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: false });
@@ -31,6 +32,8 @@ const {
     auctionsWithSales,
     statsCards,
 } = useAdminResults(props);
+
+const uid = useId();
 </script>
 
 <template>
@@ -80,8 +83,11 @@ const {
         </div>
         <!-- Round filter -->
         <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-4">
-            <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+            <label :for="`${uid}-1`" class="text-sm text-gray-500 dark:text-gray-400 shrink-0"
+                >Round:</label
+            >
             <select
+                :id="`${uid}-1`"
                 v-model="selectedRoundId"
                 class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
             >
@@ -172,6 +178,7 @@ const {
                             <img
                                 v-if="auction.images.length"
                                 :src="auction.images[0].url"
+                                alt=""
                                 class="w-10 h-10 rounded object-cover shrink-0"
                             />
                             <div class="min-w-0">
@@ -663,6 +670,7 @@ const {
                                             <img
                                                 v-if="item.auctionImages?.length"
                                                 :src="item.auctionImages?.[0].url"
+                                                alt=""
                                                 class="w-7 h-7 rounded object-cover shrink-0"
                                             />
                                             <router-link

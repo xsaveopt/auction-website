@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, useId } from "vue";
 import { useRouter } from "vue-router";
-import { api, ApiError } from "../api";
-import { injectUser, injectCurrencySymbol } from "../injection";
-import type { Auction, Category } from "../types";
+import { api, ApiError } from "../lib/api";
+import { apiError } from "../lib/apiError";
+import { injectUser, injectCurrencySymbol } from "../lib/injection";
+import type { Auction, Category } from "../lib/types";
 
 const router = useRouter();
 const user = injectUser();
@@ -74,13 +75,15 @@ async function submit() {
             errors.value = e.data.errors;
         } else {
             errors.value = {
-                general: [(e instanceof ApiError && e.data.message) || "Failed to update auction."],
+                general: [apiError(e) || "Failed to update auction."],
             };
         }
     } finally {
         submitting.value = false;
     }
 }
+
+const uid = useId();
 </script>
 
 <template>
@@ -96,8 +99,9 @@ async function submit() {
             </div>
             <form @submit.prevent="submit" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium mb-1">Title</label>
+                    <label :for="`${uid}-1`" class="block text-sm font-medium mb-1">Title</label>
                     <input
+                        :id="`${uid}-1`"
                         v-model="title"
                         type="text"
                         required
@@ -108,8 +112,11 @@ async function submit() {
                     </p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">Description</label>
+                    <label :for="`${uid}-2`" class="block text-sm font-medium mb-1"
+                        >Description</label
+                    >
                     <textarea
+                        :id="`${uid}-2`"
                         v-model="description"
                         required
                         rows="4"
@@ -123,8 +130,11 @@ async function submit() {
                     </p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">Pickup Location</label>
+                    <label :for="`${uid}-3`" class="block text-sm font-medium mb-1"
+                        >Pickup Location</label
+                    >
                     <input
+                        :id="`${uid}-3`"
                         v-model="location"
                         type="text"
                         placeholder="e.g. Warehouse A, 123 Main St"
@@ -135,8 +145,12 @@ async function submit() {
                     </p>
                 </div>
                 <div v-if="categories.length > 0">
-                    <label class="block text-sm font-medium mb-1">Category</label>
-                    <select v-model="categoryId" class="w-full border rounded px-3 py-2">
+                    <label :for="`${uid}-4`" class="block text-sm font-medium mb-1">Category</label>
+                    <select
+                        :id="`${uid}-4`"
+                        v-model="categoryId"
+                        class="w-full border rounded px-3 py-2"
+                    >
                         <option value="">No category</option>
                         <option v-for="cat in categories" :key="cat.id" :value="cat.id">
                             {{ cat.name }}
@@ -151,8 +165,11 @@ async function submit() {
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">{{ priceLabel }}</label>
+                        <label :for="`${uid}-5`" class="block text-sm font-medium mb-1">{{
+                            priceLabel
+                        }}</label>
                         <input
+                            :id="`${uid}-5`"
                             v-model="startingPrice"
                             type="number"
                             step="0.01"
@@ -168,8 +185,11 @@ async function submit() {
                         </p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Ends At</label>
+                        <label :for="`${uid}-6`" class="block text-sm font-medium mb-1"
+                            >Ends At</label
+                        >
                         <input
+                            :id="`${uid}-6`"
                             v-model="endsAt"
                             type="datetime-local"
                             required
@@ -185,8 +205,11 @@ async function submit() {
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Total Quantity</label>
+                        <label :for="`${uid}-7`" class="block text-sm font-medium mb-1"
+                            >Total Quantity</label
+                        >
                         <input
+                            :id="`${uid}-7`"
                             v-model="quantity"
                             type="number"
                             min="1"
@@ -201,8 +224,11 @@ async function submit() {
                         </p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Max per Bidder</label>
+                        <label :for="`${uid}-8`" class="block text-sm font-medium mb-1"
+                            >Max per Bidder</label
+                        >
                         <input
+                            :id="`${uid}-8`"
                             v-model="maxPerBidder"
                             type="number"
                             min="1"

@@ -3,7 +3,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
 
-vi.mock("../api", () => {
+vi.mock("../lib/api", () => {
     class ApiError extends Error {
         status: number;
         data: { message?: string; errors?: Record<string, string[]> };
@@ -18,7 +18,7 @@ vi.mock("../api", () => {
 });
 
 import Login from "./Login.vue";
-import { ApiError } from "../api";
+import { ApiError } from "../lib/api";
 
 function mountLogin(onLogin = vi.fn()) {
     return mount(Login, {
@@ -38,6 +38,19 @@ describe("Login", () => {
 
         expect(wrapper.html()).toContain("/auth/microsoft/redirect");
         expect(wrapper.text()).toContain("Microsoft");
+    });
+
+    it("ties each label to its input", async () => {
+        apiMock.mockResolvedValueOnce({ enabled: false });
+        const wrapper = mountLogin();
+        await flushPromises();
+
+        const labels = wrapper.findAll("label");
+        expect(labels).toHaveLength(2);
+        for (const label of labels) {
+            const target = wrapper.find(`[id='${label.attributes("for")}']`);
+            expect(target.element.tagName).toBe("INPUT");
+        }
     });
 
     it("logs in and calls onLogin with the returned user", async () => {

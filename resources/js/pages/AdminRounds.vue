@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { api, ApiError } from "../api";
-import { injectUser } from "../injection";
-import type { AuctionRound } from "../types";
+import { api } from "../lib/api";
+import { apiError } from "../lib/apiError";
+import { formatDate } from "../lib/format";
+import { injectUser } from "../lib/injection";
+import type { AuctionRound } from "../lib/types";
 
 const router = useRouter();
 const user = injectUser();
@@ -48,7 +50,7 @@ async function createRound() {
         rounds.value.unshift(data.round);
         newRoundName.value = "";
     } catch (e) {
-        createError.value = (e instanceof ApiError && e.data.message) || "Failed to create round.";
+        createError.value = apiError(e) || "Failed to create round.";
     } finally {
         creating.value = false;
     }
@@ -75,15 +77,10 @@ async function confirmClose() {
         const idx = rounds.value.findIndex((r: AuctionRound) => r.id === round.id);
         if (idx !== -1) rounds.value[idx] = data.round;
     } catch (e) {
-        closeError.value = (e instanceof ApiError && e.data.message) || "Failed to close round.";
+        closeError.value = apiError(e) || "Failed to close round.";
     } finally {
         closingId.value = null;
     }
-}
-
-function formatDate(d: string | null | undefined) {
-    if (!d) return "—";
-    return d.slice(0, 16).replace("T", " ");
 }
 
 function resultsLink(round: AuctionRound) {
@@ -209,7 +206,7 @@ function resultsLink(round: AuctionRound) {
                             {{ round.auction_count ?? "—" }}
                         </td>
                         <td class="py-2.5 pr-4 text-gray-500 dark:text-gray-400">
-                            {{ formatDate(round.ends_at) }}
+                            {{ formatDate(round.ends_at, "minute", "—") }}
                         </td>
                         <td class="py-2.5">
                             <div class="flex gap-2 items-center">

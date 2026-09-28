@@ -6,12 +6,13 @@ import {
     type RouteRecordRaw,
 } from "vue-router";
 import AuctionList from "./pages/AuctionList.vue";
-import AuctionDetail from "./pages/AuctionDetail.vue";
-import EditAuction from "./pages/EditAuction.vue";
-import AdminPanel from "./pages/AdminPanel.vue";
-import Login from "./pages/Login.vue";
-import Register from "./pages/Register.vue";
-import MyDashboard from "./pages/MyDashboard.vue";
+
+const AuctionDetail = () => import("./pages/AuctionDetail.vue");
+const EditAuction = () => import("./pages/EditAuction.vue");
+const AdminPanel = () => import("./pages/AdminPanel.vue");
+const Login = () => import("./pages/Login.vue");
+const Register = () => import("./pages/Register.vue");
+const MyDashboard = () => import("./pages/MyDashboard.vue");
 
 type AdminTab =
     | "results"

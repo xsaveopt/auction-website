@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, useId } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api, ApiError } from "../api";
-import { injectUser, injectCurrencySymbol } from "../injection";
-import type { Auction, AuctionRound, Id, LeftoverPriceOffer } from "../types";
+import { api } from "../lib/api";
+import { apiError } from "../lib/apiError";
+import { formatDate } from "../lib/format";
+import { injectUser, injectCurrencySymbol } from "../lib/injection";
+import type { Auction, AuctionRound, Id, LeftoverPriceOffer } from "../lib/types";
 
 interface PriceOfferGroup {
     auction: Auction;
@@ -80,11 +82,6 @@ watch(selectedRoundId, async (roundId) => {
     await load(roundId);
 });
 
-function formatDate(d: string | null | undefined) {
-    if (!d) return "";
-    return d.slice(0, 16).replace("T", " ");
-}
-
 async function accept(offer: LeftoverPriceOffer) {
     processingId.value = offer.id;
     error.value = "";
@@ -92,7 +89,7 @@ async function accept(offer: LeftoverPriceOffer) {
         await api(`/admin/leftover-price-offers/${offer.id}/accept`, { method: "POST" });
         offers.value = offers.value.filter((o) => o.id !== offer.id);
     } catch (e) {
-        error.value = (e instanceof ApiError && e.data.message) || "Failed to accept offer.";
+        error.value = apiError(e) || "Failed to accept offer.";
     } finally {
         processingId.value = null;
     }
@@ -158,7 +155,7 @@ async function requestRebid(offerIds: number[]) {
             offerIds.includes(o.id) ? { ...o, rebid_requested_at: now } : o,
         );
     } catch (e) {
-        error.value = (e instanceof ApiError && e.data.message) || "Failed to request rebid.";
+        error.value = apiError(e) || "Failed to request rebid.";
     } finally {
         rebidProcessingKey.value = null;
     }
@@ -171,7 +168,7 @@ async function reject(offer: LeftoverPriceOffer) {
         await api(`/admin/leftover-price-offers/${offer.id}/reject`, { method: "POST" });
         offers.value = offers.value.filter((o) => o.id !== offer.id);
     } catch (e) {
-        error.value = (e instanceof ApiError && e.data.message) || "Failed to reject offer.";
+        error.value = apiError(e) || "Failed to reject offer.";
     } finally {
         processingId.value = null;
     }
@@ -184,11 +181,13 @@ async function deleteOffer(offer: LeftoverPriceOffer) {
         await api(`/admin/leftover-price-offers/${offer.id}`, { method: "DELETE" });
         offers.value = offers.value.filter((o) => o.id !== offer.id);
     } catch (e) {
-        error.value = (e instanceof ApiError && e.data.message) || "Failed to delete offer.";
+        error.value = apiError(e) || "Failed to delete offer.";
     } finally {
         processingId.value = null;
     }
 }
+
+const uid = useId();
 </script>
 
 <template>
@@ -197,8 +196,11 @@ async function deleteOffer(offer: LeftoverPriceOffer) {
 
         <!-- Round filter -->
         <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-4">
-            <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+            <label :for="`${uid}-1`" class="text-sm text-gray-500 dark:text-gray-400 shrink-0"
+                >Round:</label
+            >
             <select
+                :id="`${uid}-1`"
                 v-model="selectedRoundId"
                 class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
             >
@@ -223,6 +225,7 @@ async function deleteOffer(offer: LeftoverPriceOffer) {
                     <img
                         v-if="group.auction.images?.length"
                         :src="group.auction.images[0].url"
+                        alt=""
                         class="w-10 h-10 rounded object-cover shrink-0"
                     />
                     <router-link

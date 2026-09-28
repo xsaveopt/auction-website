@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
-import type { AuctionQuestion } from "../../types";
+import type { AuctionQuestion } from "../../lib/types";
 
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
 
-vi.mock("../../api", () => {
+vi.mock("../../lib/api", () => {
     class ApiError extends Error {
         status: number;
         data: { message?: string; errors?: Record<string, string[]> };
@@ -19,7 +19,7 @@ vi.mock("../../api", () => {
 });
 
 import AuctionQuestions from "./AuctionQuestions.vue";
-import { ApiError } from "../../api";
+import { ApiError } from "../../lib/api";
 
 const answered: AuctionQuestion = {
     id: 1,

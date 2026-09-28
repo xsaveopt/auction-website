@@ -1,8 +1,9 @@
 import { computed, ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api";
-import { injectUser, injectCurrencySymbol } from "../injection";
-import type { Auction, AuctionImage, AuctionRound, Id, Money } from "../types";
+import { api } from "../lib/api";
+import { formatDate, formatMoney as formatAmount } from "../lib/format";
+import { injectUser, injectCurrencySymbol } from "../lib/injection";
+import type { Auction, AuctionImage, AuctionRound, Id, Money } from "../lib/types";
 
 interface ResultsSummary {
     revenue_after_tax: number;
@@ -155,11 +156,6 @@ export function useAdminResults(props: { active?: boolean }) {
         return (auction.bids ?? []).filter((b) => (b.won_quantity ?? 0) > 0);
     }
 
-    function formatDate(d: string | null | undefined) {
-        if (!d) return "";
-        return d.slice(0, 16).replace("T", " ");
-    }
-
     function quoteUrl(auctionId: Id, bidId: Id) {
         return `/api/auctions/${auctionId}/quotes/${bidId}`;
     }
@@ -202,7 +198,7 @@ export function useAdminResults(props: { active?: boolean }) {
     }
 
     function formatMoney(amount: Money | null | undefined) {
-        return `${currencySymbol.value}${Number(amount ?? 0).toFixed(2)}`;
+        return formatAmount(amount, currencySymbol.value);
     }
 
     function toggleUser(username: string) {

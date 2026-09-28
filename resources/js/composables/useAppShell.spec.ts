@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { defineComponent, h, inject, reactive, type Ref } from "vue";
 import { mount, flushPromises, enableAutoUnmount } from "@vue/test-utils";
-import type { OnLoginFn, User } from "../types";
+import type { OnLoginFn, Schedule, User } from "../lib/types";
 
 const state = vi.hoisted(() => ({
     apiMock: vi.fn(),
@@ -21,16 +21,16 @@ const state = vi.hoisted(() => ({
     },
 }));
 
-vi.mock("../api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
+vi.mock("../lib/api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
 vi.mock("vue-router", () => ({
     useRoute: () => state.route,
     useRouter: () => state.router,
 }));
-vi.mock("../useNotifications", () => ({ useNotifications: () => ({ notify: state.notify }) }));
-vi.mock("../useTheme", () => ({
+vi.mock("./useNotifications", () => ({ useNotifications: () => ({ notify: state.notify }) }));
+vi.mock("./useTheme", () => ({
     useTheme: () => ({ isDark: { value: false }, toggleTheme: vi.fn() }),
 }));
-vi.mock("../pushNotifications", () => ({ usePushNotifications: () => state.push }));
+vi.mock("../services/pushNotifications", () => ({ usePushNotifications: () => state.push }));
 
 import { useAppShell } from "./useAppShell";
 
@@ -39,6 +39,7 @@ type Shell = ReturnType<typeof useAppShell>;
 interface Injected {
     currencySymbol: Ref<string>;
     onLogin: OnLoginFn;
+    schedule: Ref<Schedule | null>;
 }
 
 function mountShell(responses: Record<string, unknown> = {}) {
@@ -64,6 +65,7 @@ function mountShell(responses: Record<string, unknown> = {}) {
     const Child = defineComponent({
         setup() {
             injected.currencySymbol = inject("currencySymbol") as Ref<string>;
+            injected.schedule = inject("schedule") as Ref<Schedule | null>;
             injected.onLogin = inject("onLogin") as OnLoginFn;
             return () => h("span");
         },
@@ -199,6 +201,88 @@ describe("useAppShell", () => {
             open: true,
             label: "Bidding open for the weekend · closes in 1d 21h",
         });
+    });
+
+    it("treats an overnight closed window as closed late at night", async () => {
+        vi.setSystemTime(new Date(2026, 0, 7, 23, 0, 0));
+        const { result, injected } = mountShell({
+            "/schedule": schedule({ closed_start: "22:00", closed_end: "06:00" }),
+        });
+        await flushPromises();
+
+        expect(injected.schedule.value?.is_open).toBe(false);
+        expect(result.scheduleBar.value).toEqual({
+            open: false,
+            percent: 12.5,
+            label: "Bidding opens in 7h 0m",
+        });
+    });
+
+    it("treats an overnight closed window as closed early in the morning", async () => {
+        vi.setSystemTime(new Date(2026, 0, 8, 3, 0, 0));
+        const { result, injected } = mountShell({
+            "/schedule": schedule({ closed_start: "22:00", closed_end: "06:00" }),
+        });
+        await flushPromises();
+
+        expect(injected.schedule.value?.is_open).toBe(false);
+        expect(result.scheduleBar.value).toMatchObject({
+            open: false,
+            label: "Bidding opens in 3h 0m",
+        });
+    });
+
+    it("treats an overnight closed window as open during the day", async () => {
+        const { result, injected } = mountShell({
+            "/schedule": schedule({ closed_start: "22:00", closed_end: "06:00" }),
+        });
+        await flushPromises();
+
+        expect(injected.schedule.value?.is_open).toBe(true);
+        expect(result.scheduleBar.value).toEqual({
+            open: true,
+            percent: 37.5,
+            label: "Bidding closes in 10h 0m",
+        });
+    });
+
+    it("uses the server's wall clock rather than the browser's", async () => {
+        const { result, injected } = mountShell({
+            "/schedule": schedule({
+                closed_start: "22:00",
+                closed_end: "06:00",
+                server_time_local: "23:00:00",
+                server_date_local: "2026-01-07",
+            }),
+        });
+        await flushPromises();
+
+        expect(injected.schedule.value?.is_open).toBe(false);
+        expect(result.scheduleBar.value).toMatchObject({
+            open: false,
+            label: "Bidding opens in 7h 0m",
+        });
+        expect(result.serverClock.value).toBe("23:00:00");
+    });
+
+    it("keeps the server clock in step with real time when ticks are delayed", async () => {
+        const { result } = mountShell({
+            "/schedule": schedule({ enabled: false, server_time_local: "10:00:00" }),
+        });
+        await flushPromises();
+
+        vi.setSystemTime(new Date(2026, 0, 7, 12, 0, 30));
+        vi.advanceTimersByTime(1000);
+
+        expect(result.serverClock.value).toBe("10:00:31");
+    });
+
+    it("keeps bidding open when the schedule is disabled", async () => {
+        const { result, injected } = mountShell({ "/schedule": schedule({ enabled: false }) });
+        await flushPromises();
+
+        expect(injected.schedule.value?.is_open).toBe(true);
+        expect(result.scheduleBar.value).toBeNull();
     });
 
     it("refreshes the schedule every minute", async () => {

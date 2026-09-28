@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { defineComponent, h, reactive, ref } from "vue";
 import { mount, flushPromises, enableAutoUnmount } from "@vue/test-utils";
-import type { Auction, CurrentRound, User } from "../types";
+import type { Auction, CurrentRound, User } from "../lib/types";
 
 const state = vi.hoisted(() => ({
     apiMock: vi.fn(),
@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
     router: { push: vi.fn(), replace: vi.fn() },
 }));
 
-vi.mock("../api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
+vi.mock("../lib/api", () => ({ api: state.apiMock, ApiError: class extends Error {} }));
 vi.mock("vue-router", () => ({
     useRoute: () => state.route,
     useRouter: () => state.router,

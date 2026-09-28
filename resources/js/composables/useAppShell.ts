@@ -1,15 +1,16 @@
 import { computed, ref, onMounted, onUnmounted, provide, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api";
-import { HEARTBEAT_INTERVAL_MS, presencePayload } from "../presence";
-import { usePushNotifications } from "../pushNotifications";
-import { useTheme } from "../useTheme";
-import { useNotifications } from "../useNotifications";
-import type { Auction, CurrentRound, HeartbeatData, Schedule, User } from "../types";
+import { api } from "../lib/api";
+import { HEARTBEAT_INTERVAL_MS, presencePayload } from "../services/presence";
+import { usePushNotifications } from "../services/pushNotifications";
+import { useTheme } from "./useTheme";
+import { useNotifications } from "./useNotifications";
+import type { Auction, CurrentRound, HeartbeatData, Schedule, User } from "../lib/types";
 
 interface RawSchedule extends Schedule {
     server_time?: string;
     server_time_local?: string;
+    server_date_local?: string;
     currency_symbol?: string;
     site_locked?: boolean;
     lock_message?: string | null;
@@ -74,7 +75,13 @@ export function useAppShell() {
     const lockMessage = ref<string | null>(null);
     const currentRound = ref<CurrentRound>({ active: null, ended: [] });
     let serverOffsetMs = 0;
-    const serverClockSeconds = ref(0);
+    const serverWallBase = ref<{ wallMs: number; fetchedAt: number } | null>(null);
+
+    const serverWall = computed(() => {
+        const base = serverWallBase.value;
+        if (!base) return null;
+        return new Date(base.wallMs + (now.value.getTime() - serverOffsetMs - base.fetchedAt));
+    });
 
     function parseTime(str: string) {
         const [h, m] = str.split(":").map(Number);
@@ -86,15 +93,43 @@ export function useAppShell() {
         return day === 0 || day === 6;
     }
 
-    function isBiddingOpenNow(sched: RawSchedule | null, date: Date) {
-        if (!sched) return true;
+    function isOpenAt(sched: RawSchedule, date: Date) {
+        if (!sched.enabled) return true;
         if (sched.weekends_open && isWeekend(date)) return true;
         const current = date.getHours() * 60 + date.getMinutes();
-        return current < parseTime(sched.closed_start) || current >= parseTime(sched.closed_end);
+        const start = parseTime(sched.closed_start);
+        const end = parseTime(sched.closed_end);
+        if (start <= end) return current < start || current >= end;
+        return current < start && current >= end;
     }
 
-    function currentFractionalMinutes(date: Date) {
-        return date.getHours() * 60 + date.getMinutes() + date.getSeconds() / 60;
+    function isBiddingOpenNow(sched: RawSchedule | null, date: Date) {
+        if (!sched) return true;
+        return isOpenAt(sched, date);
+    }
+
+    function boundaryCandidates(sched: RawSchedule, date: Date) {
+        const minutes = [0, parseTime(sched.closed_start), parseTime(sched.closed_end)];
+        const times = new Set<number>();
+        for (let offset = -8; offset <= 8; offset++) {
+            for (const minute of minutes) {
+                const candidate = new Date(date);
+                candidate.setDate(candidate.getDate() + offset);
+                candidate.setHours(0, minute, 0, 0);
+                times.add(candidate.getTime());
+            }
+        }
+        return [...times].sort((a, b) => a - b);
+    }
+
+    function spansWeekend(from: number, to: number) {
+        const day = new Date(from);
+        day.setHours(0, 0, 0, 0);
+        while (day.getTime() < to) {
+            if (isWeekend(day)) return true;
+            day.setDate(day.getDate() + 1);
+        }
+        return false;
     }
 
     function formatRemaining(minutes: number) {
@@ -109,95 +144,62 @@ export function useAppShell() {
 
     const schedule = computed<Schedule | null>(() => {
         if (!rawSchedule.value) return null;
+        const wall = serverWall.value;
         return {
             ...rawSchedule.value,
-            is_open: isBiddingOpenNow(rawSchedule.value, now.value),
+            is_open: wall
+                ? isBiddingOpenNow(rawSchedule.value, wall)
+                : (rawSchedule.value.is_open ?? isBiddingOpenNow(rawSchedule.value, now.value)),
         };
     });
 
     const scheduleBar = computed<ScheduleBar | null>(() => {
-        if (!rawSchedule.value || !rawSchedule.value.enabled) return null;
-        const date = now.value;
-        const day = date.getDay();
-        const current = currentFractionalMinutes(date);
-        const start = parseTime(rawSchedule.value.closed_start);
-        const end = parseTime(rawSchedule.value.closed_end);
-        const isOpen = schedule.value?.is_open;
-        const weekendsOpen = rawSchedule.value.weekends_open;
+        const sched = rawSchedule.value;
+        if (!sched || !sched.enabled) return null;
+        const date = serverWall.value ?? now.value;
+        const time = date.getTime();
+        const open = isOpenAt(sched, date);
+        const candidates = boundaryCandidates(sched, date);
 
-        if (!isOpen) {
-            const total = end - start;
-            const elapsed = current - start;
-            const remaining = end - current;
+        const next = candidates.find((c) => c > time && isOpenAt(sched, new Date(c)) !== open);
+        const previous = [...candidates]
+            .reverse()
+            .find((c) => c <= time && isOpenAt(sched, new Date(c - 60000)) !== open);
+        if (next === undefined || previous === undefined) return null;
+
+        const total = (next - previous) / 60000;
+        const elapsed = (time - previous) / 60000;
+        const remaining = (next - time) / 60000;
+        const percent = (elapsed / total) * 100;
+
+        if (!open) {
             return {
                 open: false,
-                percent: (elapsed / total) * 100,
+                percent,
                 label: `Bidding opens in ${formatRemaining(remaining)}`,
             };
         }
 
-        if (weekendsOpen && isWeekend(date)) {
-            const total = 1440 - end + 2 * 1440 + start;
-            const daysSinceFriday = day === 6 ? 1 : 2;
-            const elapsed = 1440 - end + (daysSinceFriday - 1) * 1440 + current;
-            const remaining = total - elapsed;
-            return {
-                open: true,
-                percent: (elapsed / total) * 100,
-                label: `Bidding open for the weekend · closes in ${formatRemaining(remaining)}`,
-            };
-        }
+        const weekendStretch =
+            sched.weekends_open &&
+            [5, 6, 0].includes(date.getDay()) &&
+            spansWeekend(previous, next);
 
-        if (current < start) {
-            const remaining = start - current;
-
-            if (day === 1 && weekendsOpen) {
-                const total = 1440 - end + 2 * 1440 + start;
-                const elapsed = 1440 - end + 2 * 1440 + current;
-                return {
-                    open: true,
-                    percent: (elapsed / total) * 100,
-                    label: `Bidding closes in ${formatRemaining(remaining)}`,
-                };
-            }
-
-            const total = 1440 - end + start;
-            const elapsed = 1440 - end + current;
-            return {
-                open: true,
-                percent: (elapsed / total) * 100,
-                label: `Bidding closes in ${formatRemaining(remaining)}`,
-            };
-        }
-
-        const isFriday = day === 5;
-        if (isFriday && weekendsOpen) {
-            const total = 1440 - end + 2 * 1440 + start;
-            const elapsed = current - end;
-            const remaining = total - elapsed;
-            return {
-                open: true,
-                percent: (elapsed / total) * 100,
-                label: `Bidding open for the weekend · closes in ${formatRemaining(remaining)}`,
-            };
-        }
-
-        const total = 1440 - end + start;
-        const elapsed = current - end;
-        const remaining = total - elapsed;
         return {
             open: true,
-            percent: (elapsed / total) * 100,
-            label: `Bidding closes in ${formatRemaining(remaining)}`,
+            percent,
+            label: weekendStretch
+                ? `Bidding open for the weekend · closes in ${formatRemaining(remaining)}`
+                : `Bidding closes in ${formatRemaining(remaining)}`,
         };
     });
 
     const serverClock = computed(() => {
-        const total = ((serverClockSeconds.value % 86400) + 86400) % 86400;
-        const h = String(Math.floor(total / 3600)).padStart(2, "0");
-        const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-        const s = String(total % 60).padStart(2, "0");
-        return `${h}:${m}:${s}`;
+        const wall = serverWall.value;
+        if (!wall) return "00:00:00";
+        return [wall.getHours(), wall.getMinutes(), wall.getSeconds()]
+            .map((part) => String(part).padStart(2, "0"))
+            .join(":");
     });
 
     const shellWidthClass = "max-w-[1800px]";
@@ -223,7 +225,14 @@ export function useAppShell() {
             }
             if (data.schedule?.server_time_local) {
                 const [h, m, s] = data.schedule.server_time_local.split(":").map(Number);
-                serverClockSeconds.value = h * 3600 + m * 60 + s;
+                const today = new Date();
+                const [year, month, day] = data.schedule.server_date_local
+                    ? data.schedule.server_date_local.split("-").map(Number)
+                    : [today.getFullYear(), today.getMonth() + 1, today.getDate()];
+                serverWallBase.value = {
+                    wallMs: new Date(year, month - 1, day, h, m, s).getTime(),
+                    fetchedAt: Date.now(),
+                };
             }
             if (data.schedule?.currency_symbol) {
                 currencySymbol.value = data.schedule.currency_symbol;
@@ -352,7 +361,6 @@ export function useAppShell() {
         scheduleInterval = setInterval(fetchSchedule, 60000);
         clockInterval = setInterval(() => {
             now.value = new Date(Date.now() + serverOffsetMs);
-            serverClockSeconds.value++;
         }, 1000);
         document.addEventListener("visibilitychange", handleVisibilityChange);
 

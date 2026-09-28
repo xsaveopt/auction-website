@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AuctionImage } from "../../types";
+import type { AuctionImage } from "../../lib/types";
 
 defineProps<{ images: AuctionImage[]; title: string }>();
 const activeImage = defineModel<number>("activeImage", { required: true });
@@ -16,6 +16,9 @@ const activeImage = defineModel<number>("activeImage", { required: true });
             <button
                 v-for="(img, i) in images"
                 :key="img.id"
+                type="button"
+                :aria-label="`Show image ${i + 1} of ${images.length}`"
+                :aria-pressed="i === activeImage"
                 @click="activeImage = i"
                 class="w-16 h-16 rounded overflow-hidden border-2"
                 :class="
@@ -24,7 +27,7 @@ const activeImage = defineModel<number>("activeImage", { required: true });
                         : 'border-transparent opacity-60 hover:opacity-100'
                 "
             >
-                <img :src="img.url" class="w-full h-full object-cover" />
+                <img :src="img.url" alt="" class="w-full h-full object-cover" />
             </button>
         </div>
     </div>

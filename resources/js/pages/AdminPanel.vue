@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, defineAsyncComponent, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { injectUser } from "../injection";
-import AdminResults from "./AdminResults.vue";
-import AdminQuestions from "./AdminQuestions.vue";
-import AdminPriceOffers from "./AdminPriceOffers.vue";
-import AdminCategories from "./AdminCategories.vue";
-import AdminAuditLog from "./AdminAuditLog.vue";
-import AdminAuctions from "./AdminAuctions.vue";
-import AdminLeftovers from "./AdminLeftovers.vue";
-import AdminRounds from "./AdminRounds.vue";
-import AdminSettings from "./AdminSettings.vue";
-import CreateAuction from "./CreateAuction.vue";
+import { injectUser } from "../lib/injection";
+
+const AdminResults = defineAsyncComponent(() => import("./AdminResults.vue"));
+const AdminQuestions = defineAsyncComponent(() => import("./AdminQuestions.vue"));
+const AdminPriceOffers = defineAsyncComponent(() => import("./AdminPriceOffers.vue"));
+const AdminCategories = defineAsyncComponent(() => import("./AdminCategories.vue"));
+const AdminAuditLog = defineAsyncComponent(() => import("./AdminAuditLog.vue"));
+const AdminAuctions = defineAsyncComponent(() => import("./AdminAuctions.vue"));
+const AdminLeftovers = defineAsyncComponent(() => import("./AdminLeftovers.vue"));
+const AdminRounds = defineAsyncComponent(() => import("./AdminRounds.vue"));
+const AdminSettings = defineAsyncComponent(() => import("./AdminSettings.vue"));
+const CreateAuction = defineAsyncComponent(() => import("./CreateAuction.vue"));
 
 const router = useRouter();
 const route = useRoute();

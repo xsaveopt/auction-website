@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { api, ApiError } from "../../api";
-import type { AuctionQuestion, ConfirmDialogState } from "../../types";
-import ConfirmDialog from "../../ConfirmDialog.vue";
+import { ref, computed, useId } from "vue";
+import { api } from "../../lib/api";
+import { apiError } from "../../lib/apiError";
+import { formatDate } from "../../lib/format";
+import type { AuctionQuestion, ConfirmDialogState } from "../../lib/types";
+import ConfirmDialog from "../ConfirmDialog.vue";
 
 const props = defineProps<{
     auctionId?: string;
@@ -25,21 +27,6 @@ const confirmDialog = ref<ConfirmDialogState | null>(null);
 
 const answeredQuestions = computed(() => props.questions.filter((question) => question.answer));
 const openQuestions = computed(() => props.questions.filter((question) => !question.answer));
-
-function apiError(e: unknown, ...fields: string[]): string | undefined {
-    if (!(e instanceof ApiError)) return undefined;
-    if (e.data.message) return e.data.message;
-    for (const field of fields) {
-        const value = e.data.errors?.[field]?.[0];
-        if (value) return value;
-    }
-    return undefined;
-}
-
-function formatDate(d: string | null | undefined) {
-    if (!d) return "";
-    return d.slice(0, 16).replace("T", " ");
-}
 
 function startAnswer(question: AuctionQuestion) {
     editingQuestionId.value = question.id;
@@ -131,6 +118,8 @@ function deleteQuestion(question: AuctionQuestion) {
         },
     };
 }
+
+const uid = useId();
 </script>
 
 <template>
@@ -188,10 +177,13 @@ function deleteQuestion(question: AuctionQuestion) {
                     </p>
 
                     <div v-if="editingQuestionId === question.id" class="mt-4">
-                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                        <label
+                            :for="`${uid}-1-${question.id}`"
+                            class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                             >Answer</label
                         >
                         <textarea
+                            :id="`${uid}-1-${question.id}`"
                             v-model="answerDrafts[question.id]"
                             rows="4"
                             class="w-full border rounded px-3 py-2"
@@ -290,10 +282,13 @@ function deleteQuestion(question: AuctionQuestion) {
                         </p>
 
                         <div v-if="editingQuestionId === question.id" class="mt-4">
-                            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                            <label
+                                :for="`${uid}-2-${question.id}`"
+                                class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                 >Answer</label
                             >
                             <textarea
+                                :id="`${uid}-2-${question.id}`"
                                 v-model="answerDrafts[question.id]"
                                 rows="4"
                                 class="w-full border rounded px-3 py-2"
@@ -348,10 +343,13 @@ function deleteQuestion(question: AuctionQuestion) {
                 <h3 class="font-semibold">Ask a question</h3>
 
                 <form v-if="canAsk" @submit.prevent="submitQuestion" class="mt-4">
-                    <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                    <label
+                        :for="`${uid}-3`"
+                        class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                         >Your question</label
                     >
                     <textarea
+                        :id="`${uid}-3`"
                         v-model="questionText"
                         rows="3"
                         maxlength="2000"

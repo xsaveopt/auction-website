@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, useId } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api, ApiError } from "../api";
-import { injectUser, injectCurrencySymbol } from "../injection";
-import type { Auction, AuctionRound, Category, ConfirmDialogState } from "../types";
-import ConfirmDialog from "../ConfirmDialog.vue";
+import { api } from "../lib/api";
+import { apiError } from "../lib/apiError";
+import { formatDate } from "../lib/format";
+import { injectUser, injectCurrencySymbol } from "../lib/injection";
+import type { Auction, AuctionRound, Category, ConfirmDialogState } from "../lib/types";
+import ConfirmDialog from "../components/ConfirmDialog.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -187,7 +189,7 @@ async function executeBulk() {
         saveSuccess.value = `${count} auction${count !== 1 ? "s" : ""} updated.`;
         setTimeout(() => (saveSuccess.value = ""), 3000);
     } catch (e) {
-        saveError.value = (e instanceof ApiError && e.data.message) || "Failed to update auctions.";
+        saveError.value = apiError(e) || "Failed to update auctions.";
     } finally {
         saving.value = false;
     }
@@ -227,10 +229,7 @@ function statusClasses(auction: Auction) {
     return "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
 }
 
-function formatDate(d: string | null | undefined) {
-    if (!d) return "—";
-    return d.slice(0, 10);
-}
+const uid = useId();
 </script>
 
 <template>
@@ -258,8 +257,11 @@ function formatDate(d: string | null | undefined) {
             <!-- Filters -->
             <div class="flex flex-wrap gap-3 mb-4 items-center">
                 <div class="flex items-center gap-1.5">
-                    <label class="text-xs text-gray-500 dark:text-gray-400">Status:</label>
+                    <label :for="`${uid}-1`" class="text-xs text-gray-500 dark:text-gray-400"
+                        >Status:</label
+                    >
                     <select
+                        :id="`${uid}-1`"
                         v-model="filterStatus"
                         class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
                     >
@@ -270,8 +272,11 @@ function formatDate(d: string | null | undefined) {
                     </select>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <label class="text-xs text-gray-500 dark:text-gray-400">Round:</label>
+                    <label :for="`${uid}-2`" class="text-xs text-gray-500 dark:text-gray-400"
+                        >Round:</label
+                    >
                     <select
+                        :id="`${uid}-2`"
                         v-model="filterRound"
                         class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
                     >
@@ -431,7 +436,7 @@ function formatDate(d: string | null | undefined) {
                             {{ auction.round?.name ?? "—" }}
                         </td>
                         <td class="py-2 pr-4 text-gray-500 dark:text-gray-400">
-                            {{ formatDate(auction.ends_at) }}
+                            {{ formatDate(auction.ends_at, "day", "—") }}
                         </td>
                         <td class="py-2 text-right text-gray-600 dark:text-gray-400">
                             {{ currencySymbol }}{{ Number(auction.starting_price).toFixed(2) }}

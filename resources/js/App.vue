@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import NotificationToast from "./NotificationToast.vue";
+import NotificationToast from "./components/NotificationToast.vue";
 import { useAppShell } from "./composables/useAppShell";
 
 const {

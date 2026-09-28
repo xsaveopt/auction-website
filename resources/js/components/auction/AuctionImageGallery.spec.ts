@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
 import AuctionImageGallery from "./AuctionImageGallery.vue";
-import type { AuctionImage } from "../../types";
+import type { AuctionImage } from "../../lib/types";
 
 const images: AuctionImage[] = [
     { id: 1, path: "a.jpg", url: "/img/a.jpg" },
@@ -46,6 +46,9 @@ describe("AuctionImageGallery", () => {
         const thumbs = wrapper.findAll("button");
 
         expect(thumbs).toHaveLength(3);
+        expect(thumbs[1].attributes("aria-label")).toBe("Show image 2 of 3");
+        expect(thumbs[0].attributes("aria-pressed")).toBe("true");
+        expect(thumbs[1].find("img").attributes("alt")).toBe("");
         expect(thumbs[0].classes()).toContain("border-blue-500");
         expect(thumbs[2].classes()).not.toContain("border-blue-500");
 

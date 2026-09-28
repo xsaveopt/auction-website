@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ref } from "vue";
 import { mount, flushPromises, enableAutoUnmount } from "@vue/test-utils";
-import type { User } from "../types";
+import type { User } from "../lib/types";
 
 const state = vi.hoisted(() => ({
     apiMock: vi.fn(),
     router: { push: vi.fn() },
 }));
 
-vi.mock("../api", () => {
+vi.mock("../lib/api", () => {
     class ApiError extends Error {
         status: number;
         data: { message?: string; errors?: Record<string, string[]> };
@@ -24,7 +24,7 @@ vi.mock("../api", () => {
 vi.mock("vue-router", () => ({ useRouter: () => state.router }));
 
 import CreateAuction from "./CreateAuction.vue";
-import { ApiError } from "../api";
+import { ApiError } from "../lib/api";
 
 const admin: User = { id: 1, username: "admin", is_admin: true };
 

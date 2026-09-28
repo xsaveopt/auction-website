@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, useId } from "vue";
 import { useRouter } from "vue-router";
-import { api } from "../api";
-import { injectUser } from "../injection";
-import type { Category, ConfirmDialogState } from "../types";
-import ConfirmDialog from "../ConfirmDialog.vue";
+import { api } from "../lib/api";
+import { injectUser } from "../lib/injection";
+import type { Category, ConfirmDialogState } from "../lib/types";
+import ConfirmDialog from "../components/ConfirmDialog.vue";
 
 const router = useRouter();
 const user = injectUser();
@@ -86,6 +86,8 @@ function deleteCategory(cat: Category) {
         },
     };
 }
+
+const uid = useId();
 </script>
 
 <template>
@@ -165,10 +167,13 @@ function deleteCategory(cat: Category) {
                     <form v-else @submit.prevent="saveEdit" class="space-y-3">
                         <div class="grid grid-cols-3 gap-2">
                             <div class="col-span-2">
-                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                <label
+                                    :for="`${uid}-1`"
+                                    class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                     >Name</label
                                 >
                                 <input
+                                    :id="`${uid}-1`"
                                     v-model="editName"
                                     type="text"
                                     required
@@ -176,10 +181,13 @@ function deleteCategory(cat: Category) {
                                 />
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                                <label
+                                    :for="`${uid}-2`"
+                                    class="block text-xs text-gray-500 dark:text-gray-400 mb-1"
                                     >Sort Order</label
                                 >
                                 <input
+                                    :id="`${uid}-2`"
                                     v-model="editOrder"
                                     type="number"
                                     class="w-full border rounded px-3 py-2"

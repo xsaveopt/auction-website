@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, useId } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "../api";
-import { injectUser, injectCurrencySymbol, injectNow } from "../injection";
-import type { Auction, AuctionRound, LeftoverPriceOffer, LeftoverPurchase, Money } from "../types";
+import { api } from "../lib/api";
+import { formatDate } from "../lib/format";
+import { injectUser, injectCurrencySymbol, injectNow } from "../lib/injection";
+import type {
+    Auction,
+    AuctionRound,
+    LeftoverPriceOffer,
+    LeftoverPurchase,
+    Money,
+} from "../lib/types";
 
 const route = useRoute();
 const router = useRouter();
@@ -128,6 +135,8 @@ const hasAnything = computed(
         lost.value.length > 0 ||
         purchased.value.length > 0,
 );
+
+const uid = useId();
 </script>
 
 <template>
@@ -136,8 +145,11 @@ const hasAnything = computed(
 
         <!-- Round selector -->
         <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-6">
-            <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+            <label :for="`${uid}-1`" class="text-sm text-gray-500 dark:text-gray-400 shrink-0"
+                >Round:</label
+            >
             <select
+                :id="`${uid}-1`"
                 v-model="selectedRoundId"
                 class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
             >
@@ -171,6 +183,7 @@ const hasAnything = computed(
                             <img
                                 v-if="auction.images.length"
                                 :src="auction.images[0].url"
+                                alt=""
                                 class="w-24 h-24 object-cover shrink-0"
                             />
                             <div class="p-4 min-w-0">
@@ -220,6 +233,7 @@ const hasAnything = computed(
                             <img
                                 v-if="auction.images.length"
                                 :src="auction.images[0].url"
+                                alt=""
                                 class="w-24 h-24 object-cover shrink-0"
                             />
                             <div class="p-4 min-w-0">
@@ -270,6 +284,7 @@ const hasAnything = computed(
                             <img
                                 v-if="auction.images.length"
                                 :src="auction.images[0].url"
+                                alt=""
                                 class="w-24 h-24 object-cover shrink-0"
                             />
                             <div class="p-4 min-w-0 flex-1">
@@ -329,6 +344,7 @@ const hasAnything = computed(
                         <img
                             v-if="auction.images.length"
                             :src="auction.images[0].url"
+                            alt=""
                             class="w-10 h-10 object-cover rounded"
                         />
                         <div class="min-w-0 flex-1">
@@ -336,7 +352,7 @@ const hasAnything = computed(
                                 {{ auction.title }}
                             </h3>
                             <p class="text-xs text-gray-400">
-                                Ended {{ auction.ends_at.slice(0, 10) }}
+                                Ended {{ formatDate(auction.ends_at, "day") }}
                             </p>
                         </div>
                         <div class="text-right">

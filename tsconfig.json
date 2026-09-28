@@ -15,6 +15,7 @@
         "e2e/**/*.ts"
     ],
     "vueCompilerOptions": {
-        "strictTemplates": false
+        "strictTemplates": true,
+        "dataAttributes": ["data-*"]
     }
 }

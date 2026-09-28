@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { getItemLabel } from "../auctionPresentation";
+import { useId } from "vue";
+import { getItemLabel } from "../lib/auctionPresentation";
 import { useAuctionList } from "../composables/useAuctionList";
 
 const {
     auctions,
     allRounds,
     loading,
+    loadError,
     currencySymbol,
     user,
     now,
@@ -32,11 +34,16 @@ const {
     groupedAuctions,
     timeLeft,
 } = useAuctionList();
+
+const uid = useId();
 </script>
 
 <template>
     <div>
         <p v-if="loading" class="text-gray-500 dark:text-gray-400">Loading...</p>
+        <p v-else-if="loadError" class="text-red-600 dark:text-red-400" role="alert">
+            {{ loadError }}
+        </p>
         <template v-else>
             <!-- Round ended banner -->
             <div
@@ -65,8 +72,11 @@ const {
 
             <!-- Round selector -->
             <div v-if="allRounds.length > 0" class="flex items-center gap-2 mb-4">
-                <label class="text-sm text-gray-500 dark:text-gray-400 shrink-0">Round:</label>
+                <label :for="`${uid}-1`" class="text-sm text-gray-500 dark:text-gray-400 shrink-0"
+                    >Round:</label
+                >
                 <select
+                    :id="`${uid}-1`"
                     v-model="selectedRoundId"
                     class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
                 >
@@ -148,10 +158,13 @@ const {
                 v-if="editingAnnouncement && user?.is_admin"
                 class="mb-6 bg-white dark:bg-gray-800 rounded shadow border-l-4 border-blue-500 dark:border-blue-400 p-4"
             >
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                <label
+                    :for="`${uid}-2`"
+                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                     >Announcement</label
                 >
                 <textarea
+                    :id="`${uid}-2`"
                     v-model="announcementDraft"
                     rows="3"
                     maxlength="1000"

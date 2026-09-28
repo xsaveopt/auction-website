@@ -3,7 +3,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 
 const { apiMock } = vi.hoisted(() => ({ apiMock: vi.fn() }));
 
-vi.mock("../api", () => {
+vi.mock("../lib/api", () => {
     class ApiError extends Error {
         status: number;
         data: { message?: string; errors?: Record<string, string[]> };
@@ -18,7 +18,7 @@ vi.mock("../api", () => {
 });
 
 import Register from "./Register.vue";
-import { ApiError } from "../api";
+import { ApiError } from "../lib/api";
 
 function mountRegister(onLogin = vi.fn()) {
     return mount(Register, {
