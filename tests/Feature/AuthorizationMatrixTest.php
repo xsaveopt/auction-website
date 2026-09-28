@@ -52,7 +52,8 @@ class AuthorizationMatrixTest extends TestCase
             ['method' => 'putJson', 'uri' => "/api/admin/bids/{$bid->id}"],
             ['method' => 'deleteJson', 'uri' => "/api/admin/bids/{$bid->id}"],
             ['method' => 'postJson', 'uri' => "/api/admin/auctions/{$auction->id}/leftover-purchases"],
-            ['method' => 'postJson', 'uri' => "/api/admin/auctions/{$auction->id}/override-sales"],
+            ['method' => 'getJson', 'uri' => '/api/admin/override-sales'],
+            ['method' => 'postJson', 'uri' => '/api/admin/override-sales'],
             ['method' => 'deleteJson', 'uri' => "/api/admin/leftover-purchases/{$purchase->id}"],
             ['method' => 'getJson', 'uri' => '/api/admin/audit-log'],
         ];
@@ -98,7 +99,8 @@ class AuthorizationMatrixTest extends TestCase
             ['method' => 'putJson', 'uri' => "/api/admin/bids/{$bid->id}"],
             ['method' => 'deleteJson', 'uri' => "/api/admin/bids/{$bid->id}"],
             ['method' => 'postJson', 'uri' => "/api/admin/auctions/{$auction->id}/leftover-purchases"],
-            ['method' => 'postJson', 'uri' => "/api/admin/auctions/{$auction->id}/override-sales"],
+            ['method' => 'getJson', 'uri' => '/api/admin/override-sales'],
+            ['method' => 'postJson', 'uri' => '/api/admin/override-sales'],
             ['method' => 'deleteJson', 'uri' => "/api/admin/leftover-purchases/{$purchase->id}"],
             ['method' => 'getJson', 'uri' => '/api/admin/audit-log'],
         ];

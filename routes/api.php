@@ -16,6 +16,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BidController;
 use App\Http\Controllers\LeftoverPriceOfferController;
 use App\Http\Controllers\LeftoverPurchaseController;
+use App\Http\Controllers\OverrideSaleController;
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\QuotePdfController;
@@ -61,6 +62,7 @@ Route::middleware('sso')->group(function () {
     Route::get('/auctions/{auction}/quotes/{bid}', [QuotePdfController::class, 'download'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}/leftover-purchases/{leftoverPurchase}/quotes', [QuotePdfController::class, 'downloadForLeftoverPurchase'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}/leftover-price-offers/{leftoverPriceOffer}/quotes', [QuotePdfController::class, 'downloadForLeftoverPriceOffer'])->middleware(['auth', 'admin']);
+    Route::get('/override-sales/{overrideSale}/quotes', [QuotePdfController::class, 'downloadForOverrideSale'])->middleware(['auth', 'admin']);
     Route::get('/users/{user}/quotes', [QuotePdfController::class, 'downloadForUser'])->middleware(['auth', 'admin']);
     Route::get('/quotes/{filename}', [QuotePdfController::class, 'downloadStored'])->middleware(['auth', 'admin']);
     Route::get('/auctions/{auction}', [AuctionController::class, 'show']);
@@ -107,8 +109,10 @@ Route::middleware('sso')->group(function () {
         Route::put('/bids/{bid}', [AdminBidController::class, 'update']);
         Route::delete('/bids/{bid}', [AdminBidController::class, 'destroy']);
         Route::post('/auctions/{auction}/leftover-purchases', [LeftoverPurchaseController::class, 'adminStore']);
-        Route::post('/auctions/{auction}/override-sales', [LeftoverPurchaseController::class, 'overrideStore']);
         Route::delete('/leftover-purchases/{leftoverPurchase}', [LeftoverPurchaseController::class, 'destroy']);
+        Route::get('/override-sales', [OverrideSaleController::class, 'index']);
+        Route::post('/override-sales', [OverrideSaleController::class, 'store']);
+        Route::delete('/override-sales/{overrideSale}', [OverrideSaleController::class, 'destroy']);
         Route::get('/leftover-price-offers', [LeftoverPriceOfferController::class, 'index']);
         Route::post('/leftover-price-offers/request-rebid', [LeftoverPriceOfferController::class, 'requestRebid']);
         Route::post('/leftover-price-offers/{leftoverPriceOffer}/accept', [LeftoverPriceOfferController::class, 'accept']);

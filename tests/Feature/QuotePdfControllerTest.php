@@ -372,6 +372,53 @@ class QuotePdfControllerTest extends TestCase
         $this->assertNull($data['round_name']);
     }
 
+    public function test_override_sale_quote_lists_only_the_items_of_that_sale(): void
+    {
+        $admin = $this->createAdmin();
+        $buyer = $this->createUser();
+        $chair = $this->createAuction(null, [
+            'title' => 'Chair',
+            'quantity' => 5,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $desk = $this->createAuction(null, [
+            'title' => 'Desk',
+            'quantity' => 5,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $this->createLeftoverPurchase($chair, $buyer, ['quantity' => 1, 'price_per_item' => '9.00']);
+        $sale = \App\Models\OverrideSale::query()->create(['user_id' => $buyer->id]);
+        $this->createLeftoverPurchase($chair, $buyer, [
+            'quantity' => 2,
+            'price_per_item' => '4.00',
+            'is_override' => true,
+            'override_sale_id' => $sale->id,
+        ]);
+        $this->createLeftoverPurchase($desk, $buyer, [
+            'quantity' => 1,
+            'price_per_item' => '20.50',
+            'is_override' => true,
+            'override_sale_id' => $sale->id,
+        ]);
+
+        $captured = $this->capturePdfData("override_sale_{$sale->id}_{$buyer->username}.pdf");
+
+        $this->actingAs($admin)->get("/api/override-sales/{$sale->id}/quotes")->assertOk();
+
+        $data = $captured();
+        $this->assertSame(
+            [
+                ['title' => 'Chair', 'quantity' => 2, 'price_per_item' => 4.0, 'total' => 8.0],
+                ['title' => 'Desk', 'quantity' => 1, 'price_per_item' => 20.5, 'total' => 20.5],
+            ],
+            $data['items'],
+        );
+        $this->assertSame(28.5, $data['total']);
+        $this->assertSame($buyer->username, data_get($data, 'winner.username'));
+    }
+
     public function test_user_quote_returns_not_found_when_the_user_won_nothing(): void
     {
         $admin = $this->createAdmin();

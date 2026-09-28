@@ -7,6 +7,7 @@ use App\Models\AuctionRound;
 use App\Models\Bid;
 use App\Models\LeftoverPriceOffer;
 use App\Models\LeftoverPurchase;
+use App\Models\OverrideSale;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Support\AuctionService;
@@ -168,6 +169,55 @@ class QuotePdfController extends Controller
 
         $filename =
             str_replace(' ', '_', $auction->title) . '_' . ($leftoverPriceOffer->user->username ?? 'user') . '.pdf';
+
+        /** @var Response */
+        return $pdf->download($filename);
+    }
+
+    public function downloadForOverrideSale(OverrideSale $overrideSale): Response
+    {
+        $overrideSale->load(['user:id,username,payment_reference', 'purchases.auction:id,title']);
+        abort_if($overrideSale->purchases->isEmpty(), 404);
+
+        $items = [];
+        $totalOwed = 0.0;
+
+        foreach ($overrideSale->purchases as $purchase) {
+            $pricePerItem = (float) $purchase->price_per_item;
+            $itemTotal = round($purchase->quantity * $pricePerItem, 2);
+            $items[] = [
+                'title' => $purchase->auction->title ?? 'Unknown',
+                'quantity' => $purchase->quantity,
+                'price_per_item' => $pricePerItem,
+                'total' => $itemTotal,
+            ];
+            $totalOwed += $itemTotal;
+        }
+
+        $btwPercentage = $this->siteSettings()->invoice_btw_percentage ?? 21.0;
+        $subtotal = round($totalOwed / (1 + ($btwPercentage / 100)), 2);
+        $btwAmount = round($totalOwed - $subtotal, 2);
+
+        $data = [
+            'winner' => [
+                'username' => $overrideSale->user->username ?? 'Unknown',
+            ],
+            'items' => $items,
+            'payment_reference' => $overrideSale->user ? $this->getOrCreatePaymentReference($overrideSale->user) : null,
+            'currency' => BiddingSchedule::currencySymbol(),
+            'generated_at' => now()->format('d-m-Y'),
+            'company' => $this->siteSettings()->company(),
+            'subtotal' => $subtotal,
+            'btw_percentage' => number_format($btwPercentage, 2),
+            'btw_amount' => $btwAmount,
+            'total' => $totalOwed,
+        ];
+
+        /** @var \Barryvdh\DomPDF\PDF $pdf */
+        $pdf = Pdf::loadView('pdf.quote', $data);
+        $pdf->setPaper('a4');
+
+        $filename = 'override_sale_' . $overrideSale->id . '_' . ($overrideSale->user->username ?? 'user') . '.pdf';
 
         /** @var Response */
         return $pdf->download($filename);

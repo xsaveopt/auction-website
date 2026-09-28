@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property int $id
+ * @property int|null $leftover_price_offer_id
+ * @property int|null $override_sale_id
+ * $id
  * @property int $auction_id
  * @property int $user_id
  * @property int|null $leftover_price_offer_id
@@ -27,6 +29,7 @@ class LeftoverPurchase extends Model
         'auction_id',
         'user_id',
         'leftover_price_offer_id',
+        'override_sale_id',
         'quantity',
         'price_per_item',
         'is_override',
@@ -48,5 +51,11 @@ class LeftoverPurchase extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<\App\Models\OverrideSale, $this> */
+    public function overrideSale(): BelongsTo
+    {
+        return $this->belongsTo(OverrideSale::class);
     }
 }

@@ -261,11 +261,13 @@ class AuctionControllerTest extends TestCase
         ]);
         $this->createBid($auction, null, ['quantity' => 1]);
 
-        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/override-sales", [
-            'username' => $buyer->username,
-            'quantity' => 1,
-            'price_per_item' => '4.00',
-        ])->assertCreated();
+        $this
+            ->actingAs($admin)
+            ->postJson('/api/admin/override-sales', [
+                'username' => $buyer->username,
+                'items' => [['auction_id' => $auction->id, 'quantity' => 1, 'price_per_item' => '4.00']],
+            ])
+            ->assertCreated();
 
         $this
             ->actingAs($admin)
@@ -274,11 +276,13 @@ class AuctionControllerTest extends TestCase
             ->assertJsonCount(1, 'auctions')
             ->assertJsonPath('auctions.0.leftover_quantity', 1);
 
-        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/override-sales", [
-            'username' => $buyer->username,
-            'quantity' => 1,
-            'price_per_item' => '4.00',
-        ])->assertCreated();
+        $this
+            ->actingAs($admin)
+            ->postJson('/api/admin/override-sales', [
+                'username' => $buyer->username,
+                'items' => [['auction_id' => $auction->id, 'quantity' => 1, 'price_per_item' => '4.00']],
+            ])
+            ->assertCreated();
 
         $this
             ->actingAs($admin)
