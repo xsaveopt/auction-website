@@ -248,6 +248,45 @@ class AuctionControllerTest extends TestCase
             ->assertJsonPath('auctions.0.leftover_quantity', 2);
     }
 
+    public function test_override_sales_reduce_and_clear_leftovers_of_a_closed_round(): void
+    {
+        $admin = $this->createAdmin();
+        $buyer = $this->createUser();
+        $round = $this->createRound(['status' => 'ended']);
+        $auction = $this->createAuction(null, [
+            'quantity' => 3,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+            'auction_round_id' => $round->id,
+        ]);
+        $this->createBid($auction, null, ['quantity' => 1]);
+
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/override-sales", [
+            'username' => $buyer->username,
+            'quantity' => 1,
+            'price_per_item' => '4.00',
+        ])->assertCreated();
+
+        $this
+            ->actingAs($admin)
+            ->getJson("/api/auctions/leftovers?round_id={$round->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'auctions')
+            ->assertJsonPath('auctions.0.leftover_quantity', 1);
+
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/override-sales", [
+            'username' => $buyer->username,
+            'quantity' => 1,
+            'price_per_item' => '4.00',
+        ])->assertCreated();
+
+        $this
+            ->actingAs($admin)
+            ->getJson("/api/auctions/leftovers?round_id={$round->id}")
+            ->assertOk()
+            ->assertJsonCount(0, 'auctions');
+    }
+
     public function test_leftovers_is_admin_only(): void
     {
         $this->getJson('/api/auctions/leftovers')->assertUnauthorized();

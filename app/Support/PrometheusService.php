@@ -18,7 +18,11 @@ class PrometheusService
 
     private const EVENTS = [
         'bids_placed' => ['Bids placed or raised', ['source'], [['bidder'], ['admin']]],
-        'leftover_items_sold' => ['Leftover items sold', ['channel'], [['buy'], ['admin'], ['price_offer']]],
+        'leftover_items_sold' => [
+            'Leftover items sold',
+            ['channel'],
+            [['buy'], ['admin'], ['price_offer'], ['override']],
+        ],
         'price_offers_submitted' => ['Leftover price offers submitted', [], [[]]],
         'registrations' => ['New user accounts', ['method'], [['password'], ['microsoft']]],
     ];

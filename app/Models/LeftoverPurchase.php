@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int|null $leftover_price_offer_id
  * @property int $quantity
  * @property string $price_per_item
+ * @property bool $is_override
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
@@ -22,7 +23,20 @@ class LeftoverPurchase extends Model
     use SoftDeletes;
 
     /** @var list<string> */
-    protected $fillable = ['auction_id', 'user_id', 'leftover_price_offer_id', 'quantity', 'price_per_item'];
+    protected $fillable = [
+        'auction_id',
+        'user_id',
+        'leftover_price_offer_id',
+        'quantity',
+        'price_per_item',
+        'is_override',
+    ];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['is_override' => 'boolean'];
+    }
 
     /** @return BelongsTo<\App\Models\Auction, $this> */
     public function auction(): BelongsTo

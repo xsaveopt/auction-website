@@ -57,7 +57,11 @@ class LeftoverPurchaseController extends Controller
 
             $pricePerItem = $this->auctionService->leftoverPrice($auction);
 
-            $existing = $auction->leftoverPurchases()->where('user_id', $user->id)->first();
+            $existing = $auction
+                ->leftoverPurchases()
+                ->where('user_id', $user->id)
+                ->where('is_override', false)
+                ->first();
 
             if ($existing) {
                 $existing->update(['quantity' => $existing->quantity + $validated['quantity']]);
@@ -112,7 +116,11 @@ class LeftoverPurchaseController extends Controller
 
             $pricePerItem = $this->auctionService->leftoverPrice($auction);
 
-            $existing = $auction->leftoverPurchases()->where('user_id', $buyer->id)->first();
+            $existing = $auction
+                ->leftoverPurchases()
+                ->where('user_id', $buyer->id)
+                ->where('is_override', false)
+                ->first();
 
             if ($existing) {
                 $existing->update(['quantity' => $existing->quantity + $validated['quantity']]);
@@ -152,6 +160,82 @@ class LeftoverPurchaseController extends Controller
         ]);
 
         return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)], 201);
+    }
+
+    public function overrideStore(Request $request, Auction $auction): JsonResponse
+    {
+        /** @var array{username: string, quantity: int, price_per_item: numeric-string|int|float} $validated */
+        $validated = $request->validate([
+            'username' => ['required', 'string', 'exists:users,username'],
+            'quantity' => ['required', 'integer', 'min:1'],
+            'price_per_item' => ['required', 'numeric', 'decimal:0,2', 'min:0'],
+        ]);
+
+        if ($auction->isActive()) {
+            return response()->json(['message' => 'This auction is still active.'], 422);
+        }
+
+        if ($auction->status === 'cancelled') {
+            return response()->json(['message' => 'This auction was cancelled.'], 422);
+        }
+
+        /** @var User $buyer */
+        $buyer = User::query()->where('username', $validated['username'])->firstOrFail();
+        $pricePerItem = round((float) $validated['price_per_item'], 2);
+
+        $result = DB::transaction(function () use (
+            $auction,
+            $buyer,
+            $validated,
+            $pricePerItem,
+        ): JsonResponse|LeftoverPurchase {
+            $this->auctionService->lockForUpdate($auction);
+
+            $auction->load(['bids', 'leftoverPurchases']);
+            $available = $this->auctionService->availableLeftoverQuantity($auction);
+
+            if ($available <= 0) {
+                return response()->json(['message' => 'No items are left to sell.'], 422);
+            }
+
+            if ($validated['quantity'] > $available) {
+                return response()->json(['message' => "Only {$available} item(s) available."], 422);
+            }
+
+            $purchase = $auction
+                ->leftoverPurchases()
+                ->create([
+                    'user_id' => $buyer->id,
+                    'quantity' => $validated['quantity'],
+                    'price_per_item' => $pricePerItem,
+                    'is_override' => true,
+                ]);
+
+            $this->auctionService->closePendingOffersIfSoldOut($auction);
+
+            return $purchase;
+        });
+
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        app(PrometheusService::class)->recordEvent('leftover_items_sold', ['override'], $validated['quantity']);
+
+        /** @var \App\Models\User $admin */
+        $admin = $request->user();
+        AuditLog::record($admin, 'override_sale.create', $result, [
+            'auction_id' => $auction->id,
+            'auction_title' => $auction->title,
+            'buyer' => $buyer->username,
+            'quantity' => $validated['quantity'],
+            'price_per_item' => $pricePerItem,
+        ]);
+
+        return response()->json([
+            'auction' => $this->auctionService->freshAuctionResponse($auction),
+            'purchase_id' => $result->id,
+        ], 201);
     }
 
     public function destroy(LeftoverPurchase $leftoverPurchase): JsonResponse

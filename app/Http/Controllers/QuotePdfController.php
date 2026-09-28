@@ -190,7 +190,9 @@ class QuotePdfController extends Controller
         $round = $roundId ? AuctionRound::query()->find($roundId) : null;
 
         $userBidAuctionIds = Bid::where('user_id', $user->id)->pluck('auction_id');
-        $userPurchaseAuctionIds = LeftoverPurchase::where('user_id', $user->id)->pluck('auction_id');
+        $userPurchaseAuctionIds = LeftoverPurchase::where('user_id', $user->id)
+            ->where('is_override', false)
+            ->pluck('auction_id');
         $userOfferAuctionIds = LeftoverPriceOffer::where('user_id', $user->id)
             ->where('status', 'accepted')
             ->pluck('auction_id');
@@ -207,7 +209,7 @@ class QuotePdfController extends Controller
                 'leftoverPurchases' => fn(\Illuminate\Database\Eloquent\Relations\Relation $q) => $q->where(
                     'user_id',
                     $user->id,
-                ),
+                )->where('is_override', false),
                 'leftoverPriceOffers' => fn(\Illuminate\Database\Eloquent\Relations\Relation $q) => $q->where(
                     'user_id',
                     $user->id,

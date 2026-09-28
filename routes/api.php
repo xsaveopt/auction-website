@@ -107,6 +107,7 @@ Route::middleware('sso')->group(function () {
         Route::put('/bids/{bid}', [AdminBidController::class, 'update']);
         Route::delete('/bids/{bid}', [AdminBidController::class, 'destroy']);
         Route::post('/auctions/{auction}/leftover-purchases', [LeftoverPurchaseController::class, 'adminStore']);
+        Route::post('/auctions/{auction}/override-sales', [LeftoverPurchaseController::class, 'overrideStore']);
         Route::delete('/leftover-purchases/{leftoverPurchase}', [LeftoverPurchaseController::class, 'destroy']);
         Route::get('/leftover-price-offers', [LeftoverPriceOfferController::class, 'index']);
         Route::post('/leftover-price-offers/request-rebid', [LeftoverPriceOfferController::class, 'requestRebid']);

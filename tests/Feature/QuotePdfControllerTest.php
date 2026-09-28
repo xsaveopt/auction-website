@@ -328,6 +328,11 @@ class QuotePdfControllerTest extends TestCase
         ]);
         $this->createLeftoverPurchase($leftoverAuction, $user, ['quantity' => 2, 'price_per_item' => '7.50']);
         $this->createLeftoverPurchase($leftoverAuction, null, ['quantity' => 1, 'price_per_item' => '7.50']);
+        $this->createLeftoverPurchase($leftoverAuction, $user, [
+            'quantity' => 1,
+            'price_per_item' => '3.00',
+            'is_override' => true,
+        ]);
         $this->createLeftoverPriceOffer($leftoverAuction, $user, [
             'quantity' => 1,
             'offered_price_per_item' => '6.00',
