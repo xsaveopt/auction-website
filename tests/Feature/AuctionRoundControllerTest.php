@@ -48,7 +48,7 @@ class AuctionRoundControllerTest extends TestCase
 
         $response = $this->getJson('/api/rounds/current')->assertOk()->assertJsonPath('active.id', $active->id);
 
-        $endedIds = collect($response->json('ended'))->pluck('id');
+        $endedIds = $response->collect('ended')->pluck('id');
         $this->assertContains($ended1->id, $endedIds);
         $this->assertContains($ended2->id, $endedIds);
         $this->assertSame($ended2->id, $endedIds->first());
@@ -158,11 +158,11 @@ class AuctionRoundControllerTest extends TestCase
             ->assertJsonPath('round.id', $round->id)
             ->assertJsonPath('round.status', 'ended');
 
-        $this->assertNotNull($round->fresh()?->ends_at);
-        $this->assertSame('ended', $running->fresh()?->status);
-        $this->assertSame('ended', $alreadyEnded->fresh()?->status);
-        $this->assertSame('active', $elsewhere->fresh()?->status);
-        $this->assertSame('active', $unassigned->fresh()?->status);
+        $this->assertNotNull($this->reload($round)->ends_at);
+        $this->assertSame('ended', $this->reload($running)->status);
+        $this->assertSame('ended', $this->reload($alreadyEnded)->status);
+        $this->assertSame('active', $this->reload($elsewhere)->status);
+        $this->assertSame('active', $this->reload($unassigned)->status);
 
         $log = AuditLog::query()->where('action', 'round.close')->sole();
         $this->assertSame($admin->id, $log->user_id);
@@ -197,6 +197,6 @@ class AuctionRoundControllerTest extends TestCase
         $this->actingAs($user)->postJson("/api/rounds/{$round->id}/close")->assertForbidden();
         $this->actingAs($user)->getJson("/api/rounds/{$round->id}/users/{$user->id}/quotes")->assertForbidden();
 
-        $this->assertSame('active', $round->fresh()?->status);
+        $this->assertSame('active', $this->reload($round)->status);
     }
 }

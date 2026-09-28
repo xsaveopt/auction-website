@@ -43,7 +43,7 @@ class AuctionLifecycleCommandsTest extends TestCase
             ->expectsConfirmation('Set this auction to "ended"?', 'yes')
             ->assertExitCode(0);
 
-        $this->assertSame('ended', $auction->fresh()->status);
+        $this->assertSame('ended', $this->reload($auction)->status);
     }
 
     public function test_end_auction_can_cancel_instead(): void
@@ -55,7 +55,7 @@ class AuctionLifecycleCommandsTest extends TestCase
             ->expectsConfirmation('Set this auction to "cancelled"?', 'yes')
             ->assertExitCode(0);
 
-        $this->assertSame('cancelled', $auction->fresh()->status);
+        $this->assertSame('cancelled', $this->reload($auction)->status);
     }
 
     public function test_end_auction_fails_for_unknown_auction(): void
@@ -72,7 +72,7 @@ class AuctionLifecycleCommandsTest extends TestCase
             ->expectsConfirmation('Reactivate this auction?', 'yes')
             ->assertExitCode(0);
 
-        $fresh = $auction->fresh();
+        $fresh = $this->reload($auction);
         $this->assertSame('active', $fresh->status);
         $this->assertTrue($fresh->ends_at->isFuture());
     }
@@ -102,7 +102,7 @@ class AuctionLifecycleCommandsTest extends TestCase
             ->expectsConfirmation('Apply this change?', 'yes')
             ->assertExitCode(0);
 
-        $this->assertTrue($auction->fresh()->ends_at->greaterThan($originalEnd));
+        $this->assertTrue($this->reload($auction)->ends_at->greaterThan($originalEnd));
     }
 
     public function test_extend_auction_rejects_invalid_time_modifier(): void
@@ -129,8 +129,8 @@ class AuctionLifecycleCommandsTest extends TestCase
             ->expectsOutput('Finalized 1 expired auction(s).')
             ->assertExitCode(0);
 
-        $this->assertSame('ended', $expired->fresh()->status);
-        $this->assertSame('active', $stillActive->fresh()->status);
+        $this->assertSame('ended', $this->reload($expired)->status);
+        $this->assertSame('active', $this->reload($stillActive)->status);
     }
 
     public function test_bulk_update_requires_ids_or_all_active(): void
@@ -158,7 +158,7 @@ class AuctionLifecycleCommandsTest extends TestCase
             ->expectsConfirmation('You are about to update 1 auctions. Continue?', 'yes')
             ->assertExitCode(0);
 
-        $this->assertSame('cancelled', $auction->fresh()->status);
+        $this->assertSame('cancelled', $this->reload($auction)->status);
     }
 
     public function test_bulk_update_adds_time_for_all_active(): void
@@ -171,7 +171,7 @@ class AuctionLifecycleCommandsTest extends TestCase
             ->expectsConfirmation('You are about to update 1 auctions. Continue?', 'yes')
             ->assertExitCode(0);
 
-        $this->assertTrue($auction->fresh()->ends_at->greaterThan($endsAt->copy()->addHours(23)));
+        $this->assertTrue($this->reload($auction)->ends_at->greaterThan($endsAt->copy()->addHours(23)));
     }
 
     public function test_bulk_update_appends_and_prepends_description(): void
@@ -187,20 +187,20 @@ class AuctionLifecycleCommandsTest extends TestCase
             ->expectsConfirmation('You are about to update 1 auctions. Continue?', 'yes')
             ->assertExitCode(0);
 
-        $this->assertSame('Prefix Base Suffix', $auction->fresh()->description);
+        $this->assertSame('Prefix Base Suffix', $this->reload($auction)->description);
     }
 
     public function test_toggle_lock_locks_and_unlocks_the_site(): void
     {
         $this->artisan('app:toggle-lock', ['--message' => 'Down for maintenance'])->assertExitCode(0);
 
-        $settings = SiteSetting::instance()->fresh();
+        $settings = $this->reload(SiteSetting::instance());
         $this->assertTrue($settings->is_locked);
         $this->assertSame('Down for maintenance', $settings->lock_message);
 
         $this->artisan('app:toggle-lock')->assertExitCode(0);
 
-        $this->assertFalse(SiteSetting::instance()->fresh()->is_locked);
+        $this->assertFalse($this->reload(SiteSetting::instance())->is_locked);
     }
 
     public function test_list_auctions_shows_matching_auctions(): void

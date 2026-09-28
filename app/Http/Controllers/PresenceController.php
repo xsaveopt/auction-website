@@ -18,13 +18,14 @@ class PresenceController extends Controller
 
     public function heartbeat(Request $request): JsonResponse
     {
-        /** @var array{page_id: string, client_id: string, page_type: string, path: string, auction_id?: int} $validated */
+        /** @var array{page_id: string, client_id: string, page_type: string, path: string, auction_id?: int, round_id?: int|null} $validated */
         $validated = $request->validate([
             'page_id' => ['required', 'string', 'max:100'],
             'client_id' => ['required', 'string', 'max:100'],
             'page_type' => ['required', 'string', Rule::in(['page', 'home', 'auction'])],
             'path' => ['required', 'string', 'max:500'],
             'auction_id' => ['nullable', 'integer', 'exists:auctions,id'],
+            'round_id' => ['nullable', 'integer'],
         ]);
 
         if ($validated['page_type'] === 'auction' && !array_key_exists('auction_id', $validated)) {
@@ -51,9 +52,12 @@ class PresenceController extends Controller
         $response = [];
 
         if ($validated['page_type'] === 'home') {
+            $roundId = $validated['round_id'] ?? null;
+
             /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
             $auctions = Auction::query()
                 ->with('bids')
+                ->when($roundId !== null, fn($q) => $q->where('auction_round_id', $roundId))
                 ->orderByRaw("CASE WHEN status = 'active' AND ends_at > ? THEN 1 ELSE 0 END DESC", [now()])
                 ->orderByDesc('created_at')
                 ->get();
@@ -75,24 +79,12 @@ class PresenceController extends Controller
             /** @var list<int> $auctionIds */
             $auctionIds = $auctions->pluck('id')->values()->all();
             $response['auction_ids'] = $auctionIds;
+            $response['round_id'] = $roundId;
         } elseif ($validated['page_type'] === 'auction' && $auctionId) {
-            /** @var Auction|null $auction */
-            $auction = Auction::query()
-                ->with([
-                    'seller:id,username',
-                    'bids.user:id,username',
-                    'images',
-                    'questions.user:id,username',
-                    'leftoverPurchases.user:id,username',
-                    'leftoverPriceOffers.user:id,username',
-                    'category',
-                    'round',
-                ])
-                ->find($auctionId);
+            $auction = Auction::query()->find($auctionId);
 
             if ($auction) {
-                $auction->setAttribute('watcher_count', Presence::watchersForAuction($auctionId));
-                $response['auction'] = $this->auctionService->auctionResponse($auction, withBids: true);
+                $response['auction'] = $this->auctionService->freshAuctionResponse($auction);
             }
         }
 

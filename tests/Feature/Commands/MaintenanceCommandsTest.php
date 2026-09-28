@@ -147,7 +147,7 @@ class MaintenanceCommandsTest extends TestCase
 
         $this->artisan('app:notify-ending-soon', ['--minutes' => 15])->assertExitCode(0);
 
-        $this->assertTrue($auction->fresh()->ending_soon_notified);
+        $this->assertTrue($this->reload($auction)->ending_soon_notified);
     }
 
     public function test_notify_ending_soon_skips_auctions_outside_window(): void
@@ -163,7 +163,7 @@ class MaintenanceCommandsTest extends TestCase
             ->expectsOutput('Sent ending-soon notifications for 0 auction(s).')
             ->assertExitCode(0);
 
-        $this->assertFalse($auction->fresh()->ending_soon_notified);
+        $this->assertFalse($this->reload($auction)->ending_soon_notified);
     }
 
     public function test_generate_vapid_keys_prints_a_key_pair(): void
@@ -216,7 +216,7 @@ class MaintenanceCommandsTest extends TestCase
 
         Pdf::shouldReceive('loadView')
             ->once()
-            ->with('pdf.quote', Mockery::on(fn(array $data) => $data['winner']['username'] === 'Jane Buyer'))
+            ->with('pdf.quote', Mockery::on(fn(array $data) => data_get($data, 'winner.username') === 'Jane Buyer'))
             ->andReturn($pdf);
 
         $this

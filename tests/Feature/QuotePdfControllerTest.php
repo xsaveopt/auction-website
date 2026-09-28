@@ -41,9 +41,9 @@ class QuotePdfControllerTest extends TestCase
                 'pdf.quote',
                 Mockery::on(
                     fn(array $data) => (
-                        $data['items'][0]['title'] === $auction->title
-                        && $data['items'][0]['quantity'] === 1
-                        && $data['winner']['username'] === $winner->username
+                        data_get($data, 'items.0.title') === $auction->title
+                        && data_get($data, 'items.0.quantity') === 1
+                        && data_get($data, 'winner.username') === $winner->username
                     ),
                 ),
             )
@@ -141,10 +141,11 @@ class QuotePdfControllerTest extends TestCase
                 'pdf.quote',
                 Mockery::on(
                     fn(array $data) => (
-                        count($data['items']) === 1
-                        && $data['items'][0]['title'] === $inRound->title
+                        is_array($data['items'])
+                        && count($data['items']) === 1
+                        && data_get($data, 'items.0.title') === $inRound->title
                         && $data['round_name'] === 'Spring Round'
-                        && $data['winner']['username'] === $winner->username
+                        && data_get($data, 'winner.username') === $winner->username
                     ),
                 ),
             )
@@ -184,7 +185,7 @@ class QuotePdfControllerTest extends TestCase
             ->assertOk();
 
         $data = $captured();
-        $this->assertSame($buyer->username, $data['winner']['username']);
+        $this->assertSame($buyer->username, data_get($data, 'winner.username'));
         $this->assertSame(
             [
                 [
@@ -200,8 +201,9 @@ class QuotePdfControllerTest extends TestCase
         $this->assertSame(100.0, $data['subtotal']);
         $this->assertSame(21.0, $data['btw_amount']);
         $this->assertSame('21.00', $data['btw_percentage']);
+        $this->assertIsString($data['payment_reference']);
         $this->assertMatchesRegularExpression('/^PAY-[A-Z0-9]{6}$/', $data['payment_reference']);
-        $this->assertSame($data['payment_reference'], $buyer->fresh()->payment_reference);
+        $this->assertSame($data['payment_reference'], $this->reload($buyer)->payment_reference);
     }
 
     public function test_leftover_purchase_quote_rejects_a_purchase_from_another_auction(): void
@@ -292,8 +294,8 @@ class QuotePdfControllerTest extends TestCase
         $this->actingAs($admin)->get("/api/auctions/{$auction->id}/quotes/{$bid->id}")->assertOk();
 
         $data = $captured();
-        $this->assertSame(2, $data['items'][0]['quantity']);
-        $this->assertSame(30.25, $data['items'][0]['price_per_item']);
+        $this->assertSame(2, data_get($data, 'items.0.quantity'));
+        $this->assertSame(30.25, data_get($data, 'items.0.price_per_item'));
         $this->assertSame(60.5, $data['total']);
         $this->assertSame(50.0, $data['subtotal']);
         $this->assertSame(10.5, $data['btw_amount']);
@@ -349,6 +351,7 @@ class QuotePdfControllerTest extends TestCase
         $this->actingAs($admin)->get("/api/users/{$user->id}/quotes")->assertOk();
 
         $data = $captured();
+        $this->assertIsArray($data['items']);
         $items = collect($data['items'])->sortBy('total')->values()->all();
         $this->assertSame(
             [
@@ -376,7 +379,7 @@ class QuotePdfControllerTest extends TestCase
     }
 
     /**
-     * @return \Closure(): array<string, mixed>
+     * @return \Closure(): array<mixed>
      */
     private function capturePdfData(?string $filename = null): \Closure
     {

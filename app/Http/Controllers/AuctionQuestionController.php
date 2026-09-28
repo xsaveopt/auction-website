@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Support\AuctionNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class AuctionQuestionController extends Controller
 {
@@ -42,9 +43,7 @@ class AuctionQuestionController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        if ($auction->seller_id === $user->id) {
-            return response()->json(['message' => 'You cannot ask a question on your own auction.'], 422);
-        }
+        Gate::authorize('askQuestion', $auction);
 
         /** @var array{question: string} $validated */
         $validated = $request->validate([
@@ -76,9 +75,7 @@ class AuctionQuestionController extends Controller
         /** @var \App\Models\Auction $auction */
         $auction = $question->auction;
 
-        if ($auction->seller_id !== $user->id && !$user->is_admin) {
-            return response()->json(['message' => 'Forbidden.'], 403);
-        }
+        Gate::authorize('answer', $question);
 
         /** @var array{answer: string} $validated */
         $validated = $request->validate([
@@ -123,9 +120,7 @@ class AuctionQuestionController extends Controller
         /** @var \App\Models\Auction $auction */
         $auction = $question->auction;
 
-        if ($auction->seller_id !== $user->id && !$user->is_admin) {
-            return response()->json(['message' => 'Forbidden.'], 403);
-        }
+        Gate::authorize('delete', $question);
 
         if ($user->is_admin) {
             AuditLog::record($user, 'question.delete', $question, [

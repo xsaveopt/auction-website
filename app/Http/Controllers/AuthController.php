@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\MicrosoftSso;
+use App\Support\PrometheusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -19,7 +22,7 @@ class AuthController extends Controller
 
     public function register(Request $request): JsonResponse
     {
-        if ($this->ssoEnabled()) {
+        if (MicrosoftSso::enabled()) {
             return response()->json([
                 'message' => 'SSO is enabled. Please sign in with Microsoft.',
             ], Response::HTTP_FORBIDDEN);
@@ -27,11 +30,13 @@ class AuthController extends Controller
 
         /** @var array{username: string, password: string} $validated */
         $validated = $request->validate([
-            'username' => ['required', 'string', 'min:3', 'max:100', 'unique:users'],
+            'username' => ['required', 'string', 'min:3', 'max:100', Rule::unique('users')->whereNull('deleted_at')],
             'password' => ['required', Password::min(6)],
         ]);
 
         $user = User::create($validated);
+
+        app(PrometheusService::class)->recordEvent('registrations', ['password']);
 
         Auth::login($user);
 
@@ -40,7 +45,7 @@ class AuthController extends Controller
 
     public function login(Request $request): JsonResponse
     {
-        if ($this->ssoEnabled()) {
+        if (MicrosoftSso::enabled()) {
             return response()->json([
                 'message' => 'SSO is enabled. Please sign in with Microsoft.',
             ], Response::HTTP_FORBIDDEN);
@@ -99,11 +104,6 @@ class AuthController extends Controller
             'username' => $user->username,
             'is_admin' => (bool) $user->is_admin,
         ];
-    }
-
-    private function ssoEnabled(): bool
-    {
-        return filled(config('services.microsoft.client_id')) && filled(config('services.microsoft.client_secret'));
     }
 
     private function loginThrottleResponse(Request $request): ?JsonResponse

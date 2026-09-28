@@ -15,7 +15,7 @@ class BidLogicUpdatesTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware([
-            \App\Http\Middleware\VerifyCsrfUnlessMcp::class,
+            \App\Http\Middleware\VerifyCsrfUnlessApiKey::class,
             \App\Http\Middleware\EnsureSsoAuthenticated::class,
         ]);
     }
@@ -41,14 +41,10 @@ class BidLogicUpdatesTest extends TestCase
             'quantity' => 1,
         ])->assertCreated();
 
-        $response = $this->getJson("/api/auctions/{$auction->id}")->json('auction');
+        $bids = $this->getJson("/api/auctions/{$auction->id}")->collect('auction.bids');
 
-        $bids = collect($response['bids']);
-        $bid1 = $bids->firstWhere('user.id', $user1->id);
-        $bid2 = $bids->firstWhere('user.id', $user2->id);
-
-        $this->assertEquals(1, $bid1['won_quantity']);
-        $this->assertEquals(0, $bid2['won_quantity']);
+        $this->assertEquals(1, data_get($bids->firstWhere('user.id', $user1->id), 'won_quantity'));
+        $this->assertEquals(0, data_get($bids->firstWhere('user.id', $user2->id), 'won_quantity'));
     }
 
     public function test_cannot_lower_quantity_even_with_same_or_higher_amount(): void
@@ -98,30 +94,21 @@ class BidLogicUpdatesTest extends TestCase
 
         Auth::logout();
 
-        $response = $this->getJson("/api/auctions/{$auction->id}");
-        $data = $response->json('auction');
-        if ($data['bids'][0]['user']['username'] !== 'real_user_1') {
-            dump('Unauthenticated view:', $data['bids'][0]['user']);
-        }
-        $this->assertEquals('real_user_1', $data['bids'][0]['user']['username']);
+        $this->getJson("/api/auctions/{$auction->id}")->assertJsonPath('auction.bids.0.user.username', 'real_user_1');
 
-        $response = $this->actingAs($user2)->getJson("/api/auctions/{$auction->id}");
-        $data = $response->json('auction');
-        if ($data['bids'][0]['user']['username'] !== 'real_user_1') {
-            dump('User 2 view:', $data['bids'][0]['user']);
-        }
-        $this->assertEquals('real_user_1', $data['bids'][0]['user']['username']);
+        $this
+            ->actingAs($user2)
+            ->getJson("/api/auctions/{$auction->id}")
+            ->assertJsonPath('auction.bids.0.user.username', 'real_user_1');
 
-        $response = $this->actingAs($user1)->getJson("/api/auctions/{$auction->id}");
-        $data = $response->json('auction');
-        if ($data['bids'][0]['user']['username'] !== 'real_user_1') {
-            dump('User 1 view:', $data['bids'][0]['user'], 'Auth ID:', auth()->id());
-        }
-        $this->assertEquals('real_user_1', $data['bids'][0]['user']['username']);
+        $this
+            ->actingAs($user1)
+            ->getJson("/api/auctions/{$auction->id}")
+            ->assertJsonPath('auction.bids.0.user.username', 'real_user_1');
 
-        $admin = $this->createAdmin();
-        $response = $this->actingAs($admin)->getJson("/api/auctions/{$auction->id}");
-        $data = $response->json('auction');
-        $this->assertEquals('real_user_1', $data['bids'][0]['user']['username']);
+        $this
+            ->actingAs($this->createAdmin())
+            ->getJson("/api/auctions/{$auction->id}")
+            ->assertJsonPath('auction.bids.0.user.username', 'real_user_1');
     }
 }

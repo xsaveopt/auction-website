@@ -86,4 +86,16 @@ class BiddingScheduleTest extends TestCase
         $settings->bidding_weekends_open = false;
         $settings->save();
     }
+
+    public function test_settings_saved_elsewhere_replace_the_memoized_instance(): void
+    {
+        $this->configureClosedWindow('09:00', '18:00');
+        $this->assertSame('09:00', BiddingSchedule::closedStart());
+
+        $copy = SiteSetting::query()->findOrFail(1);
+        $copy->bidding_closed_start = '10:00';
+        $copy->save();
+
+        $this->assertSame('10:00', BiddingSchedule::closedStart());
+    }
 }

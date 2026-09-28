@@ -79,7 +79,7 @@ class BiddingSchedule
     }
 
     /**
-     * @return array{enabled: bool, closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, server_time_local: string, currency_symbol: string, anti_sniping: array{enabled: bool, window: int, extension: int}, site_locked: bool, lock_message: string|null}
+     * @return array{enabled: bool, closed_start: string, closed_end: string, weekends_open: bool, is_open: bool, server_time: string, server_time_local: string, server_date_local: string, currency_symbol: string, anti_sniping: array{enabled: bool, window: int, extension: int}, site_locked: bool, lock_message: string|null}
      */
     public static function toArray(): array
     {
@@ -96,6 +96,7 @@ class BiddingSchedule
             'is_open' => self::isBiddingOpenFromSettings($settings),
             'server_time' => now()->toISOString() ?? '',
             'server_time_local' => now()->format('H:i:s'),
+            'server_date_local' => now()->format('Y-m-d'),
             'currency_symbol' => $settings->currency_symbol ?? '$',
             'anti_sniping' => [
                 'enabled' => $settings->anti_sniping_enabled,

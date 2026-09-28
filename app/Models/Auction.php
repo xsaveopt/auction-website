@@ -97,14 +97,6 @@ class Auction extends Model
             ->orderBy('created_at');
     }
 
-    public function currentPrice(): float
-    {
-        /** @var string|null $maxBid */
-        $maxBid = $this->bids()->max('amount');
-
-        return floatval($maxBid ?? $this->starting_price);
-    }
-
     public function isActive(): bool
     {
         return $this->status === 'active' && $this->ends_at > now();

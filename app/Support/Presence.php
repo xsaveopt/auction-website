@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\PresenceHeartbeat;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -145,14 +144,5 @@ class Presence
             'title' => $row->title,
             'view_count' => (int) $row->view_count,
         ], $rows);
-    }
-
-    /** @return Builder<PresenceHeartbeat> */
-    public static function watcherCountSubquery(string $auctionColumn = 'auctions.id'): Builder
-    {
-        return PresenceHeartbeat::query()
-            ->selectRaw('COUNT(DISTINCT client_id)')
-            ->whereColumn('auction_id', $auctionColumn)
-            ->where('last_seen_at', '>=', self::cutoff());
     }
 }

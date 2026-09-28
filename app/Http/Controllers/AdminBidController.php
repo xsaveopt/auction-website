@@ -7,8 +7,10 @@ use App\Models\AuditLog;
 use App\Models\Bid;
 use App\Models\User;
 use App\Support\AuctionService;
+use App\Support\PrometheusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminBidController extends Controller
 {
@@ -28,23 +30,26 @@ class AdminBidController extends Controller
         /** @var array{username: string, amount: string, quantity: int} $validated */
         $validated = $request->validate([
             'username' => ['required', 'string', 'exists:users,username'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'quantity' => ['required', 'integer', 'min:1'],
+            ...$this->auctionService->bidRules($auction),
         ]);
 
         /** @var User $user */
         $user = User::where('username', $validated['username'])->firstOrFail();
 
-        $bid = new Bid();
-        $bid->auction_id = $auction->id;
-        $bid->user_id = $user->id;
-        $bid->amount = $validated['amount'];
-        $bid->quantity = $validated['quantity'];
-        $bid->save();
+        $bid = DB::transaction(function () use ($auction, $user, $validated): Bid {
+            $this->auctionService->lockForUpdate($auction);
+
+            return $auction->bids()->updateOrCreate(['user_id' => $user->id], [
+                'amount' => number_format((float) $validated['amount'], 2, '.', ''),
+                'quantity' => $validated['quantity'],
+            ]);
+        });
+
+        app(PrometheusService::class)->recordEvent('bids_placed', ['admin']);
 
         /** @var \App\Models\User $admin */
         $admin = $request->user();
-        AuditLog::record($admin, 'bid.create', $bid, [
+        AuditLog::record($admin, $bid->wasRecentlyCreated ? 'bid.create' : 'bid.update', $bid, [
             'auction_id' => $auction->id,
             'auction_title' => $auction->title,
             'bidder' => $user->username,

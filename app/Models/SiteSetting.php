@@ -47,10 +47,15 @@ class SiteSetting extends Model
         'invoice_payment_days' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(fn() => app()->forgetInstance(self::class));
+        static::deleted(fn() => app()->forgetInstance(self::class));
+    }
+
     public static function instance(): self
     {
-        /** @var self */
-        return self::firstOrCreate(['id' => 1]);
+        return app(self::class);
     }
 
     public static function isLocked(): bool

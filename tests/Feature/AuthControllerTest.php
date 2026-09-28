@@ -159,4 +159,17 @@ class AuthControllerTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('username');
     }
+
+    public function test_registration_accepts_the_username_of_a_deleted_user(): void
+    {
+        $this->createUser(['username' => 'returning-name'])->delete();
+
+        $this
+            ->postJson('/api/register', [
+                'username' => 'returning-name',
+                'password' => 'password',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('user.username', 'returning-name');
+    }
 }

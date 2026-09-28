@@ -88,4 +88,25 @@ class PresenceControllerTest extends TestCase
             'user_id' => $user->id,
         ]);
     }
+
+    public function test_home_heartbeat_only_returns_auctions_from_the_requested_round(): void
+    {
+        $round = $this->createRound(['status' => 'active']);
+        $otherRound = $this->createRound(['status' => 'ended']);
+        $inRound = $this->createAuction(null, ['auction_round_id' => $round->id]);
+        $this->createAuction(null, ['auction_round_id' => $otherRound->id]);
+
+        $this
+            ->postJson('/api/presence/heartbeat', [
+                'page_id' => 'home-page',
+                'client_id' => 'client-1',
+                'page_type' => 'home',
+                'path' => '/',
+                'round_id' => $round->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('auction_ids', [$inRound->id])
+            ->assertJsonCount(1, 'auction_updates')
+            ->assertJsonPath('round_id', $round->id);
+    }
 }

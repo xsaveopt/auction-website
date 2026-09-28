@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\MicrosoftSso;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,7 +14,7 @@ class EnsureSsoAuthenticated
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$this->ssoEnabled() || $request->user()) {
+        if (!MicrosoftSso::enabled() || $request->user()) {
             return $next($request);
         }
 
@@ -22,10 +23,5 @@ class EnsureSsoAuthenticated
         }
 
         return redirect()->route('auth.microsoft.redirect');
-    }
-
-    private function ssoEnabled(): bool
-    {
-        return filled(config('services.microsoft.client_id')) && filled(config('services.microsoft.client_secret'));
     }
 }

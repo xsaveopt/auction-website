@@ -30,14 +30,14 @@ class AuctionFinalizationServiceTest extends TestCase
         ]);
 
         $this->assertTrue($service->end($activeAuction));
-        $this->assertSame('ended', $activeAuction->fresh()->status);
+        $this->assertSame('ended', $this->reload($activeAuction)->status);
 
         $reactivatedAuction = $this->createAuction($this->createUser(), [
             'status' => 'active',
             'ends_at' => now()->addHour(),
         ]);
         $this->assertTrue($service->cancel($reactivatedAuction));
-        $this->assertSame('cancelled', $reactivatedAuction->fresh()->status);
+        $this->assertSame('cancelled', $this->reload($reactivatedAuction)->status);
 
         $this->assertFalse($service->end($endedAuction));
     }
@@ -63,6 +63,42 @@ class AuctionFinalizationServiceTest extends TestCase
         ]);
 
         $this->assertSame(1, $service->finalizeExpiredAuctions());
-        $this->assertSame('ended', $expiredAuction->fresh()->status);
+        $this->assertSame('ended', $this->reload($expiredAuction)->status);
+    }
+
+    public function test_a_stale_instance_cannot_end_an_auction_twice(): void
+    {
+        $notificationService = Mockery::mock(AuctionNotificationService::class);
+        $notificationService->shouldReceive('sendAuctionClosedNotifications')->once();
+
+        $service = new AuctionFinalizationService($notificationService);
+
+        $auction = $this->createAuction($this->createUser(), [
+            'status' => 'active',
+            'ends_at' => now()->subMinute(),
+        ]);
+        $firstWorker = Auction::query()->findOrFail($auction->id);
+        $secondWorker = Auction::query()->findOrFail($auction->id);
+
+        $this->assertTrue($service->end($firstWorker));
+        $this->assertFalse($service->end($secondWorker));
+        $this->assertSame('ended', $this->reload($auction)->status);
+    }
+
+    public function test_finalize_skips_auctions_extended_after_they_were_selected(): void
+    {
+        $notificationService = Mockery::mock(AuctionNotificationService::class);
+        $notificationService->shouldReceive('sendAuctionClosedNotifications')->never();
+
+        $service = new AuctionFinalizationService($notificationService);
+
+        $auction = $this->createAuction($this->createUser(), [
+            'status' => 'active',
+            'ends_at' => now()->subMinute(),
+        ]);
+
+        Auction::query()->whereKey($auction->id)->update(['status' => 'ended']);
+
+        $this->assertSame(0, $service->finalizeExpiredAuctions());
     }
 }

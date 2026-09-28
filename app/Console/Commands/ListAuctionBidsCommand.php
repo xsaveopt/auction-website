@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Auction;
 use App\Models\Bid;
+use App\Support\AuctionService;
 use Illuminate\Console\Command;
 
 class ListAuctionBidsCommand extends Command
@@ -27,7 +28,7 @@ class ListAuctionBidsCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): void
+    public function handle(AuctionService $auctionService): void
     {
         $auctionId = $this->argument('id');
         $auction = Auction::find($auctionId);
@@ -38,7 +39,7 @@ class ListAuctionBidsCommand extends Command
         }
 
         $this->info("Bids for auction: {$auction->title} (ID: {$auction->id})");
-        $this->info('Current Price: ' . $auction->currentPrice());
+        $this->info('Current Price: ' . $auctionService->allocate($auction)['clearing_price']);
 
         $bids = Bid::with('user')
             ->where('auction_id', $auctionId)

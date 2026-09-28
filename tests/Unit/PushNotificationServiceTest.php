@@ -59,7 +59,7 @@ class PushNotificationServiceTest extends TestCase
 
     public function test_sending_is_a_no_op_when_not_configured(): void
     {
-        Log::spy();
+        $log = Log::spy();
         $user = $this->createUser();
         $subscription = $this->createPushSubscription($user, ['content_encoding' => 'unsupported']);
 
@@ -68,24 +68,24 @@ class PushNotificationServiceTest extends TestCase
         $service->sendToSubscriptions(PushSubscription::query()->get(), ['body' => 'Hello']);
 
         $this->assertNotSoftDeleted('push_subscriptions', ['id' => $subscription->id]);
-        Log::shouldNotHaveReceived('warning');
+        $log->shouldNotHaveReceived('warning');
     }
 
     public function test_sending_to_users_without_subscriptions_does_nothing(): void
     {
         $this->configureVapid();
-        Log::spy();
+        $log = Log::spy();
 
         new PushNotificationService()->sendToUsers([$this->createUser()], ['body' => 'Hello']);
         new PushNotificationService()->sendToUsers([], ['body' => 'Hello']);
 
-        Log::shouldNotHaveReceived('warning');
+        $log->shouldNotHaveReceived('warning');
     }
 
     public function test_invalid_subscriptions_are_dropped_and_logged(): void
     {
         $this->configureVapid();
-        Log::spy();
+        $log = Log::spy();
 
         $user = $this->createUser();
         $other = $this->createUser();
@@ -97,7 +97,8 @@ class PushNotificationServiceTest extends TestCase
         $this->assertSoftDeleted('push_subscriptions', ['id' => $invalid->id]);
         $this->assertNotSoftDeleted('push_subscriptions', ['id' => $untouched->id]);
 
-        Log::shouldHaveReceived('warning')
+        $log
+            ->shouldHaveReceived('warning')
             ->once()
             ->with(
                 'Dropping invalid push subscription.',

@@ -202,8 +202,8 @@ class LeftoverPriceOfferControllerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('offer_ids', [$offer1->id, $offer2->id]);
 
-        $this->assertNotNull($offer1->fresh()?->rebid_requested_at);
-        $this->assertNotNull($offer2->fresh()?->rebid_requested_at);
+        $this->assertNotNull($this->reload($offer1)->rebid_requested_at);
+        $this->assertNotNull($this->reload($offer2)->rebid_requested_at);
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $admin->id,
             'action' => 'leftover_price_offer.rebid_requested',

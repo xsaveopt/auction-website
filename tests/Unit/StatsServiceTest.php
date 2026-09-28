@@ -80,9 +80,9 @@ class StatsServiceTest extends TestCase
         $this->assertSame(2, $stats['online_users']);
 
         $perDay = collect($stats['bids_per_day'])->keyBy('date');
-        $this->assertSame(4, $perDay['2026-03-25']['count']);
-        $this->assertSame(1, $perDay['2026-03-22']['count']);
-        $this->assertSame(0, $perDay['2026-03-24']['count']);
+        $this->assertSame(4, $perDay['2026-03-25']['count'] ?? null);
+        $this->assertSame(1, $perDay['2026-03-22']['count'] ?? null);
+        $this->assertSame(0, $perDay['2026-03-24']['count'] ?? null);
 
         $this->assertSame(
             [

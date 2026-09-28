@@ -17,19 +17,22 @@ use Illuminate\Support\Str;
 
 trait InteractsWithAuctionData
 {
+    /** @param array<string, mixed> $attributes */
     protected function createUser(array $attributes = []): User
     {
         return User::factory()->create($attributes);
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createAdmin(array $attributes = []): User
     {
         return User::factory()->admin()->create($attributes);
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createCategory(array $attributes = []): Category
     {
-        $name = $attributes['name'] ?? 'Category ' . Str::title(Str::random(6));
+        $name = is_string($attributes['name'] ?? null) ? $attributes['name'] : 'Category ' . Str::title(Str::random(6));
 
         return Category::query()->create(array_merge([
             'name' => $name,
@@ -38,6 +41,7 @@ trait InteractsWithAuctionData
         ], $attributes));
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createRound(array $attributes = []): AuctionRound
     {
         return AuctionRound::query()->create(array_merge([
@@ -46,6 +50,7 @@ trait InteractsWithAuctionData
         ], $attributes));
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createAuction(?User $seller = null, array $attributes = []): Auction
     {
         $seller ??= $this->createUser();
@@ -63,6 +68,7 @@ trait InteractsWithAuctionData
         ], $attributes));
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createBid(Auction $auction, ?User $user = null, array $attributes = []): Bid
     {
         $user ??= $this->createUser();
@@ -76,6 +82,7 @@ trait InteractsWithAuctionData
             ], $attributes));
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createQuestion(Auction $auction, ?User $user = null, array $attributes = []): AuctionQuestion
     {
         $user ??= $this->createUser();
@@ -90,6 +97,7 @@ trait InteractsWithAuctionData
             ], $attributes));
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createLeftoverPriceOffer(
         Auction $auction,
         ?User $user = null,
@@ -107,6 +115,7 @@ trait InteractsWithAuctionData
             ], $attributes));
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createLeftoverPurchase(
         Auction $auction,
         ?User $user = null,
@@ -123,6 +132,7 @@ trait InteractsWithAuctionData
             ], $attributes));
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createAnnouncement(?User $author = null, array $attributes = []): Announcement
     {
         $author ??= $this->createAdmin();
@@ -134,6 +144,7 @@ trait InteractsWithAuctionData
         ], $attributes));
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createImage(Auction $auction, array $attributes = []): AuctionImage
     {
         return $auction
@@ -144,6 +155,7 @@ trait InteractsWithAuctionData
             ], $attributes));
     }
 
+    /** @param array<string, mixed> $attributes */
     protected function createPushSubscription(?User $user = null, array $attributes = []): PushSubscription
     {
         $user ??= $this->createUser();

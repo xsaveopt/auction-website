@@ -203,7 +203,7 @@ class BidControllerTest extends TestCase
                 'quantity' => 1,
             ])->assertCreated();
 
-            $this->assertTrue($auction->fresh()->ends_at->equalTo(now()->addSeconds(330)));
+            $this->assertTrue($this->reload($auction)->ends_at->equalTo(now()->addSeconds(330)));
         } finally {
             Carbon::setTestNow();
             $settings = SiteSetting::instance();
@@ -252,12 +252,57 @@ class BidControllerTest extends TestCase
                 'quantity' => 1,
             ])->assertCreated();
 
-            $this->assertTrue($auction->fresh()->ends_at->equalTo(now()->addSeconds($expectedSecondsLeft)));
+            $this->assertTrue($this->reload($auction)->ends_at->equalTo(now()->addSeconds($expectedSecondsLeft)));
         } finally {
             Carbon::setTestNow();
             $settings = SiteSetting::instance();
             $settings->anti_sniping_enabled = false;
             $settings->save();
         }
+    }
+
+    public function test_bid_amounts_with_more_than_two_decimals_are_rejected_without_extending(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-24 12:00:00'));
+
+        try {
+            $settings = SiteSetting::instance();
+            $settings->anti_sniping_enabled = true;
+            $settings->anti_sniping_window = 60;
+            $settings->anti_sniping_extension = 300;
+            $settings->save();
+
+            $bidder = $this->createUser();
+            $auction = $this->createAuction($this->createUser(), ['ends_at' => now()->addSeconds(30)]);
+            $this->createBid($auction, $bidder, ['amount' => '10.00']);
+
+            $this->actingAs($bidder)->postJson("/api/auctions/{$auction->id}/bids", [
+                'amount' => 10.004,
+                'quantity' => 1,
+            ])->assertUnprocessable()->assertJsonValidationErrors('amount');
+
+            $this->assertSame('10.00', Bid::query()->where('auction_id', $auction->id)->sole()->amount);
+            $this->assertTrue($this->reload($auction)->ends_at->equalTo(now()->addSeconds(30)));
+        } finally {
+            Carbon::setTestNow();
+            $settings = SiteSetting::instance();
+            $settings->anti_sniping_enabled = false;
+            $settings->save();
+        }
+    }
+
+    public function test_bids_on_expired_auctions_are_rejected_before_finalization(): void
+    {
+        $auction = $this->createAuction($this->createUser(), [
+            'status' => 'active',
+            'ends_at' => now()->subSecond(),
+        ]);
+
+        $this->actingAs($this->createUser())->postJson("/api/auctions/{$auction->id}/bids", [
+            'amount' => 12,
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonPath('message', 'This auction is no longer active.');
+
+        $this->assertSame(0, Bid::query()->where('auction_id', $auction->id)->count());
     }
 }

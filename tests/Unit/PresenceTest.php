@@ -111,7 +111,7 @@ class PresenceTest extends TestCase
 
         $views = collect(Presence::totalViewsByAuction())->keyBy('auction_id');
         $this->assertSame(['auction_id' => $auction->id, 'title' => 'Viewed', 'view_count' => 2], $views[$auction->id]);
-        $this->assertSame(1, $views[$other->id]['view_count']);
+        $this->assertSame(1, $views[$other->id]['view_count'] ?? null);
     }
 
     public function test_online_user_details_list_recent_non_admin_users_only(): void

@@ -37,6 +37,7 @@ class CategoryControllerTest extends TestCase
         ]);
 
         $firstId = $first->json('category.id');
+        $this->assertIsInt($firstId);
 
         $first->assertCreated()->assertJsonPath('category.slug', 'heavy-machinery');
         $second->assertCreated()->assertJsonPath('category.slug', 'heavy-machinery-1');

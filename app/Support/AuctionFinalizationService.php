@@ -34,7 +34,7 @@ class AuctionFinalizationService
             ->get();
 
         foreach ($auctions as $auction) {
-            if ($this->transition($auction, 'ended', $timestamp, false)) {
+            if ($this->transition($auction, 'ended', $timestamp, false, $timestamp)) {
                 $count++;
             }
         }
@@ -42,19 +42,32 @@ class AuctionFinalizationService
         return $count;
     }
 
-    private function transition(Auction $auction, string $status, Carbon $endsAt, bool $loadMissing = true): bool
-    {
-        if ($auction->status !== 'active') {
+    private function transition(
+        Auction $auction,
+        string $status,
+        Carbon $endsAt,
+        bool $loadMissing = true,
+        ?Carbon $expiredBy = null,
+    ): bool {
+        $claimed = Auction::query()
+            ->whereKey($auction->getKey())
+            ->where('status', 'active')
+            ->when($expiredBy !== null, fn($query) => $query->where('ends_at', '<=', $expiredBy))
+            ->update([
+                'status' => $status,
+                'ends_at' => $endsAt,
+                'updated_at' => now(),
+            ]);
+
+        if ($claimed === 0) {
             return false;
         }
+
+        $auction->refresh();
 
         if ($loadMissing) {
             $auction->loadMissing('bids.user:id,username');
         }
-
-        $auction->status = $status;
-        $auction->ends_at = $endsAt;
-        $auction->save();
 
         $this->auctionNotificationService->sendAuctionClosedNotifications($auction);
 

@@ -37,6 +37,7 @@ class ScheduleRouteTest extends TestCase
                     'is_open',
                     'server_time',
                     'server_time_local',
+                    'server_date_local',
                     'currency_symbol',
                     'anti_sniping' => ['enabled', 'window', 'extension'],
                     'site_locked',

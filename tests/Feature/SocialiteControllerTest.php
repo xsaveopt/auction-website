@@ -166,4 +166,42 @@ class SocialiteControllerTest extends TestCase
             'password' => null,
         ]);
     }
+
+    public function test_callback_creates_a_fresh_user_when_the_previous_one_was_deleted(): void
+    {
+        config([
+            'services.microsoft.client_id' => 'client-id',
+            'services.microsoft.client_secret' => 'client-secret',
+        ]);
+
+        $deleted = $this->createUser([
+            'username' => 'returning@example.com',
+            'microsoft_id' => 'microsoft-returning',
+        ]);
+        $deleted->delete();
+
+        $provider = Mockery::mock();
+        $provider
+            ->shouldReceive('user')
+            ->once()
+            ->andReturn(new class {
+                public function getId(): string
+                {
+                    return 'microsoft-returning';
+                }
+
+                public function getEmail(): string
+                {
+                    return 'returning@example.com';
+                }
+            });
+
+        Socialite::shouldReceive('driver')->once()->with('microsoft')->andReturn($provider);
+
+        $this->get('/api/auth/microsoft/callback')->assertRedirect('/');
+
+        $this->assertAuthenticated();
+        $this->assertNotSame($deleted->id, auth()->id());
+        $this->assertSoftDeleted('users', ['id' => $deleted->id]);
+    }
 }

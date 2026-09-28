@@ -13,13 +13,6 @@ class AuctionImageController extends Controller
 {
     public function store(Request $request, Auction $auction): JsonResponse
     {
-        /** @var \App\Models\User $user */
-        $user = $request->user();
-
-        if ($auction->seller_id !== $user->id) {
-            return response()->json(['message' => 'Forbidden.'], 403);
-        }
-
         $request->validate([
             'images' => ['required', 'array', 'max:10'],
             'images.*' => ['required', 'image', 'max:5120'],
@@ -78,18 +71,8 @@ class AuctionImageController extends Controller
         );
     }
 
-    public function destroy(Request $request, AuctionImage $image): JsonResponse
+    public function destroy(AuctionImage $image): JsonResponse
     {
-        /** @var \App\Models\User $user */
-        $user = $request->user();
-
-        /** @var \App\Models\Auction $auction */
-        $auction = $image->auction;
-
-        if ($auction->seller_id !== $user->id) {
-            return response()->json(['message' => 'Forbidden.'], 403);
-        }
-
         Storage::disk('public')->delete($image->path);
         $image->delete();
 

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\SiteSetting;
 use App\Support\PrometheusService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -17,6 +18,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PrometheusService::class);
+        $this->app->scoped(SiteSetting::class, fn(): SiteSetting => SiteSetting::query()->firstOrCreate(['id' => 1]));
     }
 
     /**

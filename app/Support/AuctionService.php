@@ -13,6 +13,35 @@ use Illuminate\Support\Collection;
 class AuctionService
 {
     /**
+     * @param \Illuminate\Database\Eloquent\Builder<Auction> $query
+     * @return \Illuminate\Database\Eloquent\Builder<Auction>
+     */
+    public function withAcceptedOfferQuantity(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->withSum([
+            'leftoverPriceOffers as accepted_offer_quantity' =>
+                fn(\Illuminate\Database\Eloquent\Builder $offers) => $offers->where('status', 'accepted'),
+        ], 'quantity');
+    }
+
+    public function lockForUpdate(Auction $auction): void
+    {
+        $auction->newQueryWithoutScopes()->whereKey($auction->getKey())->lockForUpdate()->value('id');
+        $auction->refresh();
+    }
+
+    /**
+     * @return array{amount: list<string>, quantity: list<string>}
+     */
+    public function bidRules(Auction $auction): array
+    {
+        return [
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'min:' . $auction->starting_price],
+            'quantity' => ['required', 'integer', 'min:1', 'max:' . max(1, (int) $auction->max_per_bidder)],
+        ];
+    }
+
+    /**
      * @return Collection<int, Bid>
      */
     public function latestBids(Auction $auction): Collection
@@ -124,10 +153,8 @@ class AuctionService
 
         $settings = SiteSetting::instance();
         $itemsAllocated = array_sum($allocations);
-        $leftoverSold = $this->leftoverSoldQuantity($auction);
-        $leftoverQuantity = max(0, (int) $auction->quantity - $itemsAllocated - $leftoverSold);
-        $leftoverPriceFactor = $settings->leftover_price_factor ?? 0.75;
-        $leftoverPrice = round((float) $auction->starting_price * $leftoverPriceFactor, 2);
+        $leftoverQuantity = $this->availableLeftoverQuantity($auction, $result);
+        $leftoverPrice = $this->leftoverPrice($auction);
 
         $data = [
             'id' => $auction->id,
@@ -275,14 +302,44 @@ class AuctionService
             ? (int) $auction->leftoverPurchases->sum(fn(LeftoverPurchase $p) => $p->quantity)
             : (int) $auction->leftoverPurchases()->sum('quantity');
 
-        $fromOffers = $auction->relationLoaded('leftoverPriceOffers')
-            ? (int) $auction
+        $fromOffers = match (true) {
+            $auction->relationLoaded('leftoverPriceOffers') => (int) $auction
                 ->leftoverPriceOffers
                 ->where('status', 'accepted')
-                ->sum(fn(LeftoverPriceOffer $o) => $o->quantity)
-            : (int) $auction->leftoverPriceOffers()->where('status', 'accepted')->sum('quantity');
+                ->sum(fn(LeftoverPriceOffer $o) => $o->quantity),
+            array_key_exists('accepted_offer_quantity', $auction->getAttributes()) => (int) filter_var(
+                $auction->getAttribute('accepted_offer_quantity'),
+                FILTER_VALIDATE_INT,
+            ),
+            default => (int) $auction->leftoverPriceOffers()->where('status', 'accepted')->sum('quantity'),
+        };
 
         return $fromPurchases + $fromOffers;
+    }
+
+    /**
+     * @param array{allocations: array<int, int>, clearing_price: float, prices: array<int, float>}|null $allocation
+     */
+    public function committedQuantity(Auction $auction, ?array $allocation = null): int
+    {
+        $allocation ??= $this->allocate($auction);
+
+        return array_sum($allocation['allocations']) + $this->leftoverSoldQuantity($auction);
+    }
+
+    /**
+     * @param array{allocations: array<int, int>, clearing_price: float, prices: array<int, float>}|null $allocation
+     */
+    public function availableLeftoverQuantity(Auction $auction, ?array $allocation = null): int
+    {
+        return max(0, (int) $auction->quantity - $this->committedQuantity($auction, $allocation));
+    }
+
+    public function leftoverPrice(Auction $auction): float
+    {
+        $leftoverPriceFactor = SiteSetting::instance()->leftover_price_factor ?? 0.75;
+
+        return round((float) $auction->starting_price * $leftoverPriceFactor, 2);
     }
 
     /**
@@ -291,12 +348,8 @@ class AuctionService
     public function closePendingOffersIfSoldOut(Auction $auction): void
     {
         $auction->load(['bids', 'leftoverPurchases']);
-        $allocation = $this->allocate($auction);
-        $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $this->leftoverSoldQuantity($auction);
-        $available = max(0, (int) $auction->quantity - $itemsAllocated - $leftoverSold);
 
-        if ($available <= 0) {
+        if ($this->availableLeftoverQuantity($auction) <= 0) {
             $auction->leftoverPriceOffers()->where('status', 'pending')->update(['status' => 'rejected']);
         }
     }

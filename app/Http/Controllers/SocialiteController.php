@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\MicrosoftSso;
+use App\Support\PrometheusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,12 +16,12 @@ class SocialiteController extends Controller
 {
     public function enabled(): JsonResponse
     {
-        return response()->json(['enabled' => $this->ssoEnabled()]);
+        return response()->json(['enabled' => MicrosoftSso::enabled()]);
     }
 
     public function redirect(): Response
     {
-        if (!$this->ssoEnabled()) {
+        if (!MicrosoftSso::enabled()) {
             return response()->json(['message' => 'SSO is disabled.'], 403);
         }
 
@@ -28,7 +30,7 @@ class SocialiteController extends Controller
 
     public function callback(): RedirectResponse|JsonResponse
     {
-        if (!$this->ssoEnabled()) {
+        if (!MicrosoftSso::enabled()) {
             return response()->json(['message' => 'SSO is disabled.'], 403);
         }
 
@@ -58,15 +60,12 @@ class SocialiteController extends Controller
                 'microsoft_id' => $microsoftId,
                 'password' => null,
             ]);
+
+            app(PrometheusService::class)->recordEvent('registrations', ['microsoft']);
         }
 
         Auth::login($user);
 
         return redirect('/');
-    }
-
-    private function ssoEnabled(): bool
-    {
-        return filled(config('services.microsoft.client_id')) && filled(config('services.microsoft.client_secret'));
     }
 }

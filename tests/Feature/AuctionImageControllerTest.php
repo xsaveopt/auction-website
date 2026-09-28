@@ -25,6 +25,7 @@ class AuctionImageControllerTest extends TestCase
         ]);
 
         $imageId = $uploadResponse->json('images.0.id');
+        $this->assertIsInt($imageId);
 
         $uploadResponse->assertCreated();
         $this->assertDatabaseHas('auction_images', [
@@ -47,21 +48,46 @@ class AuctionImageControllerTest extends TestCase
         $this->assertDatabaseMissing('auction_images', ['id' => $imageId]);
     }
 
-    public function test_non_sellers_cannot_manage_auction_images(): void
+    public function test_any_admin_can_manage_auction_images(): void
     {
         Storage::fake('public');
 
         $seller = $this->createAdmin();
-        $otherUser = $this->createAdmin();
+        $otherAdmin = $this->createAdmin();
         $auction = $this->createAuction($seller);
 
+        $imageId = $this
+            ->actingAs($otherAdmin)
+            ->post("/api/auctions/{$auction->id}/images", [
+                'images' => [
+                    UploadedFile::fake()->image('other-admin.jpg'),
+                ],
+            ])
+            ->assertCreated()
+            ->json('images.0.id');
+        $this->assertIsInt($imageId);
+
+        $this->actingAs($otherAdmin)->deleteJson("/api/images/{$imageId}")->assertOk();
+        $this->assertDatabaseMissing('auction_images', ['id' => $imageId]);
+    }
+
+    public function test_non_admins_cannot_manage_auction_images(): void
+    {
+        Storage::fake('public');
+
+        $auction = $this->createAuction($this->createAdmin());
+        $image = $auction->images()->create(['path' => "auctions/{$auction->id}/kept.jpg", 'sort_order' => 1]);
+        $user = $this->createUser();
+
         $this
-            ->actingAs($otherUser)
+            ->actingAs($user)
             ->post("/api/auctions/{$auction->id}/images", [
                 'images' => [
                     UploadedFile::fake()->image('blocked.jpg'),
                 ],
             ])
             ->assertForbidden();
+
+        $this->actingAs($user)->deleteJson("/api/images/{$image->id}")->assertForbidden();
     }
 }

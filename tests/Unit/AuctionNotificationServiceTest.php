@@ -6,6 +6,7 @@ use App\Support\AuctionNotificationService;
 use App\Support\AuctionService;
 use App\Support\PushNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Mockery;
 use Tests\TestCase;
 
@@ -27,11 +28,11 @@ class AuctionNotificationServiceTest extends TestCase
             ->shouldReceive('sendToUsers')
             ->once()
             ->with(
-                Mockery::on(fn($users) => collect($users)->pluck('id')->all() === [$loser->id]),
-                Mockery::on(function ($payload) use ($auction) {
+                Mockery::on(fn(array|Collection $users) => collect($users)->pluck('id')->all() === [$loser->id]),
+                Mockery::on(function (array $payload) use ($auction) {
                     return (
                         $payload['tag'] === "auction-overbid-{$auction->id}"
-                        && $payload['data']['kind'] === 'overbid'
+                        && data_get($payload, 'data.kind') === 'overbid'
                     );
                 }),
             );
@@ -76,20 +77,20 @@ class AuctionNotificationServiceTest extends TestCase
             ->shouldReceive('sendToUsers')
             ->once()
             ->with(
-                Mockery::on(fn($users) => collect($users)->pluck('id')->all() === [$winner->id]),
-                Mockery::on(fn($payload) => $payload['data']['kind'] === 'won'),
+                Mockery::on(fn(array|Collection $users) => collect($users)->pluck('id')->all() === [$winner->id]),
+                Mockery::on(fn(array $payload) => data_get($payload, 'data.kind') === 'won'),
             );
         $push
             ->shouldReceive('sendToUsers')
             ->once()
             ->with(
-                Mockery::on(fn($users) => collect($users)->pluck('id')->all() === [$loser->id]),
-                Mockery::on(fn($payload) => $payload['data']['kind'] === 'lost'),
+                Mockery::on(fn(array|Collection $users) => collect($users)->pluck('id')->all() === [$loser->id]),
+                Mockery::on(fn(array $payload) => data_get($payload, 'data.kind') === 'lost'),
             );
 
         $service = new AuctionNotificationService(new AuctionService(), $push);
 
-        $service->sendAuctionClosedNotifications($auction->fresh());
+        $service->sendAuctionClosedNotifications($this->reload($auction));
     }
 
     public function test_cancelled_auctions_notify_all_participants_once(): void
@@ -111,16 +112,16 @@ class AuctionNotificationServiceTest extends TestCase
             ->once()
             ->with(
                 Mockery::on(
-                    fn($users) => (
+                    fn(array|Collection $users) => (
                         collect($users)->pluck('id')->sort()->values()->all() === [$firstBidder->id, $secondBidder->id]
                     ),
                 ),
-                Mockery::on(fn($payload) => $payload['data']['kind'] === 'cancelled'),
+                Mockery::on(fn(array $payload) => data_get($payload, 'data.kind') === 'cancelled'),
             );
 
         $service = new AuctionNotificationService(new AuctionService(), $push);
 
-        $service->sendAuctionClosedNotifications($auction->fresh());
+        $service->sendAuctionClosedNotifications($this->reload($auction));
     }
 
     public function test_new_auction_notification_targets_subscribed_users_except_the_seller(): void
@@ -137,7 +138,7 @@ class AuctionNotificationServiceTest extends TestCase
             ->shouldReceive('sendToUsers')
             ->once()
             ->with(
-                Mockery::on(fn($users) => collect($users)->pluck('id')->all() === [$subscriber->id]),
+                Mockery::on(fn(array|Collection $users) => collect($users)->pluck('id')->all() === [$subscriber->id]),
                 [
                     'body' => 'New auction: "Monitor"',
                     'tag' => "auction-new-{$auction->id}",
@@ -179,7 +180,7 @@ class AuctionNotificationServiceTest extends TestCase
             ->shouldReceive('sendToUsers')
             ->once()
             ->with(
-                Mockery::on(fn($users) => collect($users)->pluck('id')->all() === [$asker->id]),
+                Mockery::on(fn(array|Collection $users) => collect($users)->pluck('id')->all() === [$asker->id]),
                 [
                     'body' => 'Your question on "Keyboard" has been answered.',
                     'tag' => "question-answered-{$question->id}",
@@ -191,9 +192,9 @@ class AuctionNotificationServiceTest extends TestCase
                 ],
             );
 
-        new AuctionNotificationService(new AuctionService(), $push)->sendQuestionAnsweredNotification(
-            $question->fresh(),
-        );
+        new AuctionNotificationService(new AuctionService(), $push)->sendQuestionAnsweredNotification($this->reload(
+            $question,
+        ));
     }
 
     public function test_offer_accepted_notification_targets_the_offer_owner(): void
@@ -207,7 +208,7 @@ class AuctionNotificationServiceTest extends TestCase
             ->shouldReceive('sendToUsers')
             ->once()
             ->with(
-                Mockery::on(fn($users) => collect($users)->pluck('id')->all() === [$buyer->id]),
+                Mockery::on(fn(array|Collection $users) => collect($users)->pluck('id')->all() === [$buyer->id]),
                 [
                     'body' => 'Your price offer on "Headset" has been accepted!',
                     'tag' => "offer-accepted-{$offer->id}",
@@ -219,7 +220,9 @@ class AuctionNotificationServiceTest extends TestCase
                 ],
             );
 
-        new AuctionNotificationService(new AuctionService(), $push)->sendOfferAcceptedNotification($offer->fresh());
+        new AuctionNotificationService(new AuctionService(), $push)->sendOfferAcceptedNotification($this->reload(
+            $offer,
+        ));
     }
 
     public function test_offer_rejected_notification_targets_the_offer_owner(): void
@@ -233,7 +236,7 @@ class AuctionNotificationServiceTest extends TestCase
             ->shouldReceive('sendToUsers')
             ->once()
             ->with(
-                Mockery::on(fn($users) => collect($users)->pluck('id')->all() === [$buyer->id]),
+                Mockery::on(fn(array|Collection $users) => collect($users)->pluck('id')->all() === [$buyer->id]),
                 [
                     'body' => 'Your price offer on "Webcam" was declined.',
                     'tag' => "offer-rejected-{$offer->id}",
@@ -245,7 +248,9 @@ class AuctionNotificationServiceTest extends TestCase
                 ],
             );
 
-        new AuctionNotificationService(new AuctionService(), $push)->sendOfferRejectedNotification($offer->fresh());
+        new AuctionNotificationService(new AuctionService(), $push)->sendOfferRejectedNotification($this->reload(
+            $offer,
+        ));
     }
 
     public function test_offer_notifications_are_skipped_when_the_auction_is_gone(): void
@@ -258,8 +263,8 @@ class AuctionNotificationServiceTest extends TestCase
         $push->shouldNotReceive('sendToUsers');
 
         $service = new AuctionNotificationService(new AuctionService(), $push);
-        $service->sendOfferAcceptedNotification($offer->fresh());
-        $service->sendOfferRejectedNotification($offer->fresh());
+        $service->sendOfferAcceptedNotification($this->reload($offer));
+        $service->sendOfferRejectedNotification($this->reload($offer));
     }
 
     public function test_ending_soon_notification_targets_every_bidder_including_losers(): void
@@ -279,7 +284,9 @@ class AuctionNotificationServiceTest extends TestCase
             ->once()
             ->with(
                 Mockery::on(
-                    fn($users) => collect($users)->pluck('id')->sort()->values()->all() === [$first->id, $second->id],
+                    fn(array|Collection $users) => (
+                        collect($users)->pluck('id')->sort()->values()->all() === [$first->id, $second->id]
+                    ),
                 ),
                 [
                     'body' => '"Tablet" is ending soon!',
@@ -292,7 +299,9 @@ class AuctionNotificationServiceTest extends TestCase
                 ],
             );
 
-        new AuctionNotificationService(new AuctionService(), $push)->sendEndingSoonNotifications($auction->fresh());
+        new AuctionNotificationService(new AuctionService(), $push)->sendEndingSoonNotifications($this->reload(
+            $auction,
+        ));
     }
 
     public function test_ending_soon_notification_is_skipped_without_bids(): void
@@ -302,6 +311,8 @@ class AuctionNotificationServiceTest extends TestCase
         $push = Mockery::mock(PushNotificationService::class);
         $push->shouldNotReceive('sendToUsers');
 
-        new AuctionNotificationService(new AuctionService(), $push)->sendEndingSoonNotifications($auction->fresh());
+        new AuctionNotificationService(new AuctionService(), $push)->sendEndingSoonNotifications($this->reload(
+            $auction,
+        ));
     }
 }

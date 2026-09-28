@@ -8,6 +8,7 @@ if (!function_exists('tests_apcu_store')) {
      */
     function &tests_apcu_store(): array
     {
+        /** @var array<string, mixed> $store */
         static $store = [];
 
         return $store;
@@ -121,7 +122,12 @@ if (!function_exists('apcu_inc')) {
     function apcu_inc(string $key, int $step = 1, ?bool &$success = null): int|false
     {
         $store = &tests_apcu_store();
-        $current = (int) ($store[$key] ?? 0);
+        $current = $store[$key] ?? 0;
+
+        if (!is_int($current)) {
+            return false;
+        }
+
         $store[$key] = $current + $step;
 
         if (func_num_args() > 2) {
@@ -136,7 +142,12 @@ if (!function_exists('apcu_dec')) {
     function apcu_dec(string $key, int $step = 1, ?bool &$success = null): int|false
     {
         $store = &tests_apcu_store();
-        $current = (int) ($store[$key] ?? 0);
+        $current = $store[$key] ?? 0;
+
+        if (!is_int($current)) {
+            return false;
+        }
+
         $store[$key] = $current - $step;
 
         if (func_num_args() > 2) {
@@ -151,7 +162,7 @@ if (!function_exists('apcu_cas')) {
     function apcu_cas(string $key, int $old, int $new): bool
     {
         $store = &tests_apcu_store();
-        $current = (int) ($store[$key] ?? 0);
+        $current = $store[$key] ?? 0;
 
         if ($current !== $old) {
             return false;

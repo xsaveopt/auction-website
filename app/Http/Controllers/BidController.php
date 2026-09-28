@@ -5,19 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\Auction;
 use App\Models\Bid;
 use App\Models\SiteSetting;
-use App\Support\AuctionFinalizationService;
 use App\Support\AuctionNotificationService;
 use App\Support\AuctionService;
 use App\Support\BiddingSchedule;
+use App\Support\PrometheusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class BidController extends Controller
 {
     public function __construct(
         protected AuctionService $auctionService,
         protected AuctionNotificationService $auctionNotificationService,
-        protected AuctionFinalizationService $auctionFinalizationService,
     ) {}
 
     public function store(Request $request, Auction $auction): JsonResponse
@@ -37,8 +38,6 @@ class BidController extends Controller
             ], 422);
         }
 
-        $this->auctionFinalizationService->finalizeExpiredAuctions();
-
         if (!$auction->isActive()) {
             return response()->json(['message' => 'This auction is no longer active.'], 422);
         }
@@ -46,67 +45,87 @@ class BidController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        if ($auction->seller_id === $user->id) {
-            return response()->json(['message' => 'You cannot bid on your own auction.'], 422);
-        }
+        Gate::authorize('bid', $auction);
 
-        $maxQty = max(1, (int) $auction->max_per_bidder);
-
-        if ($maxQty === 1) {
+        if (max(1, (int) $auction->max_per_bidder) === 1) {
             $request->merge(['quantity' => 1]);
         }
 
-        $request->validate([
-            'amount' => ['required', 'numeric', 'min:' . $auction->starting_price],
-            'quantity' => ['required', 'integer', 'min:1', 'max:' . $maxQty],
-        ]);
+        $request->validate($this->auctionService->bidRules($auction));
 
-        $amount = $request->float('amount');
+        $amountCents = (int) round($request->float('amount') * 100);
         $quantity = $request->integer('quantity');
 
-        $existingBid = Bid::where('auction_id', $auction->id)->where('user_id', $user->id)->orderByDesc('id')->first();
+        $result = DB::transaction(function () use ($auction, $user, $amountCents, $quantity): JsonResponse|array {
+            $this->auctionService->lockForUpdate($auction);
 
-        if ($existingBid) {
-            $existingAmount = floatval($existingBid->amount);
-            $existingQuantity = (int) $existingBid->quantity;
-
-            if ($amount < $existingAmount) {
-                return response()->json(['message' => 'You cannot lower your bid amount.'], 422);
+            if (!$auction->isActive()) {
+                return response()->json(['message' => 'This auction is no longer active.'], 422);
             }
 
-            if ($amount === $existingAmount && $quantity <= $existingQuantity) {
-                return response()->json([
-                    'message' => 'New bid must have a higher amount or a higher quantity than your current bid.',
-                ], 422);
+            $existingBid = Bid::where('auction_id', $auction->id)
+                ->where('user_id', $user->id)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($existingBid) {
+                $existingCents = (int) round((float) $existingBid->amount * 100);
+                $existingQuantity = (int) $existingBid->quantity;
+
+                if ($amountCents < $existingCents) {
+                    return response()->json(['message' => 'You cannot lower your bid amount.'], 422);
+                }
+
+                if ($amountCents === $existingCents && $quantity <= $existingQuantity) {
+                    return response()->json([
+                        'message' => 'New bid must have a higher amount or a higher quantity than your current bid.',
+                    ], 422);
+                }
+
+                if ($amountCents > $existingCents && $quantity < $existingQuantity) {
+                    return response()->json([
+                        'message' => 'You cannot lower your bid quantity, even with a higher amount.',
+                    ], 422);
+                }
             }
 
-            if ($amount > $existingAmount && $quantity < $existingQuantity) {
-                return response()->json([
-                    'message' => 'You cannot lower your bid quantity, even with a higher amount.',
-                ], 422);
+            $auction->loadMissing('bids.user:id,username');
+            $previousAllocations = $this->auctionService->allocationByUser($auction);
+
+            $bid = $existingBid ?? new Bid();
+            $bid->user_id = $user->id;
+            $bid->amount = number_format($amountCents / 100, 2, '.', '');
+            $bid->quantity = $quantity;
+
+            if ($existingBid) {
+                $bid->save();
+            } else {
+                $auction->bids()->save($bid);
             }
+
+            $antiSniping = BiddingSchedule::antiSniping();
+
+            if (
+                ($bid->wasRecentlyCreated || $bid->wasChanged(['amount', 'quantity']))
+                && $antiSniping['enabled']
+                && now()->diffInSeconds($auction->ends_at, false) < $antiSniping['window']
+            ) {
+                $auction->ends_at = $auction->ends_at->addSeconds($antiSniping['extension']);
+                $auction->save();
+            }
+
+            return ['bid' => $bid, 'existed' => $existingBid !== null, 'previousAllocations' => $previousAllocations];
+        });
+
+        if ($result instanceof JsonResponse) {
+            return $result;
         }
 
-        $auction->loadMissing('bids.user:id,username');
-        $previousAllocations = $this->auctionService->allocationByUser($auction);
+        $bid = $result['bid'];
+        $existingBid = $result['existed'];
 
-        $bid = $existingBid ?? new Bid();
-        $bid->user_id = $user->id;
-        $bid->amount = number_format($amount, 2, '.', '');
-        $bid->quantity = $quantity;
-
-        if ($existingBid) {
-            $bid->save();
-        } else {
-            $auction->bids()->save($bid);
-        }
-
-        $antiSniping = BiddingSchedule::antiSniping();
-
-        if ($antiSniping['enabled'] && now()->diffInSeconds($auction->ends_at, false) < $antiSniping['window']) {
-            $auction->ends_at = $auction->ends_at->addSeconds($antiSniping['extension']);
-            $auction->save();
-        }
+        app(PrometheusService::class)->recordEvent('bids_placed', ['bidder']);
+        $previousAllocations = $result['previousAllocations'];
 
         $auction->unsetRelation('bids');
         $auction->load('bids.user:id,username');

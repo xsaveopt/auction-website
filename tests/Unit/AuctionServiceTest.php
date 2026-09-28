@@ -57,7 +57,7 @@ class AuctionServiceTest extends TestCase
 
     public function test_allocate_without_bids_returns_starting_price_and_no_allocations(): void
     {
-        $auction = $this->makeAuction(3, collect());
+        $auction = $this->makeAuction(3, new Bid()->newCollection());
 
         $result = new AuctionService()->allocate($auction);
 

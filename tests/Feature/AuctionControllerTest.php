@@ -27,6 +27,7 @@ class AuctionControllerTest extends TestCase
         ]);
 
         $auctionId = $createResponse->json('auction.id');
+        $this->assertIsInt($auctionId);
 
         $createResponse
             ->assertCreated()
@@ -163,7 +164,7 @@ class AuctionControllerTest extends TestCase
             ->assertJsonPath('auction.seller.id', $seller->id);
     }
 
-    public function test_destroy_soft_deletes_the_auction_and_removes_public_images(): void
+    public function test_destroy_soft_deletes_the_auction_and_keeps_its_images(): void
     {
         Storage::fake('public');
 
@@ -185,7 +186,8 @@ class AuctionControllerTest extends TestCase
             ->assertJsonPath('message', 'Auction deleted.');
 
         $this->assertSoftDeleted('auctions', ['id' => $auction->id]);
-        Storage::disk('public')->assertMissing($path);
+        Storage::disk('public')->assertExists($path);
+        $this->assertDatabaseHas('auction_images', ['auction_id' => $auction->id, 'path' => $path]);
     }
 
     public function test_leftovers_lists_only_non_active_auctions_with_unsold_items(): void
@@ -216,7 +218,7 @@ class AuctionControllerTest extends TestCase
             ->assertJsonPath('auctions.0.leftover_quantity', 1);
     }
 
-    public function test_leftovers_finalizes_expired_auctions_and_filters_by_round(): void
+    public function test_leftovers_include_expired_auctions_and_filter_by_round(): void
     {
         $round = $this->createRound(['status' => 'active']);
         $expired = $this->createAuction(null, [
@@ -235,7 +237,7 @@ class AuctionControllerTest extends TestCase
 
         $this->actingAs($admin)->getJson('/api/auctions/leftovers')->assertOk()->assertJsonCount(2, 'auctions');
 
-        $this->assertSame('ended', $expired->fresh()?->status);
+        $this->assertSame('active', $this->reload($expired)->status);
 
         $this
             ->actingAs($admin)
@@ -322,7 +324,7 @@ class AuctionControllerTest extends TestCase
             ->assertJsonPath('summary.ended_auctions', 1);
     }
 
-    public function test_ended_summary_finalizes_expired_auctions_first(): void
+    public function test_ended_summary_includes_expired_auctions_before_finalization(): void
     {
         $admin = $this->createAdmin();
         $expired = $this->createAuction(null, ['ends_at' => now()->subMinute()]);
@@ -335,7 +337,7 @@ class AuctionControllerTest extends TestCase
             ->assertJsonPath('auctions.0.id', $expired->id)
             ->assertJsonPath('summary.sold_items', 1);
 
-        $this->assertSame('ended', $expired->fresh()->status);
+        $this->assertSame('active', $this->reload($expired)->status);
     }
 
     public function test_ended_summary_does_not_count_cancelled_auctions_as_sales(): void
@@ -359,5 +361,149 @@ class AuctionControllerTest extends TestCase
     public function test_ended_summary_is_admin_only(): void
     {
         $this->actingAs($this->createUser())->getJson('/api/auctions/ended')->assertForbidden();
+    }
+
+    public function test_store_rejects_an_end_time_in_the_past(): void
+    {
+        $this
+            ->actingAs($this->createAdmin())
+            ->postJson('/api/auctions', [
+                'title' => 'Late lot',
+                'description' => 'Already over',
+                'starting_price' => 10,
+                'quantity' => 1,
+                'max_per_bidder' => 1,
+                'ends_at' => now()->subMinute()->toISOString(),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('ends_at');
+    }
+
+    public function test_update_rejects_a_quantity_below_what_is_allocated_or_sold(): void
+    {
+        $auction = $this->createAuction(null, [
+            'quantity' => 3,
+            'max_per_bidder' => 1,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $this->createBid($auction);
+        $this->createBid($auction);
+        $this->createLeftoverPurchase($auction, null, ['quantity' => 1]);
+
+        $this
+            ->actingAs($this->createAdmin())
+            ->putJson("/api/auctions/{$auction->id}", $this->auctionPayload($auction, ['quantity' => 2]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('quantity');
+
+        $this->assertSame(3, (int) $this->reload($auction)->quantity);
+    }
+
+    public function test_update_rejects_a_starting_price_above_live_bids(): void
+    {
+        $auction = $this->createAuction(null, ['quantity' => 2, 'max_per_bidder' => 1]);
+        $this->createBid($auction, null, ['amount' => '12.00']);
+        $this->createBid($auction, null, ['amount' => '20.00']);
+
+        $admin = $this->createAdmin();
+
+        $this
+            ->actingAs($admin)
+            ->putJson("/api/auctions/{$auction->id}", $this->auctionPayload($auction, ['starting_price' => 12.01]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('starting_price');
+
+        $this
+            ->actingAs($admin)
+            ->putJson("/api/auctions/{$auction->id}", $this->auctionPayload($auction, ['starting_price' => 12]))
+            ->assertOk();
+    }
+
+    public function test_update_resets_the_ending_soon_flag_when_the_end_time_changes(): void
+    {
+        $auction = $this->createAuction(null, ['ending_soon_notified' => true]);
+        $admin = $this->createAdmin();
+
+        $this
+            ->actingAs($admin)
+            ->putJson("/api/auctions/{$auction->id}", $this->auctionPayload($auction, ['title' => 'Renamed']))
+            ->assertOk();
+
+        $this->assertTrue($this->reload($auction)->ending_soon_notified);
+
+        $this
+            ->actingAs($admin)
+            ->putJson("/api/auctions/{$auction->id}", $this->auctionPayload($auction, [
+                'ends_at' => now()->addDays(3)->format('Y-m-d H:i:s'),
+            ]))
+            ->assertOk();
+
+        $this->assertFalse($this->reload($auction)->ending_soon_notified);
+    }
+
+    public function test_update_returns_the_same_auction_shape_as_show(): void
+    {
+        $round = $this->createRound();
+        $auction = $this->createAuction(null, ['auction_round_id' => $round->id]);
+        $this->createQuestion($auction);
+        $admin = $this->createAdmin();
+
+        $show = $this->actingAs($admin)->getJson("/api/auctions/{$auction->id}")->assertOk();
+
+        $this
+            ->actingAs($admin)
+            ->putJson("/api/auctions/{$auction->id}", $this->auctionPayload($auction))
+            ->assertOk()
+            ->assertJsonPath('auction.round.id', $round->id)
+            ->assertJsonCount(1, 'auction.questions')
+            ->assertJsonStructure(['auction' => array_keys((array) $show->json('auction'))]);
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private function auctionPayload(\App\Models\Auction $auction, array $overrides = []): array
+    {
+        return array_merge([
+            'title' => $auction->title,
+            'description' => $auction->description,
+            'starting_price' => (float) $auction->starting_price,
+            'quantity' => (int) $auction->quantity,
+            'max_per_bidder' => (int) $auction->max_per_bidder,
+            'ends_at' => $auction->ends_at->format('Y-m-d H:i:s'),
+        ], $overrides);
+    }
+
+    public function test_index_counts_accepted_offers_and_reads_settings_once(): void
+    {
+        $settings = \App\Models\SiteSetting::instance();
+        $settings->leftover_sales_enabled = true;
+        $settings->save();
+
+        $auction = $this->createAuction(null, [
+            'quantity' => 3,
+            'status' => 'ended',
+            'ends_at' => now()->subHour(),
+        ]);
+        $this->createLeftoverPriceOffer($auction, null, ['quantity' => 2, 'status' => 'accepted']);
+        $this->createLeftoverPriceOffer($auction, null, ['quantity' => 1, 'status' => 'pending']);
+        $this->createAuction(null, ['quantity' => 2]);
+
+        app()->forgetInstance(\App\Models\SiteSetting::class);
+        \Illuminate\Support\Facades\DB::enableQueryLog();
+
+        $this->getJson('/api/auctions')->assertOk()->assertJsonPath('auctions.1.leftover_quantity', 1);
+
+        $queries = collect(\Illuminate\Support\Facades\DB::getQueryLog())->pluck('query');
+        $this->assertCount(
+            1,
+            $queries->filter(fn(mixed $sql) => is_string($sql) && str_contains($sql, 'from "site_settings"')),
+        );
+        $this->assertCount(
+            0,
+            $queries->filter(fn(mixed $sql) => is_string($sql) && str_starts_with($sql, 'select sum("quantity")')),
+        );
     }
 }

@@ -372,4 +372,55 @@ class AdminControllersTest extends TestCase
             'comment' => 'x',
         ])->assertForbidden();
     }
+
+    public function test_admin_bid_for_a_user_with_an_existing_bid_updates_it(): void
+    {
+        $admin = $this->createAdmin();
+        $bidder = $this->createUser();
+        $auction = $this->createAuction($this->createUser(), ['quantity' => 3, 'max_per_bidder' => 2]);
+        $existing = $this->createBid($auction, $bidder, ['amount' => '15.00', 'quantity' => 1]);
+
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/bids", [
+            'username' => $bidder->username,
+            'amount' => 20,
+            'quantity' => 2,
+        ])->assertOk();
+
+        $bid = Bid::query()->where('auction_id', $auction->id)->sole();
+        $this->assertSame($existing->id, $bid->id);
+        $this->assertSame('20.00', $bid->amount);
+        $this->assertSame(2, (int) $bid->quantity);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'bid.update', 'target_id' => $bid->id]);
+    }
+
+    public function test_admin_bids_follow_the_auction_bid_rules(): void
+    {
+        $admin = $this->createAdmin();
+        $bidder = $this->createUser();
+        $auction = $this->createAuction($this->createUser(), [
+            'starting_price' => '10.00',
+            'quantity' => 3,
+            'max_per_bidder' => 2,
+        ]);
+
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/bids", [
+            'username' => $bidder->username,
+            'amount' => 9.99,
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonValidationErrors('amount');
+
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/bids", [
+            'username' => $bidder->username,
+            'amount' => 12.345,
+            'quantity' => 1,
+        ])->assertUnprocessable()->assertJsonValidationErrors('amount');
+
+        $this->actingAs($admin)->postJson("/api/admin/auctions/{$auction->id}/bids", [
+            'username' => $bidder->username,
+            'amount' => 12,
+            'quantity' => 3,
+        ])->assertUnprocessable()->assertJsonValidationErrors('quantity');
+
+        $this->assertSame(0, Bid::query()->where('auction_id', $auction->id)->count());
+    }
 }

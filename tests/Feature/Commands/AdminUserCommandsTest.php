@@ -71,7 +71,9 @@ class AdminUserCommandsTest extends TestCase
 
         $this->artisan('app:reset-password', ['username' => 'resetme', 'password' => 'newpassword'])->assertExitCode(0);
 
-        $this->assertTrue(Hash::check('newpassword', $user->fresh()->password));
+        $password = $this->reload($user)->password;
+        $this->assertNotNull($password);
+        $this->assertTrue(Hash::check('newpassword', $password));
     }
 
     public function test_reset_password_fails_for_unknown_user(): void

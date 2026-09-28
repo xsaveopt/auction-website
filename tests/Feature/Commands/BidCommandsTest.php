@@ -63,7 +63,7 @@ class BidCommandsTest extends TestCase
             ->expectsConfirmation('Apply these changes?', 'yes')
             ->assertExitCode(0);
 
-        $fresh = $bid->fresh();
+        $fresh = $this->reload($bid);
         $this->assertSame('25.00', $fresh->amount);
         $this->assertSame(2, $fresh->quantity);
     }

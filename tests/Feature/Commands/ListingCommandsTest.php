@@ -43,7 +43,7 @@ class ListingCommandsTest extends TestCase
             'answer' => 'Yes, still available.',
         ])->assertExitCode(0);
 
-        $fresh = $question->fresh();
+        $fresh = $this->reload($question);
         $this->assertSame('Yes, still available.', $fresh->answer);
         $this->assertNotNull($fresh->answered_at);
     }
@@ -58,7 +58,7 @@ class ListingCommandsTest extends TestCase
             ->expectsQuestion('Your answer', 'Prompted answer')
             ->assertExitCode(0);
 
-        $this->assertSame('Prompted answer', $question->fresh()->answer);
+        $this->assertSame('Prompted answer', $this->reload($question)->answer);
     }
 
     public function test_answer_question_can_overwrite_existing_answer(): void
@@ -74,7 +74,7 @@ class ListingCommandsTest extends TestCase
             ->expectsConfirmation('Overwrite the existing answer?', 'yes')
             ->assertExitCode(0);
 
-        $this->assertSame('New answer', $question->fresh()->answer);
+        $this->assertSame('New answer', $this->reload($question)->answer);
     }
 
     public function test_answer_question_declining_overwrite_keeps_old_answer(): void
@@ -90,7 +90,7 @@ class ListingCommandsTest extends TestCase
             ->expectsConfirmation('Overwrite the existing answer?', 'no')
             ->assertExitCode(0);
 
-        $this->assertSame('Old answer', $question->fresh()->answer);
+        $this->assertSame('Old answer', $this->reload($question)->answer);
     }
 
     public function test_answer_question_fails_for_unknown_question(): void
@@ -109,6 +109,7 @@ class ListingCommandsTest extends TestCase
 
         $this->assertFileExists($path);
         $contents = file_get_contents($path);
+        $this->assertIsString($contents);
         $this->assertStringContainsString($auction->title, $contents);
 
         unlink($path);

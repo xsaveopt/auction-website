@@ -9,8 +9,11 @@ use App\Models\SiteSetting;
 use App\Models\User;
 use App\Support\AuctionNotificationService;
 use App\Support\AuctionService;
+use App\Support\PrometheusService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class LeftoverPriceOfferController extends Controller
 {
@@ -21,9 +24,6 @@ class LeftoverPriceOfferController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        /** @var float $leftoverPriceFactor */
-        $leftoverPriceFactor = SiteSetting::instance()->leftover_price_factor ?? 0.75;
-
         $offers = LeftoverPriceOffer::with(['auction.images', 'user:id,username'])
             ->whereHas('auction', function ($q) use ($request) {
                 if ($request->filled('round_id')) {
@@ -50,12 +50,7 @@ class LeftoverPriceOfferController extends Controller
                     'id' => $offer->auction?->id,
                     'title' => $offer->auction?->title,
                     'leftover_price' => $offer->auction
-                        ? number_format(
-                            round((float) $offer->auction->starting_price * $leftoverPriceFactor, 2),
-                            2,
-                            '.',
-                            '',
-                        )
+                        ? number_format($this->auctionService->leftoverPrice($offer->auction), 2, '.', '')
                         : null,
                     'images' => $offer
                         ->auction
@@ -85,9 +80,7 @@ class LeftoverPriceOfferController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        if ($user->id === $auction->seller_id) {
-            return response()->json(['message' => 'You cannot make an offer on your own auction.'], 403);
-        }
+        Gate::authorize('offerOnLeftover', $auction);
 
         $existingOffer = $auction->leftoverPriceOffers()->where('user_id', $user->id)->first();
 
@@ -96,18 +89,13 @@ class LeftoverPriceOfferController extends Controller
         }
 
         $auction->load(['bids', 'leftoverPurchases']);
-        $allocation = $this->auctionService->allocate($auction);
-        $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $this->auctionService->leftoverSoldQuantity($auction);
-        $available = (int) $auction->quantity - $itemsAllocated - $leftoverSold;
+        $available = $this->auctionService->availableLeftoverQuantity($auction);
 
         if ($available <= 0) {
             return response()->json(['message' => 'No leftover items are available.'], 422);
         }
 
-        /** @var float $leftoverPriceFactor */
-        $leftoverPriceFactor = SiteSetting::instance()->leftover_price_factor ?? 0.75;
-        $leftoverPrice = round((float) $auction->starting_price * $leftoverPriceFactor, 2);
+        $leftoverPrice = $this->auctionService->leftoverPrice($auction);
 
         $minPrice = $existingOffer
             ? number_format((float) $existingOffer->offered_price_per_item + 0.01, 2, '.', '')
@@ -137,19 +125,9 @@ class LeftoverPriceOfferController extends Controller
                 'status' => 'pending',
             ]);
 
-        $auction->load([
-            'seller:id,username',
-            'bids.user:id,username',
-            'images',
-            'questions.user:id,username',
-            'leftoverPurchases.user:id,username',
-            'leftoverPriceOffers.user:id,username',
-            'category',
-        ]);
+        app(PrometheusService::class)->recordEvent('price_offers_submitted');
 
-        return response()->json([
-            'auction' => $this->auctionService->auctionResponse($auction, withBids: true),
-        ], 201);
+        return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)], 201);
     }
 
     public function accept(Request $request, LeftoverPriceOffer $leftoverPriceOffer): JsonResponse
@@ -164,24 +142,41 @@ class LeftoverPriceOfferController extends Controller
             return response()->json(['message' => 'The auction no longer exists.'], 422);
         }
 
-        $auction->load(['bids', 'leftoverPurchases']);
+        $rejection = DB::transaction(function () use ($auction, $leftoverPriceOffer): ?JsonResponse {
+            $this->auctionService->lockForUpdate($auction);
+            $leftoverPriceOffer->refresh();
 
-        $allocation = $this->auctionService->allocate($auction);
-        $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $this->auctionService->leftoverSoldQuantity($auction);
-        $available = (int) $auction->quantity - $itemsAllocated - $leftoverSold;
+            if ($leftoverPriceOffer->status !== 'pending') {
+                return response()->json(['message' => 'This offer is no longer pending.'], 422);
+            }
 
-        if ($available < $leftoverPriceOffer->quantity) {
-            return response()->json([
-                'message' => "Only {$available} item(s) available; cannot fulfil this offer.",
-            ], 422);
+            $auction->load(['bids', 'leftoverPurchases']);
+            $available = $this->auctionService->availableLeftoverQuantity($auction);
+
+            if ($available < $leftoverPriceOffer->quantity) {
+                return response()->json([
+                    'message' => "Only {$available} item(s) available; cannot fulfil this offer.",
+                ], 422);
+            }
+
+            $leftoverPriceOffer->update(['status' => 'accepted']);
+
+            $this->auctionService->closePendingOffersIfSoldOut($auction);
+
+            return null;
+        });
+
+        if ($rejection !== null) {
+            return $rejection;
         }
 
-        $leftoverPriceOffer->update(['status' => 'accepted']);
+        app(PrometheusService::class)->recordEvent(
+            'leftover_items_sold',
+            ['price_offer'],
+            $leftoverPriceOffer->quantity,
+        );
 
         $this->notificationService->sendOfferAcceptedNotification($leftoverPriceOffer);
-
-        $this->auctionService->closePendingOffersIfSoldOut($auction);
 
         /** @var \App\Models\User $admin */
         $admin = $request->user();
@@ -238,10 +233,7 @@ class LeftoverPriceOfferController extends Controller
         $buyer = User::query()->where('username', $validated['username'])->firstOrFail();
 
         $auction->load(['bids', 'leftoverPurchases']);
-        $allocation = $this->auctionService->allocate($auction);
-        $itemsAllocated = array_sum($allocation['allocations']);
-        $leftoverSold = $this->auctionService->leftoverSoldQuantity($auction);
-        $available = (int) $auction->quantity - $itemsAllocated - $leftoverSold;
+        $available = $this->auctionService->availableLeftoverQuantity($auction);
 
         if ($available <= 0) {
             return response()->json(['message' => 'No leftover items are available.'], 422);

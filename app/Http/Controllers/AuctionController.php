@@ -7,28 +7,24 @@ use App\Models\AuctionRound;
 use App\Models\AuditLog;
 use App\Models\LeftoverPurchase;
 use App\Models\SiteSetting;
-use App\Support\AuctionFinalizationService;
 use App\Support\AuctionNotificationService;
 use App\Support\AuctionService;
-use App\Support\Presence;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class AuctionController extends Controller
 {
     public function __construct(
         protected AuctionService $auctionService,
-        protected AuctionFinalizationService $auctionFinalizationService,
         protected AuctionNotificationService $auctionNotificationService,
     ) {}
 
     public function index(Request $request): JsonResponse
     {
-        $this->auctionFinalizationService->finalizeExpiredAuctions();
-
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = Auction::query()
+        $auctions = $this->auctionService
+            ->withAcceptedOfferQuantity(Auction::query())
             ->with(['seller:id,username', 'bids', 'images', 'category', 'leftoverPurchases', 'round'])
             ->when($request->filled('round_id'), fn($q) => $q->where('auction_round_id', $request->integer('round_id')))
             ->orderByRaw("CASE WHEN status = 'active' AND ends_at > ? THEN 1 ELSE 0 END DESC", [now()])
@@ -44,27 +40,11 @@ class AuctionController extends Controller
 
     public function show(Auction $auction): JsonResponse
     {
-        $this->auctionFinalizationService->finalizeExpiredAuctions();
-
-        $auction->load([
-            'seller:id,username',
-            'bids.user:id,username',
-            'images',
-            'questions.user:id,username',
-            'leftoverPurchases.user:id,username',
-            'leftoverPriceOffers.user:id,username',
-            'category',
-            'round',
-        ]);
-        $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
-
-        return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);
+        return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
     }
 
     public function ended(Request $request): JsonResponse
     {
-        $this->auctionFinalizationService->finalizeExpiredAuctions();
-
         $query = Auction::query()->with([
             'seller:id,username',
             'bids.user:id,username',
@@ -173,8 +153,6 @@ class AuctionController extends Controller
 
     public function leftovers(Request $request): JsonResponse
     {
-        $this->auctionFinalizationService->finalizeExpiredAuctions();
-
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
         $auctions = Auction::query()
             ->with([
@@ -186,7 +164,7 @@ class AuctionController extends Controller
                 'category',
                 'round',
             ])
-            ->where('status', '!=', 'active')
+            ->where(fn($q) => $q->where('status', '!=', 'active')->orWhere('ends_at', '<=', now()))
             ->when($request->filled('round_id'), fn($q) => $q->where('auction_round_id', $request->integer('round_id')))
             ->orderByDesc('ends_at')
             ->get();
@@ -194,13 +172,8 @@ class AuctionController extends Controller
         $result = [];
         foreach ($auctions as $auction) {
             $allocation = $this->auctionService->allocate($auction);
-            $leftoverQuantity = max(
-                0,
-                (int) $auction->quantity - array_sum($allocation['allocations'])
-                - $this->auctionService->leftoverSoldQuantity($auction),
-            );
 
-            if ($leftoverQuantity > 0) {
+            if ($this->auctionService->availableLeftoverQuantity($auction, $allocation) > 0) {
                 $result[] = $this->auctionService->auctionResponseFromAllocation($auction, $allocation);
             }
         }
@@ -210,13 +183,12 @@ class AuctionController extends Controller
 
     public function myAuctions(Request $request): JsonResponse
     {
-        $this->auctionFinalizationService->finalizeExpiredAuctions();
-
         /** @var \App\Models\User $user */
         $user = $request->user();
 
         /** @var \Illuminate\Database\Eloquent\Collection<int, Auction> $auctions */
-        $auctions = Auction::query()
+        $auctions = $this->auctionService
+            ->withAcceptedOfferQuantity(Auction::query())
             ->with([
                 'seller:id,username',
                 'bids.user:id,username',
@@ -301,7 +273,7 @@ class AuctionController extends Controller
             'starting_price' => ['required', 'numeric', 'min:0.01'],
             'quantity' => ['required', 'integer', 'min:1'],
             'max_per_bidder' => ['required', 'integer', 'min:1'],
-            'ends_at' => ['required', 'date'],
+            'ends_at' => ['required', 'date', 'after:now'],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
 
@@ -351,9 +323,31 @@ class AuctionController extends Controller
             $validated['max_per_bidder'] = $validated['quantity'];
         }
 
-        $auction->update($validated);
-        $auction->load(['seller:id,username', 'bids.user:id,username', 'images', 'category']);
-        $auction->setAttribute('watcher_count', Presence::watchersForAuction($auction->id));
+        $auction->load(['bids', 'leftoverPurchases', 'leftoverPriceOffers']);
+        $committed = $this->auctionService->committedQuantity($auction);
+
+        if ($validated['quantity'] < $committed) {
+            throw ValidationException::withMessages([
+                'quantity' => "Quantity cannot be lower than the {$committed} item(s) already allocated or sold.",
+            ]);
+        }
+
+        /** @var string|null $lowestBid */
+        $lowestBid = $this->auctionService->latestBids($auction)->min('amount');
+
+        if ($lowestBid !== null && round((float) $validated['starting_price'], 2) > round((float) $lowestBid, 2)) {
+            throw ValidationException::withMessages([
+                'starting_price' => "Starting price cannot be higher than the lowest current bid ({$lowestBid}).",
+            ]);
+        }
+
+        $auction->fill($validated);
+
+        if ($auction->isDirty('ends_at')) {
+            $auction->ending_soon_notified = false;
+        }
+
+        $auction->save();
 
         /** @var \App\Models\User $user */
         $user = $request->user();
@@ -364,16 +358,11 @@ class AuctionController extends Controller
             'ends_at' => $auction->ends_at->toISOString(),
         ]);
 
-        return response()->json(['auction' => $this->auctionService->auctionResponse($auction, withBids: true)]);
+        return response()->json(['auction' => $this->auctionService->freshAuctionResponse($auction)]);
     }
 
     public function destroy(Request $request, Auction $auction): JsonResponse
     {
-        foreach ($auction->images as $image) {
-            Storage::disk('public')->delete($image->path);
-            $image->delete();
-        }
-
         $auction->leftoverPriceOffers()->delete();
 
         /** @var \App\Models\User $user */
