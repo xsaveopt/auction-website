@@ -10,8 +10,6 @@ export DB_CONNECTION=sqlite
 export DB_DATABASE="$(pwd)/database/e2e.sqlite"
 export SESSION_DRIVER=file
 export CACHE_STORE=file
-export QUEUE_CONNECTION=sync
-export MAIL_MAILER=array
 export MICROSOFT_CLIENT_ID=""
 export MICROSOFT_CLIENT_SECRET=""
 

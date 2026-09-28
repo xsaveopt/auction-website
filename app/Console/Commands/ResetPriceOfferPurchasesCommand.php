@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 #[Signature('app:reset-price-offer-purchases')]
 #[Description('Delete leftover_purchases rows created from price offers and reset those offers to pending')]
-class ResetPriceOfferPurchases extends Command
+class ResetPriceOfferPurchasesCommand extends Command
 {
     public function handle(): int
     {
