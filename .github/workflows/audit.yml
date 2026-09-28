@@ -13,15 +13,8 @@ permissions:
 
 jobs:
   pnpm:
-    name: pnpm audit (${{ matrix.dir }})
+    name: pnpm audit
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        dir: [., mcp-server]
-    defaults:
-      run:
-        working-directory: ${{ matrix.dir }}
     steps:
       - uses: actions/checkout@v7
 
