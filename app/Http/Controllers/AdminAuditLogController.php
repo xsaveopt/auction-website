@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class AdminAuditLogController extends Controller
 {
@@ -31,6 +32,7 @@ class AdminAuditLogController extends Controller
                 'target_id' => $log->target_id,
                 'data' => $log->data,
                 'comment' => $log->comment,
+                'via_api_key' => $log->via_api_key,
                 'created_at' => $log->created_at->toISOString(),
             ];
         }
@@ -65,12 +67,7 @@ class AdminAuditLogController extends Controller
 
     public function updateComment(Request $request, AuditLog $auditLog): JsonResponse
     {
-        /** @var \App\Models\User $admin */
-        $admin = $request->user();
-
-        if ($auditLog->user_id !== $admin->id) {
-            return response()->json(['message' => 'You can only comment on your own audit log entries.'], 403);
-        }
+        Gate::authorize('comment', $auditLog);
 
         /** @var array{comment: string|null} $validated */
         $validated = $request->validate([

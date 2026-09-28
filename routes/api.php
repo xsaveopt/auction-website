@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminAuctionController;
 use App\Http\Controllers\AdminBidController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\ApiKeyController;
 use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\AuctionRoundController;
 use App\Http\Controllers\CategoryController;
@@ -118,5 +119,8 @@ Route::middleware('sso')->group(function () {
         Route::patch('/audit-log/{auditLog}/comment', [AdminAuditLogController::class, 'updateComment']);
         Route::get('/settings', [AdminSettingsController::class, 'show']);
         Route::put('/settings', [AdminSettingsController::class, 'update']);
+        Route::get('/api-key', [ApiKeyController::class, 'show']);
+        Route::post('/api-key', [ApiKeyController::class, 'store']);
+        Route::delete('/api-key', [ApiKeyController::class, 'destroy']);
     });
 });

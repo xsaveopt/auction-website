@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -13,6 +14,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  * @property bool $is_admin
  * @property string|null $microsoft_id
  * @property string|null $payment_reference
+ * @property string|null $api_key_hash
+ * @property \Illuminate\Support\Carbon|null $api_key_created_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
  */
@@ -34,6 +37,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'api_key_hash',
     ];
 
     /** @return HasMany<\App\Models\Auction, $this> */
@@ -54,11 +58,37 @@ class User extends Authenticatable
         return $this->hasMany(PushSubscription::class);
     }
 
+    public static function findByApiKey(string $key): ?self
+    {
+        return static::query()->where('api_key_hash', hash('sha256', $key))->first();
+    }
+
+    public function generateApiKey(): string
+    {
+        $key = 'auk_' . Str::random(48);
+
+        $this->forceFill([
+            'api_key_hash' => hash('sha256', $key),
+            'api_key_created_at' => now(),
+        ])->save();
+
+        return $key;
+    }
+
+    public function revokeApiKey(): void
+    {
+        $this->forceFill([
+            'api_key_hash' => null,
+            'api_key_created_at' => null,
+        ])->save();
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
         return [
             'password' => 'hashed',
+            'api_key_created_at' => 'datetime',
         ];
     }
 }

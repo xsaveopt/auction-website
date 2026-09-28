@@ -5,11 +5,11 @@ namespace App\Http\Middleware;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\Request;
 
-class VerifyCsrfUnlessMcp extends ValidateCsrfToken
+class VerifyCsrfUnlessApiKey extends ValidateCsrfToken
 {
     protected function tokensMatch($request): bool
     {
-        if ($request->attributes->get('mcp_authenticated')) {
+        if ($request->attributes->get('api_key_authenticated')) {
             return true;
         }
 

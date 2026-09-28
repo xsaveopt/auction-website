@@ -11,26 +11,16 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-     ->withMiddleware(function (Middleware $middleware): void {
-         $middleware->append(\App\Http\Middleware\LogRequest::class);
-         $middleware->api(prepend: [
-            \App\Http\Middleware\RecordPrometheusMetrics::class,
-             \Illuminate\Cookie\Middleware\EncryptCookies::class,
-             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-             \Illuminate\Session\Middleware\StartSession::class,
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \App\Http\Middleware\McpApiKeyMiddleware::class,
-            \App\Http\Middleware\VerifyCsrfUnlessMcp::class,
-        ]);
-        $middleware->priority([
+    ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(\App\Http\Middleware\RecordPrometheusMetrics::class);
+        $middleware->append(\App\Http\Middleware\LogRequest::class);
+        $middleware->api(prepend: [
             \Illuminate\Cookie\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \App\Http\Middleware\McpApiKeyMiddleware::class,
-            \App\Http\Middleware\VerifyCsrfUnlessMcp::class,
-            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\ApiKeyMiddleware::class,
+            \App\Http\Middleware\VerifyCsrfUnlessApiKey::class,
         ]);
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
@@ -38,5 +28,4 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
     })->create();
